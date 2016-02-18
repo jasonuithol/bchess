@@ -145,7 +145,7 @@ void printBoard(board* b) {
 			printf("\n");
 		}
 	}
-	printf("Historical moves: %d\n",b->piecesMoved);
+//	printf("Historical moves: %d\n",b->piecesMoved);
 	printf("\nWho's turn ? ");
 	printTeam(b->whosTurn);
 	printf("\n");
