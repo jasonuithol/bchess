@@ -1,0 +1,198 @@
+// ================================================================
+//
+// ai2.c
+//
+// An algorithm for a computer chess player is implemented here.
+//
+
+//
+// NOTE: GLOBAL VARIABLES
+//
+int nodesCalculated;
+int aiStrength;
+
+typedef struct {
+
+	square from;
+	move to;
+	int score;
+	
+} analysisMove;
+
+//
+// A strategy for deciding the best move based on how much material the player has at the end of each possible move.
+//
+int evaluateMaterial(board* b, byte team) {
+	int score = 0;
+	int x,y;
+	int kingExists = 0;
+	for (x=0;x<8;x++) {
+		for (y=0;y<8;y++) {
+			byte p = boardAt(b,x,y);
+			if (teamOf(p) == team) {
+				if (typeOf(p) == KING) {
+					kingExists = 1;
+				}
+				score += typeOf(p);
+			}
+		}
+	}
+	return score * kingExists;
+}
+
+
+//
+// A strategy for deciding the best move based on how many more possible moves the player has than it's opponent.
+//
+int evaluateMobility(board* b, byte team) {
+
+	int x,y;
+	int teamKingExists = -1000;
+	int teamScore = 1;
+	int opponentKingExists = -1000;
+	int opponentScore = 1;
+	byte opposingTeam = opponentOf(team);
+	
+	for (x=0;x<8;x++) {
+		for (y=0;y<8;y++) {
+			square from = {x,y};
+			byte p = boardAt(b,x,y);
+			if (teamOf(p) == team) {
+			
+				if (typeOf(p) == KING) {
+					teamKingExists = 1;
+				}
+				moveList mvs;
+				allowedMoves(&mvs, b, from);
+				teamScore += mvs.ix;
+			}
+			else {
+				if (teamOf(p) == opposingTeam) {
+				
+					if (typeOf(p) == KING) {
+						opponentKingExists = 1;
+					}
+					moveList mvs;
+					allowedMoves(&mvs, b, from);
+					opponentScore += mvs.ix;
+				
+				}
+			}
+		}
+	}
+	return (teamScore * teamKingExists) - (opponentScore * opponentKingExists);
+}
+
+
+//
+// Recursively search for the best move and set "bestMove" to point to it.
+// Search depth set by "numMoves"
+//
+void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMoves) {
+
+	if (numMoves > 0) {
+
+		// Start by assuming the worst for us (or the best for the opponent), and see if we can do better than that.
+		int bestScore = (b->whosTurn == scoringTeam ? -9999 : 9999);
+		
+		int x,y,z;
+		for (x=0;x<8;x++) {
+			for (y=0;y<8;y++) {
+				square from = {x,y};
+				if (teamOf(boardAt(b,x,y)) == b->whosTurn) {
+
+					//				
+					// We have found a square with one of our pieces on it.  Go through it's allowed moves.
+					//				
+				
+					moveList mvs;
+					allowedMoves(&mvs, b, from);
+					for (z=0;z<mvs.ix;z++) {	
+
+						//
+						// Assess the move [from]->[to] on board b to depth numMoves-1.
+						// We do this by making an allowed move on a new board (copied from current board) 
+						// and then seeing what score we get when we follow all the best moves from then on.
+						//
+						board bNext;
+						makeMove(b, &bNext, from, mvs.moves[z]);
+						analysisMove bestNextMove;
+						getBestMove(&bestNextMove, &bNext, scoringTeam, numMoves - 1);
+						int score = bestNextMove.score;
+
+						
+						//
+						// Update bestscore to be the best score.
+						//
+						if (b->whosTurn == scoringTeam) {
+							// We analysed one of our moves, so pick the highest scoring move.
+							if (score > bestScore) {
+								bestScore = score;
+								bestMove->score = score;
+								copySquare(bestMove->from,from);
+								copyMove(bestMove->to,mvs.moves[z]);
+							}
+						}
+						else {
+							// We analysed one of the opponent's moves, so pick the lowest scoring move.
+							// This basically assumes that the opponent will play to their best ability.
+							// Note that the score is OUR score, not the moving team's score.
+							if (score < bestScore) {
+								bestScore = score;
+								bestMove->score = score;
+								copySquare(bestMove->from,from);
+								copyMove(bestMove->to,mvs.moves[z]);
+							}
+						}
+						
+					} // for z
+				} // if whosTurn
+			} // for y
+		} // for x
+		
+	} // if numMoves
+	else {
+	
+		// TESTING ONLY - INDICATE PROGRESS
+		nodesCalculated = (nodesCalculated + 1) % 1000;
+		if (nodesCalculated == 0) {
+			printf(".");
+		}
+	
+		// Use raw evaluation of board.
+		// NOTE: no move is populated here. Board assessed "as is".
+		// This means that calling scoreBoard with a depth of 0 will result in a 
+		// raw call to evaluateMobility without any moves being recommended.
+		
+		// TODO: pass in a pointer to the evaluateXXXXX method so that it is not decided here in hardcode.
+		bestMove->score = evaluateMobility(b, scoringTeam);
+		
+	}
+}
+
+//
+// Ask an AI agent to make a move.
+//
+void aiMove(board* current, board* next) {
+
+	time_t startTime = time(NULL);
+	
+	nodesCalculated = 0;
+	analysisMove bestmove;
+	
+	// TODO: Pick an AI strategy and pass it into this method call.
+	getBestMove(&bestmove, current, current->whosTurn, aiStrength);
+
+	printf("\n");
+	makeMove(current, next, bestmove.from, bestmove.to);
+
+	time_t finishTime = time(NULL);
+	
+	printf("===== ai move for ");printTeam(current->whosTurn);printf(" =====\n");
+	printf("Move chosen: ");printPiece(boardAtSq(current,bestmove.from));
+	printf(" ");printSquare(bestmove.from);printf("->");printMove(bestmove.to);printf(" (score: %d)\n",bestmove.score);
+    printf("Ai Move Time Taken: %f\n", difftime(finishTime, startTime));
+
+	printBoardClassic(next);
+	
+}
