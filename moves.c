@@ -26,7 +26,7 @@ typedef struct {
 } moveList;
 
 
-#define copyMove(copy,orig) (copy).x = (orig).x;(copy).y = (orig).y;(copy).promoteTo = (orig).promoteTo; (copy).checkingMove = (orig).checkingMove
+#define copyMove(copy,orig) (copy).x = (orig).x;(copy).y = (orig).y;(copy).promoteTo = (orig).promoteTo; (copy).checkingMove = (orig).checkingMove; (copy).castlingMove = (orig).castlingMove
 #define assignMove(mv,px,py,ppromoteTo,pcheckingMove,pcastlingMove) (mv).x = px;(mv).y = py;(mv).promoteTo = ppromoteTo;(mv).checkingMove = pcheckingMove; (mv).castlingMove = pcastlingMove
 #define lastAddedMove(mvs) ((mvs)->moves[(mvs)->ix - 1])
 
@@ -146,6 +146,8 @@ void addPawnMove(moveList* mvs, byte x, byte y, int lastrank, byte checkingMove)
 		//
 		// Pawn promotion logic pt1 (makes the promotion into 4 options for moving)
 		//
+		// the actual transformation of the pawn happens in makeMove (not addMove)
+		//
 		addMove(mvs,x,y); lastAddedMove(mvs).promoteTo = QUEEN;	 lastAddedMove(mvs).checkingMove = checkingMove;
 		addMove(mvs,x,y); lastAddedMove(mvs).promoteTo = ROOK;	 lastAddedMove(mvs).checkingMove = checkingMove;
 		addMove(mvs,x,y); lastAddedMove(mvs).promoteTo = BISHOP; lastAddedMove(mvs).checkingMove = checkingMove;
@@ -212,7 +214,9 @@ void allowedMoves(moveList* mvs, board* b, square from) {
 				
 					// TODO: uh oh, need the opposition's allowedMoves to scan for attacked squares....
 					
-					// addMove will recognise a King moving two squares and will take care of moving the castle for us.
+					// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
+					// The castle doesn't need to move when this move is being added to list of moves,
+					// but will need to move should the move actually be played on a board.
 					addMove(mvs,2,y);
 					lastAddedMove(mvs).castlingMove = QUEENSIDE_CASTLE_MOVE;
 				}
@@ -230,7 +234,9 @@ void allowedMoves(moveList* mvs, board* b, square from) {
 					
 						// TODO: uh oh, need the opposition's allowedMoves to scan for attacked squares....
 						
-						// addMove will recognise a King moving two squares and will take care of moving the castle for us.
+						// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
+						// The castle doesn't need to move when this move is being added to list of moves,
+						// but will need to move should the move actually be played on a board.
 						addMove(mvs,6,y);
 						lastAddedMove(mvs).castlingMove = KINGSIDE_CASTLE_MOVE;
 					}
