@@ -25,19 +25,27 @@ typedef struct {
 int evaluateMaterial(board* b, byte team) {
 	int score = 0;
 	int x,y;
-	int kingExists = 0;
+	int teamMultiplier = 0;
 	for (x=0;x<8;x++) {
 		for (y=0;y<8;y++) {
 			byte p = boardAt(b,x,y);
 			if (teamOf(p) == team) {
-				if (typeOf(p) == KING) {
-					kingExists = 1;
-				}
-				score += typeOf(p);
+				teamMultiplier = 1;
 			}
+			else {
+				teamMultiplier = -1;
+			}
+			switch(typeOf(p)) {
+				case PAWN:   score += teamMultiplier * 10; break;
+				case KNIGHT: score += teamMultiplier * 30; break;
+				case BISHOP: score += teamMultiplier * 40; break;
+				case ROOK:   score += teamMultiplier * 70; break;
+				case QUEEN:  score += teamMultiplier * 100; break;
+				case KING:   score += teamMultiplier * 1000; break;
+			} 
 		}
 	}
-	return score * kingExists;
+	return score;
 }
 
 
@@ -47,9 +55,7 @@ int evaluateMaterial(board* b, byte team) {
 int evaluateMobility(board* b, byte team) {
 
 	int x,y;
-	int teamKingExists = -1000;
 	int teamScore = 1;
-	int opponentKingExists = -1000;
 	int opponentScore = 1;
 	byte opposingTeam = opponentOf(team);
 	
@@ -59,9 +65,6 @@ int evaluateMobility(board* b, byte team) {
 			byte p = boardAt(b,x,y);
 			if (teamOf(p) == team) {
 			
-				if (typeOf(p) == KING) {
-					teamKingExists = 1;
-				}
 				moveList mvs;
 				allowedMoves(&mvs, b, from);
 				teamScore += mvs.ix;
@@ -69,9 +72,6 @@ int evaluateMobility(board* b, byte team) {
 			else {
 				if (teamOf(p) == opposingTeam) {
 				
-					if (typeOf(p) == KING) {
-						opponentKingExists = 1;
-					}
 					moveList mvs;
 					allowedMoves(&mvs, b, from);
 					opponentScore += mvs.ix;
@@ -80,7 +80,7 @@ int evaluateMobility(board* b, byte team) {
 			}
 		}
 	}
-	return (teamScore * teamKingExists) - (opponentScore * opponentKingExists);
+	return teamScore - opponentScore;
 }
 
 
@@ -153,7 +153,7 @@ void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMove
 	} // if numMoves
 	else {
 	
-		// TESTING ONLY - INDICATE PROGRESS
+		// Animate a little spinner to show that we are still alive.
 		nodesCalculated = (nodesCalculated + 1) % 100000;
 		switch (nodesCalculated) {
 			case 0:
@@ -174,13 +174,8 @@ void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMove
 				break;
 		}
 	
-		// Use raw evaluation of board.
-		// NOTE: no move is populated here. Board assessed "as is".
-		// This means that calling scoreBoard with a depth of 0 will result in a 
-		// raw call to evaluateMobility without any moves being recommended.
-		
-		// TODO: pass in a pointer to the evaluateXXXXX method so that it is not decided here in hardcode.
-		bestMove->score = evaluateMobility(b, scoringTeam);
+		// We have hit the limit of our depth search - time to score the board.
+		bestMove->score = evaluateMobility(b, scoringTeam) + evaluateMaterial(b, scoringTeam);
 		
 	}
 }
