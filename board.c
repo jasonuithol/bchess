@@ -161,21 +161,21 @@ void printBoardClassic(board* b) {
 			// Set the color of the square
 			if ((x + y) % 2 == 1) {
 				// Reverse
-				printf("\033[7m"); // TODO: Use terminfo/tput, no hardcoding plox
+				printf("\033[47m"); // TODO: Use terminfo/tput, no hardcoding plox
 			}
 			else {
 				// Normal
-				printf("\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
+				printf("\033[40m"); // TODO: Use terminfo/tput, no hardcoding plox
 			}
 			printf(" ");
 			p = b->squares[x][y];
 			printPieceUnicode(p);
 			printf(" ");
 		}
+		// Reset the color codes.
+		printf("\033[49m\033[39m\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
 		printf("\n");
 	}
-	// Reset the color codes.
-	printf("\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
 	
 	printf("\n");
 	printTeam(b->whosTurn);

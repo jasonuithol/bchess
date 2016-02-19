@@ -113,7 +113,17 @@ void printPieceClassic(byte p) {
 // gcc -std=c99 bchess.c
 //
 void printPieceUnicode(byte p) {
-	if(teamOf(p) == WHITE) {
+	
+	const int SET_TO_USE = BLACK;
+	
+	if (teamOf(p) == WHITE) {
+		printf("\033[31m\033[1m");  // bright red
+	} 
+	else {
+		printf("\033[34m\033[1m");  // bright blue
+	}
+	
+	if(SET_TO_USE == WHITE) {
 		switch (typeOf(p)) {
 			case 0: printf(" ");break;
 			case KING:   printf("\u2654"); break;
