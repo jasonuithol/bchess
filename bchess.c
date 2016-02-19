@@ -36,7 +36,7 @@ int main() {
 	aiStrength = 4; // i.e. think 3 moves ahead.
 
 	int turn;
-	for (turn = 0; turn < 50; turn++) { // for this demo, limit to 50 moves.
+	for (turn = 0; turn < 200; turn++) { // for this demo, limit to 50 moves.
 		printf("==== TURN %d =====\n\n",turn);
 
 		// For this demo, the AI plays against itself.
