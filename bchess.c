@@ -33,7 +33,7 @@ int main() {
 	printAllowedMoves(b1ptr);
 
 	printf("\n-------------- ai test ----------------\n");
-	aiStrength = 5; // i.e. think 3 moves ahead.
+	aiStrength = 4; // i.e. think 3 moves ahead.
 
 	int turn;
 	for (turn = 0; turn < 50; turn++) { // for this demo, limit to 50 moves.

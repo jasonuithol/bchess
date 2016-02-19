@@ -10,7 +10,7 @@
 #define MOVES_SIZE 28
 
 #define KINGSIDE_CASTLE_MOVE (1)
-#define QUEENSIDE_CASTLE_MOVE (-1)
+#define QUEENSIDE_CASTLE_MOVE (2)
 
 typedef struct {
 	byte x;
@@ -52,13 +52,13 @@ void makeMove(board* old, board* new, square from, move to) {
 	//
 	
 	// Kingside Castle cleanup - i.e. move the kingside castle to it's new spot.
-	if (to.castlingMove == 1) {
+	if (to.castlingMove == KINGSIDE_CASTLE_MOVE) {
 		// Castle moves from square [7, y] to [5, y].
 		boardAt(new,5,to.y) = boardAt(new,7,to.y); 
 		boardAt(new,7,to.y) = 0;
 	}
 	// Queenside Castle cleanup - i.e. move the queenside castle to it's new spot.
-	if (to.castlingMove == -1) {
+	if (to.castlingMove == QUEENSIDE_CASTLE_MOVE) {
 		// Castle moves from square [0, y] to [3, y].	
 		boardAt(new,3,to.y) = boardAt(new,0,to.y); 
 		boardAt(new,0,to.y) = 0;
@@ -214,7 +214,7 @@ void allowedMoves(moveList* mvs, board* b, square from) {
 					
 					// addMove will recognise a King moving two squares and will take care of moving the castle for us.
 					addMove(mvs,2,y);
-					lastAddedMove(mvs).castlingMove = -1;
+					lastAddedMove(mvs).castlingMove = QUEENSIDE_CASTLE_MOVE;
 				}
 				
 			}
@@ -232,7 +232,7 @@ void allowedMoves(moveList* mvs, board* b, square from) {
 						
 						// addMove will recognise a King moving two squares and will take care of moving the castle for us.
 						addMove(mvs,6,y);
-						lastAddedMove(mvs).castlingMove = 1;
+						lastAddedMove(mvs).castlingMove = KINGSIDE_CASTLE_MOVE;
 					}
 					
 				}
