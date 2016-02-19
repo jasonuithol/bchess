@@ -154,18 +154,30 @@ void printBoard(board* b) {
 void printBoardClassic(board* b) {
 	int x,y;
 	byte p;
-	printf("-----------------\n");
+	printf("\n");
 	for(y=7;y>=0;y--) {
-		printf("|");
 		for (x=0;x<8;x++) {
+			
+			// Set the color of the square
+			if ((x + y) % 2 == 1) {
+				// Reverse
+				printf("\033[7m"); // TODO: Use terminfo/tput, no hardcoding plox
+			}
+			else {
+				// Normal
+				printf("\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
+			}
+			printf(" ");
 			p = b->squares[x][y];
-			printPieceClassic(p);
-			printf("|");
+			printPieceUnicode(p);
+			printf(" ");
 		}
 		printf("\n");
-		printf("-----------------\n");
 	}
-	printf("Historical moves: %d\n",b->piecesMoved);
+	// Reset the color codes.
+	printf("\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
+	
+	printf("\n");
 	printTeam(b->whosTurn);
 	printf(" to move.\n");
 }

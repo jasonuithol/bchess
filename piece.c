@@ -107,3 +107,38 @@ void printPieceClassic(byte p) {
 	}
 	printf("%c",typeChar);
 }
+
+// This routine now means that gcc must be invoked thus
+//
+// gcc -std=c99 bchess.c
+//
+void printPieceUnicode(byte p) {
+	if(teamOf(p) == WHITE) {
+		switch (typeOf(p)) {
+			case 0: printf(" ");break;
+			case KING:   printf("\u2654"); break;
+			case QUEEN:  printf("\u2655"); break;
+			case BISHOP: printf("\u2657"); break;
+			case KNIGHT: printf("\u2658"); break;
+			case ROOK:   printf("\u2656"); break;
+			case PAWN:   printf("\u2659"); break;
+			default:     printf("?"); 
+		}
+	}
+	else {
+		switch (typeOf(p)) {
+			case 0: printf(" ");break;
+			case KING:   printf("\u265A"); break;
+			case QUEEN:  printf("\u265B"); break;
+			case BISHOP: printf("\u265D"); break;
+			case KNIGHT: printf("\u265E"); break;
+			case ROOK:   printf("\u265C"); break;
+			case PAWN:   printf("\u265F"); break;
+			default:     printf("?"); 
+		}
+	}
+}
+
+
+
+

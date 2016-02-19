@@ -154,9 +154,24 @@ void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMove
 	else {
 	
 		// TESTING ONLY - INDICATE PROGRESS
-		nodesCalculated = (nodesCalculated + 1) % 1000;
-		if (nodesCalculated == 0) {
-			printf(".");
+		nodesCalculated = (nodesCalculated + 1) % 100000;
+		switch (nodesCalculated) {
+			case 0:
+				printf("/\b");
+				fflush(stdout);
+				break;
+			case 24900:
+				printf("-\b");
+				fflush(stdout);
+				break;
+			case 49900:
+				printf("\\\b");
+				fflush(stdout);
+				break;
+			case 74900:
+				printf("|\b");
+				fflush(stdout);
+				break;
 		}
 	
 		// Use raw evaluation of board.
