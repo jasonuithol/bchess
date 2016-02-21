@@ -25,7 +25,6 @@ void populateAnalysisMove(analysisMove* amv, move mv, int score) {
 	amv->mv.to.x = mv.to.x;
 	amv->mv.to.y = mv.to.y;
 	amv->mv.castlingMove = mv.castlingMove;
-	amv->mv.checkingMove = mv.checkingMove;
 	amv->mv.promoteTo = mv.promoteTo;
 	amv->score = score;
 }

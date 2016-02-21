@@ -13,8 +13,8 @@
 #define KINGSIDE_CASTLE_MOVE (1)
 #define QUEENSIDE_CASTLE_MOVE (2)
 
-#define MODE_MOVES_LIST (0);
-#define MODE_ATTACK_LIST (1);
+#define MODE_MOVES_LIST (0)
+#define MODE_ATTACK_LIST (1)
 
 byte movesMode = MODE_MOVES_LIST;
 
@@ -129,15 +129,16 @@ void addMove(moveList* mvs, square from, action act) {
 
 //
 // Add a move that cannot be blocked by an interposing piece.  Useful for Knights and Kings.
-// Note that if the destination square is occupied by another piece of the same team, the move
-// will not be added.
+// Note that in MODE_MOVES_LIST, if the destination square is occupied by another piece of 
+// the same team, the move will not be added.
 //
 void addUnblockableSquare(actionList* mvs, board* b, square from, int x, int y) {
 	if (x >= 0 && x <= 7 && y >= 0 && y <= 7) {
 		byte mover = boardAtSq(b,from);
 		byte victim = boardAt(b,x,y);
-		if (victim == 0 || teamOf(victim) != teamOf(mover)) { 
+		if (movesMode == MODE_ATTACK_LIST || (victim == 0 || teamOf(victim) != teamOf(mover))) { 
 			// We have found a square that is not occupied by a teammate piece, so add it to the list.
+			// In MODE_ATTACK_LIST we add all squares.
 			addAction(mvs,x,y);
 		}
 	}
@@ -174,7 +175,8 @@ void addBlockableSquares(actionList* mvs, board* b, square from, int xVector, in
 			
 			// However, if it's an opponent, we will add this square just before exiting.
 			// This move would take the piece, so it's legit.
-			if (teamOf(victim) != teamOf(mover)) {
+			// In mode MODE_ATTACK_LIST, we always add this last square.
+			if (movesMode == MODE_ATTACK_LIST || teamOf(victim) != teamOf(mover)) {
 				addAction(mvs, nx, ny);
 			}
 
@@ -189,7 +191,7 @@ void addBlockableSquares(actionList* mvs, board* b, square from, int xVector, in
 // Add a pawn move to the movelist.  We need a special method for this to take into account the ability
 // of pawns to transform into another piece when it reaches the last rank.
 //
-void addPawnAction(actionList* mvs, byte x, byte y, int lastrank) {
+void addPawnAction(actionList* mvs, byte x, byte y, int lastrank, int diagonalMove) {
 	
 	if (y == lastrank) {
 		//
@@ -201,9 +203,16 @@ void addPawnAction(actionList* mvs, byte x, byte y, int lastrank) {
 		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = ROOK;
 		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = BISHOP;
 		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = KNIGHT;
+		
+		//TODO: In mode MODE_ATTACK_LIST, the attack list must include the 
+		// attacks for all four of these pieces !
 	}
 	else {
-		addAction(mvs,x,y);
+		// Non-diagonal moves do not get added to the attack list 
+		// (unless they are on the last rank as mentioned above).
+		if (movesMode == MODE_MOVES_LIST || diagonalMove == 1) {
+			addAction(mvs,x,y);
+		}
 	}
 }
 
@@ -358,12 +367,12 @@ void allowedActions(actionList* mvs, board* b, square from) {
 			if (y != lastrank) {
 			
 				if (boardAt(b,x,y+forward) == 0) {
-					addPawnAction(mvs,x,y+forward,lastrank);
+					addPawnAction(mvs,x,y+forward,lastrank,0);
 					
 					// If the square ahead is clear, and it's first pawn move, 
 					// then add the move 2 squares distant (if that square is also vacant.)
 					if (y == firstrank && boardAt(b,x,y+(2*forward)) == 0) {
-						addPawnAction(mvs,x,y+(2*forward),lastrank);
+						addPawnAction(mvs,x,y+(2*forward),lastrank,0);
 					}
 					
 				}
@@ -372,13 +381,13 @@ void allowedActions(actionList* mvs, board* b, square from) {
 				if (x < 7) {
 					byte p = boardAt(b,x+1,y+forward);
 					if (p > 0 && teamOf(p) == opponentOf(team)) {
-						addPawnAction(mvs,x+1,y+forward,lastrank);
+						addPawnAction(mvs,x+1,y+forward,lastrank,1);
 					}
 				}
 				if (x > 1) {
 					byte p = boardAt(b,x-1,y+forward);
 					if (p > 0 && teamOf(p) == opponentOf(team)) {
-						addPawnAction(mvs,x-1,y+forward,lastrank);
+						addPawnAction(mvs,x-1,y+forward,lastrank,1);
 					}
 				}
 			}
