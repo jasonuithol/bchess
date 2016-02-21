@@ -22,7 +22,6 @@ typedef struct {
 	byte x;
 	byte y;
 	byte promoteTo;
-	byte checkingMove;
 	byte castlingMove;
 } action;
 
@@ -31,7 +30,6 @@ typedef struct {
 	square from;
 	square to;
 	byte promoteTo;
-	byte checkingMove;
 	byte castlingMove;
 } move;
 
