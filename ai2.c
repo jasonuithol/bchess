@@ -13,11 +13,47 @@ int aiStrength;
 
 typedef struct {
 
-	square from;
-	move to;
+	move mv;
 	int score;
 	
 } analysisMove;
+
+// Convert a move into an analysisMove.
+void populateAnalysisMove(analysisMove* amv, move mv, int score) {
+	amv->mv.from.x = mv.from.x;
+	amv->mv.from.y = mv.from.y;
+	amv->mv.to.x = mv.to.x;
+	amv->mv.to.y = mv.to.y;
+	amv->mv.castlingMove = mv.castlingMove;
+	amv->mv.checkingMove = mv.checkingMove;
+	amv->mv.promoteTo = mv.promoteTo;
+	amv->score = score;
+}
+
+// Animates a little spinner to show that we are still alive.
+void displaySpinningPulse() {
+
+	nodesCalculated = (nodesCalculated + 1) % 100000;
+	switch (nodesCalculated) {
+		case 0:
+			printf("/\b");
+			fflush(stdout);
+			break;
+		case 24900:
+			printf("-\b");
+			fflush(stdout);
+			break;
+		case 49900:
+			printf("\\\b");
+			fflush(stdout);
+			break;
+		case 74900:
+			printf("|\b");
+			fflush(stdout);
+			break;
+	}
+}
+
 
 //
 // A strategy for deciding the best move based on how much material the player has at the end of each possible move.
@@ -54,33 +90,13 @@ int evaluateMaterial(board* b, byte team) {
 //
 int evaluateMobility(board* b, byte team) {
 
-	int x,y;
-	int teamScore = 1;
-	int opponentScore = 1;
 	byte opposingTeam = opponentOf(team);
+	moveList teamMoves, opponentMoves;
 	
-	for (x=0;x<8;x++) {
-		for (y=0;y<8;y++) {
-			square from = {x,y};
-			byte p = boardAt(b,x,y);
-			if (teamOf(p) == team) {
-			
-				moveList mvs;
-				allowedMoves(&mvs, b, from);
-				teamScore += mvs.ix;
-			}
-			else {
-				if (teamOf(p) == opposingTeam) {
-				
-					moveList mvs;
-					allowedMoves(&mvs, b, from);
-					opponentScore += mvs.ix;
-				
-				}
-			}
-		}
-	}
-	return teamScore - opponentScore;
+	allowedMoves(&teamMoves, b, team);
+	allowedMoves(&opponentMoves, b, opposingTeam);
+
+	return teamMoves.ix - opponentMoves.ix;	
 }
 
 
@@ -94,85 +110,52 @@ void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMove
 
 		// Start by assuming the worst for us (or the best for the opponent), and see if we can do better than that.
 		int bestScore = (b->whosTurn == scoringTeam ? -9999 : 9999);
-		
-		int x,y,z;
-		for (x=0;x<8;x++) {
-			for (y=0;y<8;y++) {
-				square from = {x,y};
-				if (teamOf(boardAt(b,x,y)) == b->whosTurn) {
 
-					//				
-					// We have found a square with one of our pieces on it.  Go through it's allowed moves.
-					//				
-				
-					moveList mvs;
-					allowedMoves(&mvs, b, from);
-					for (z=0;z<mvs.ix;z++) {	
+		// Build a list of allowed moves for the team whose turn it is.
+		moveList mvs;
+		allowedMoves(&mvs, b, b->whosTurn);
 
-						//
-						// Assess the move [from]->[to] on board b to depth numMoves-1.
-						// We do this by making an allowed move on a new board (copied from current board) 
-						// and then seeing what score we get when we follow all the best moves from then on.
-						//
-						board bNext;
-						makeMove(b, &bNext, from, mvs.moves[z]);
-						analysisMove bestNextMove;
-						getBestMove(&bestNextMove, &bNext, scoringTeam, numMoves - 1);
-						int score = bestNextMove.score;
+		int z;
+		for (z=0;z<mvs.ix;z++) {	
 
-						
-						//
-						// Update bestscore to be the best score.
-						//
-						if (b->whosTurn == scoringTeam) {
-							// We analysed one of our moves, so pick the highest scoring move.
-							if (score > bestScore) {
-								bestScore = score;
-								bestMove->score = score;
-								copySquare(bestMove->from,from);
-								copyMove(bestMove->to,mvs.moves[z]);
-							}
-						}
-						else {
-							// We analysed one of the opponent's moves, so pick the lowest scoring move.
-							// This basically assumes that the opponent will play to their best ability.
-							// Note that the score is OUR score, not the moving team's score.
-							if (score < bestScore) {
-								bestScore = score;
-								bestMove->score = score;
-								copySquare(bestMove->from,from);
-								copyMove(bestMove->to,mvs.moves[z]);
-							}
-						}
-						
-					} // for z
-				} // if whosTurn
-			} // for y
-		} // for x
+			//
+			// Assess the move [from]->[to] on board b to depth numMoves-1.
+			// We do this by making an allowed move on a new board (copied from current board) 
+			// and then seeing what score we get when we follow all the best moves from then on.
+			//
+			board bNext;
+			makeMove(b, &bNext, mvs.moves[z]);
+			analysisMove bestNextMove;
+			getBestMove(&bestNextMove, &bNext, scoringTeam, numMoves - 1);
+			int score = bestNextMove.score;
+			
+			//
+			// Update bestscore to be the best score.
+			//
+			if (b->whosTurn == scoringTeam) {
+				// We analysed one of our moves, so pick the highest scoring move.
+				if (score > bestScore) {
+					bestScore = score;
+					populateAnalysisMove(bestMove, mvs.moves[z], score);
+				}
+			}
+			else {
+				// We analysed one of the opponent's moves, so pick the lowest scoring move.
+				// This basically assumes that the opponent will play to their best ability.
+				// Note that the score is OUR score, not the moving team's score.
+				if (score < bestScore) {
+					bestScore = score;
+					populateAnalysisMove(bestMove, mvs.moves[z], score);
+				}
+			}
+			
+		} // for z
 		
 	} // if numMoves
 	else {
 	
-		// Animate a little spinner to show that we are still alive.
-		nodesCalculated = (nodesCalculated + 1) % 100000;
-		switch (nodesCalculated) {
-			case 0:
-				printf("/\b");
-				fflush(stdout);
-				break;
-			case 24900:
-				printf("-\b");
-				fflush(stdout);
-				break;
-			case 49900:
-				printf("\\\b");
-				fflush(stdout);
-				break;
-			case 74900:
-				printf("|\b");
-				fflush(stdout);
-				break;
-		}
+		// Tell the world we still live.
+		displaySpinningPulse();
 	
 		// We have hit the limit of our depth search - time to score the board.
 		bestMove->score = evaluateMobility(b, scoringTeam) + evaluateMaterial(b, scoringTeam);
@@ -194,13 +177,13 @@ void aiMove(board* current, board* next) {
 	getBestMove(&bestmove, current, current->whosTurn, aiStrength);
 
 	printf("\n");
-	makeMove(current, next, bestmove.from, bestmove.to);
+	makeMove(current, next, bestmove.mv);
 
 	time_t finishTime = time(NULL);
 	
 	printf("===== ai move for ");printTeam(current->whosTurn);printf(" =====\n");
-	printf("Move chosen: ");printPiece(boardAtSq(current,bestmove.from));
-	printf(" ");printSquare(bestmove.from);printf("->");printMove(bestmove.to);printf(" (score: %d)\n",bestmove.score);
+	printf("Move chosen: ");
+	printf(" ");printMove(current, bestmove.mv);printf(" (score: %d)\n",bestmove.score);
     printf("Ai Move Time Taken: %f\n", difftime(finishTime, startTime));
 
 	printBoardClassic(next);

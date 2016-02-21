@@ -6,6 +6,7 @@
 //
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <string.h>
 #include "piece.c"
@@ -33,7 +34,7 @@ int main() {
 	printAllowedMoves(b1ptr);
 
 	printf("\n-------------- ai test ----------------\n");
-	aiStrength = 4; // i.e. think 3 moves ahead.
+	aiStrength = 3; // i.e. think that many moves ahead.
 
 	int turn;
 	for (turn = 0; turn < 200; turn++) { // for this demo, limit to 50 moves.
