@@ -442,10 +442,10 @@ void printMove(board* b, move mv) {
 		byte p = boardAtSq(b,mv.from);
 		printPiece(p);
 		
-		printf("[%d,%d] to [%d,%d]",mv.from.x, mv.from.y, mv.to.x, mv.to.y);
+		printf(" [%d,%d] to [%d,%d]",mv.from.x, mv.from.y, mv.to.x, mv.to.y);
 		
 		if (mv.promoteTo > 0) {
-			printf("*** Promote to ");
+			printf(" *** Promote to ");
 			printType(mv.promoteTo);
 			printf(" ***");
 		}
