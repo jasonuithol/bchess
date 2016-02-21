@@ -13,6 +13,11 @@
 #define KINGSIDE_CASTLE_MOVE (1)
 #define QUEENSIDE_CASTLE_MOVE (2)
 
+#define MODE_MOVES_LIST (0);
+#define MODE_ATTACK_LIST (1);
+
+byte movesMode = MODE_MOVES_LIST;
+
 typedef struct {
 	byte x;
 	byte y;
@@ -40,7 +45,6 @@ typedef struct {
 	int ix;
 } moveList;
 
-//#define copyMove(copy,orig) (copy).x = (orig).x;(copy).y = (orig).y;(copy).promoteTo = (orig).promoteTo; (copy).checkingMove = (orig).checkingMove; (copy).castlingMove = (orig).castlingMove
 #define lastAddedAction(acts) ((acts)->actions[(acts)->ix - 1])
 
 
@@ -87,7 +91,6 @@ void addAction(actionList* acts, byte x, byte y) {
 		act->y = y;
 		
 		act->promoteTo = 0;		// default value.  Must be explicitly set by caller if different.
-		act->checkingMove = 1;  // default value.  Must be explicitly set by caller if different.
 		act->castlingMove = 0;  // default value.  Must be explicitly set by caller if different.
 
 		acts->ix = acts->ix + 1;
@@ -115,7 +118,6 @@ void addMove(moveList* mvs, square from, action act) {
 		mv->to.x = act.x;
 		mv->to.y = act.y;
 		mv->promoteTo = act.promoteTo;	   
-		mv->checkingMove = act.checkingMove;
 		mv->castlingMove = act.castlingMove;
 		
 		mvs->ix = mvs->ix + 1;
@@ -189,7 +191,7 @@ void addBlockableSquares(actionList* mvs, board* b, square from, int xVector, in
 // Add a pawn move to the movelist.  We need a special method for this to take into account the ability
 // of pawns to transform into another piece when it reaches the last rank.
 //
-void addPawnAction(actionList* mvs, byte x, byte y, int lastrank, byte checkingMove) {
+void addPawnAction(actionList* mvs, byte x, byte y, int lastrank) {
 	
 	if (y == lastrank) {
 		//
@@ -197,14 +199,13 @@ void addPawnAction(actionList* mvs, byte x, byte y, int lastrank, byte checkingM
 		//
 		// the actual transformation of the pawn happens in makeMove (not addMove)
 		//
-		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = QUEEN;  lastAddedAction(mvs).checkingMove = checkingMove;
-		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = ROOK;   lastAddedAction(mvs).checkingMove = checkingMove;
-		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = BISHOP; lastAddedAction(mvs).checkingMove = checkingMove;
-		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = KNIGHT; lastAddedAction(mvs).checkingMove = checkingMove;
+		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = QUEEN;
+		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = ROOK;
+		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = BISHOP;
+		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = KNIGHT;
 	}
 	else {
 		addAction(mvs,x,y);
-		lastAddedAction(mvs).checkingMove = checkingMove;
 	}
 }
 
@@ -359,12 +360,12 @@ void allowedActions(actionList* mvs, board* b, square from) {
 			if (y != lastrank) {
 			
 				if (boardAt(b,x,y+forward) == 0) {
-					addPawnAction(mvs,x,y+forward,lastrank,0);
+					addPawnAction(mvs,x,y+forward,lastrank);
 					
 					// If the square ahead is clear, and it's first pawn move, 
 					// then add the move 2 squares distant (if that square is also vacant.)
 					if (y == firstrank && boardAt(b,x,y+(2*forward)) == 0) {
-						addPawnAction(mvs,x,y+(2*forward),lastrank,0);
+						addPawnAction(mvs,x,y+(2*forward),lastrank);
 					}
 					
 				}
@@ -373,13 +374,13 @@ void allowedActions(actionList* mvs, board* b, square from) {
 				if (x < 7) {
 					byte p = boardAt(b,x+1,y+forward);
 					if (p > 0 && teamOf(p) == opponentOf(team)) {
-						addPawnAction(mvs,x+1,y+forward,lastrank,1);
+						addPawnAction(mvs,x+1,y+forward,lastrank);
 					}
 				}
 				if (x > 1) {
 					byte p = boardAt(b,x-1,y+forward);
 					if (p > 0 && teamOf(p) == opponentOf(team)) {
-						addPawnAction(mvs,x-1,y+forward,lastrank,1);
+						addPawnAction(mvs,x-1,y+forward,lastrank);
 					}
 				}
 			}
