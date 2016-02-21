@@ -29,10 +29,6 @@ typedef struct {
 #define boardAt(b,x,y) (b)->squares[(x)][(y)]
 #define boardAtSq(b,sq) (b)->squares[(sq).x][(sq).y]
 
-//#define isChecked(b,x,y) ((b)->checkedByOpposition[(x)][(y)] == 1)
-//#define setChecked(b,x,y,val) (b)->checkedByOpposition[(x)][(y)] = (val)
-
-
 void initBoard(board* b) {
 
 	b->squares[0][0] = WHITE + ROOK;
@@ -65,16 +61,6 @@ void initBoard(board* b) {
 
 	b->whosTurn = WHITE;
 	b->piecesMoved = 0;
-
-	//
-	// IMPORTANT: This is NOT correct. This gets filled out properly later (in the moves.c module)
-	//
-//	int x,y;
-//	for(x=0;x<8;x++) {
-//		for(y=0;y<8;y++) {
-//			setChecked(b,x,y,0);
-//		}
-//	}
 
 /*
 	//
@@ -145,7 +131,7 @@ void printBoard(board* b) {
 			printf("\n");
 		}
 	}
-//	printf("Historical moves: %d\n",b->piecesMoved);
+	printf("Historical move flags: %d\n",b->piecesMoved);
 	printf("\nWho's turn ? ");
 	printTeam(b->whosTurn);
 	printf("\n");

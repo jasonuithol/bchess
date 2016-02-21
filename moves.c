@@ -250,53 +250,56 @@ void allowedActions(actionList* mvs, board* b, square from) {
 			addUnblockableSquare(mvs,b,from,x,y+1);
 			addUnblockableSquare(mvs,b,from,x+1,y+1);
 
-			
-			//
-			// Make a list of all the castling options still available at this point.
-			//
-			int whiteQueenside = b->piecesMoved & (WHITE_QUEENSIDE_CASTLE_MOVED | WHITE_KING_MOVED);
-			int blackQueenside = b->piecesMoved & (BLACK_QUEENSIDE_CASTLE_MOVED | BLACK_KING_MOVED);
-			int whiteKingside = b->piecesMoved & (WHITE_KINGSIDE_CASTLE_MOVED | WHITE_KING_MOVED);
-			int blackKingside = b->piecesMoved & (BLACK_KINGSIDE_CASTLE_MOVED | BLACK_KING_MOVED);
-					
-			if ((team == WHITE && whiteQueenside == 0) || (team == BLACK && blackQueenside == 0)) {
 
+			if (movesMode == MODE_MOVES_LIST) {
+			
 				//
-				// Able to castle now, but first check for ugly stuff.
+				// Make a list of all the castling options still available at this point.
 				//
-				
-				// Check that the intervening squares are clear of pieces.
-				if (boardAt(b,1,y) == 0 && boardAt(b,2,y) == 0 && boardAt(b,3,y) == 0) {
-				
-					// TODO: uh oh, need the opposition's allowedMoves to scan for attacked squares....
-					
-					// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
-					// The castle doesn't need to move when this move is being added to list of moves,
-					// but will need to move should the move actually be played on a board.
-					addAction(mvs,2,y);
-					lastAddedAction(mvs).castlingMove = QUEENSIDE_CASTLE_MOVE;
-				}
-				
-			}
-			else {
-				if ((team == WHITE && whiteKingside == 0) || (team == BLACK && blackKingside == 0)) {
+				int whiteQueenside = b->piecesMoved & (WHITE_QUEENSIDE_CASTLE_MOVED | WHITE_KING_MOVED);
+				int blackQueenside = b->piecesMoved & (BLACK_QUEENSIDE_CASTLE_MOVED | BLACK_KING_MOVED);
+				int whiteKingside = b->piecesMoved & (WHITE_KINGSIDE_CASTLE_MOVED | WHITE_KING_MOVED);
+				int blackKingside = b->piecesMoved & (BLACK_KINGSIDE_CASTLE_MOVED | BLACK_KING_MOVED);
+						
+				if ((team == WHITE && whiteQueenside == 0) || (team == BLACK && blackQueenside == 0)) {
 
 					//
 					// Able to castle now, but first check for ugly stuff.
 					//
 					
 					// Check that the intervening squares are clear of pieces.
-					if (boardAt(b,5,y) == 0 && boardAt(b,6,y) == 0) {
+					if (boardAt(b,1,y) == 0 && boardAt(b,2,y) == 0 && boardAt(b,3,y) == 0) {
 					
 						// TODO: uh oh, need the opposition's allowedMoves to scan for attacked squares....
 						
 						// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
 						// The castle doesn't need to move when this move is being added to list of moves,
 						// but will need to move should the move actually be played on a board.
-						addAction(mvs,6,y);
-						lastAddedAction(mvs).castlingMove = KINGSIDE_CASTLE_MOVE;
+						addAction(mvs,2,y);
+						lastAddedAction(mvs).castlingMove = QUEENSIDE_CASTLE_MOVE;
 					}
 					
+				}
+				else {
+					if ((team == WHITE && whiteKingside == 0) || (team == BLACK && blackKingside == 0)) {
+
+						//
+						// Able to castle now, but first check for ugly stuff.
+						//
+						
+						// Check that the intervening squares are clear of pieces.
+						if (boardAt(b,5,y) == 0 && boardAt(b,6,y) == 0) {
+						
+							// TODO: uh oh, need the opposition's allowedMoves to scan for attacked squares....
+							
+							// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
+							// The castle doesn't need to move when this move is being added to list of moves,
+							// but will need to move should the move actually be played on a board.
+							addAction(mvs,6,y);
+							lastAddedAction(mvs).castlingMove = KINGSIDE_CASTLE_MOVE;
+						}
+						
+					}
 				}
 			}
 			
