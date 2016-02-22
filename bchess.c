@@ -32,6 +32,7 @@ int main() {
 
 	initBoard(b1ptr);
 	printAllowedMoves(b1ptr);
+	printBoardClassic(b1ptr);
 
 	printf("\n-------------- ai test ----------------\n");
 	aiStrength = 3; // i.e. think that many moves ahead.

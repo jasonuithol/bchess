@@ -8,6 +8,9 @@
 //
 // NOTE: GLOBAL VARIABLES
 //
+#define ANALYSIS_SIZE (10)
+
+
 int nodesCalculated;
 int aiStrength;
 
@@ -18,6 +21,15 @@ typedef struct {
 	
 } analysisMove;
 
+typedef struct {
+	
+	analysisMove moves[ANALYSIS_SIZE];
+	byte ix;
+	
+} analysisList; 
+
+#define lastAddedAnalysis(amvs) ((amvs)->moves[(amvs)->ix - 1])
+
 // Convert a move into an analysisMove.
 void populateAnalysisMove(analysisMove* amv, move mv, int score) {
 	amv->mv.from.x = mv.from.x;
@@ -26,8 +38,38 @@ void populateAnalysisMove(analysisMove* amv, move mv, int score) {
 	amv->mv.to.y = mv.to.y;
 	amv->mv.castlingMove = mv.castlingMove;
 	amv->mv.promoteTo = mv.promoteTo;
+	memcpy((void*)&(amv->mv.resultingBoard), (void*)&(mv.resultingBoard), sizeof(board));
 	amv->score = score;
 }
+
+//
+// Add an analysis move to the analysis movelist, with bounds checking.
+//
+void addAnalysisMove(analysisList* amvs, analysisMove amv2, int numMoves) {
+		
+	int ix = aiStrength - numMoves;	
+		
+	if (ix < ANALYSIS_SIZE) {
+		
+		analysisMove* amv = &(amvs->moves[ix]);
+		
+		amv->mv.from.x = amv2.mv.from.x;
+		amv->mv.from.y = amv2.mv.from.y;
+		amv->mv.to.x = amv2.mv.to.x;
+		amv->mv.to.y = amv2.mv.to.y;
+		amv->mv.promoteTo = amv2.mv.promoteTo;	   
+		amv->mv.castlingMove = amv2.mv.castlingMove;
+		amv->score = amv2.score;
+		memcpy((void*)&(amv->mv.resultingBoard), (void*)&(amv2.mv.resultingBoard), sizeof(board));
+		
+	}
+	else {
+		printf("\nMaximum analysis moves size exceeded.\n");
+		exit(EXIT_FAILURE);
+	}
+	
+}
+
 
 // Animates a little spinner to show that we are still alive.
 void displaySpinningPulse() {
@@ -95,6 +137,8 @@ int evaluateMobility(board* b, byte team) {
 	allowedMoves(&teamMoves, b, team);
 	allowedMoves(&opponentMoves, b, opposingTeam);
 
+//	printf("mobility score: %d\n", teamMoves.ix - opponentMoves.ix); 
+
 	return teamMoves.ix - opponentMoves.ix;	
 }
 
@@ -103,7 +147,7 @@ int evaluateMobility(board* b, byte team) {
 // Recursively search for the best move and set "bestMove" to point to it.
 // Search depth set by "numMoves"
 //
-void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMoves) {
+analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMoves) {
 
 	if (numMoves > 0) {
 
@@ -113,19 +157,47 @@ void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMove
 		// Build a list of allowed moves for the team whose turn it is.
 		moveList mvs;
 		allowedMoves(&mvs, b, b->whosTurn);
+		
+		// Checkmate/stalemate detection.
+		if (mvs.ix == 0) {
+			
+			if (b->whosTurn == scoringTeam) {
+				printf("Detected possible checkmate defeat\n");
+				printBoardClassic(b);
+				
+				bestMove->score = -9999;
+			}
+			else {
+				printf("Detected possible checkmate victory\n");
+				printBoardClassic(b);
+				
+				bestMove->score = 9999;
+			}
+			
+			// Since this end result might be the one true path, be presumptious and allocate a new
+			// move history for it.
+			return (analysisList*)malloc(sizeof(analysisList));	
+		}
+
+		//
+		// Not a checkmate/stalemate, so search the moves for a best move.
+		//
 
 		int z;
+		analysisList* bestHistory = NULL;
+		analysisList* history;
 		for (z=0;z<mvs.ix;z++) {	
 
 			//
 			// Assess the move [from]->[to] on board b to depth numMoves-1.
-			// We do this by making an allowed move on a new board (copied from current board) 
-			// and then seeing what score we get when we follow all the best moves from then on.
 			//
-			board bNext;
-			makeMove(b, &bNext, mvs.moves[z]);
+			// We do this by looking at the resulting board and then seeing what score
+			// we get when we follow all the moves from then on down to numMoves -1
+			// and see if any of those leaf level boards has a higher best score
+			// than what we have now.
+			//
 			analysisMove bestNextMove;
-			getBestMove(&bestNextMove, &bNext, scoringTeam, numMoves - 1);
+			history = getBestMove(&bestNextMove, &(mvs.moves[z].resultingBoard), scoringTeam, numMoves - 1);
 			int score = bestNextMove.score;
 			
 			//
@@ -136,6 +208,19 @@ void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMove
 				if (score > bestScore) {
 					bestScore = score;
 					populateAnalysisMove(bestMove, mvs.moves[z], score);
+
+					// Chuck out the old history
+					if (bestHistory != NULL) {
+						free(bestHistory);
+					}
+					bestHistory = history;
+
+					// Pop the move into the new best analysis history.
+					addAnalysisMove(bestHistory, *bestMove, numMoves);
+				}
+				else {
+					// deallocate the now defunct analysis history
+					free(history);
 				}
 			}
 			else {
@@ -145,10 +230,26 @@ void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMove
 				if (score < bestScore) {
 					bestScore = score;
 					populateAnalysisMove(bestMove, mvs.moves[z], score);
+
+					// Chuck out the old history
+					if (bestHistory != NULL) {
+						free(bestHistory);
+					}
+					bestHistory = history;
+
+					// Pop the move into the new best analysis history.
+					addAnalysisMove(bestHistory, *bestMove, numMoves);
+				}
+				else {
+					// deallocate the now defunct analysis history
+					free(history);
 				}
 			}
 			
 		} // for z
+
+		// Return pointer to current best analysis history
+		return bestHistory;
 		
 	} // if numMoves
 	else {
@@ -157,8 +258,11 @@ void getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMove
 		displaySpinningPulse();
 	
 		// We have hit the limit of our depth search - time to score the board.
-		bestMove->score = evaluateMobility(b, scoringTeam) + evaluateMaterial(b, scoringTeam);
+		bestMove->score = evaluateMobility(b, scoringTeam) + evaluateMaterial(b, scoringTeam);	
 		
+		// Since this end result might be the one true path, be presumptious and allocate a new
+		// move history for it.
+		return (analysisList*)malloc(sizeof(analysisList));	
 	}
 }
 
@@ -173,7 +277,17 @@ void aiMove(board* current, board* next) {
 	analysisMove bestmove;
 	
 	// TODO: Pick an AI strategy and pass it into this method call.
-	getBestMove(&bestmove, current, current->whosTurn, aiStrength);
+	analysisList* bestAnalysis = getBestMove(&bestmove, current, current->whosTurn, aiStrength);
+
+	printf("Reasoning now being printed\n");
+	int i;
+	for (i = 0; i < aiStrength; i++) {
+		printf("Depth %d, score %d\n", i + 1, bestAnalysis->moves[i].score);
+		printBoardClassic(&(bestAnalysis->moves[i].mv.resultingBoard));
+	}
+
+	// deallocate the now useless history.
+	free(bestAnalysis);
 
 	printf("\n");
 	makeMove(current, next, bestmove.mv);

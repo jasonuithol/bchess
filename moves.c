@@ -16,6 +16,12 @@
 #define MODE_MOVES_LIST (0)
 #define MODE_ATTACK_LIST (1)
 
+#define BOARD_LEGAL (1)
+#define BOARD_NOT_LEGAL (0)
+
+// NOTE: MODE_MOVES_LIST is the default mode.
+// Any code switching to MODE_ATTACK_LIST absolutely must 
+// switch the mode back to MODE_MOVES_LIST afterwards.
 byte movesMode = MODE_MOVES_LIST;
 
 typedef struct {
@@ -31,6 +37,7 @@ typedef struct {
 	square to;
 	byte promoteTo;
 	byte castlingMove;
+	board resultingBoard;
 } move;
 
 typedef struct {
@@ -44,6 +51,7 @@ typedef struct {
 } moveList;
 
 #define lastAddedAction(acts) ((acts)->actions[(acts)->ix - 1])
+#define lastAddedMove(mvs) ((mvs)->moves[(mvs)->ix - 1])
 
 
 //
@@ -104,11 +112,7 @@ void addAction(actionList* acts, byte x, byte y) {
 // Add a move to the movelist, with bounds checking.
 //
 void addMove(moveList* mvs, square from, action act) {
-	
-//	printf("Calling addMove.  moveList->ix = %d\n", mvs->ix);
-//	fflush(stdout);
-	
-	
+		
 	if (mvs->ix < MOVES_SIZE) {
 		move* mv = &(mvs->moves[mvs->ix]);
 		mv->from.x = from.x;
@@ -119,11 +123,13 @@ void addMove(moveList* mvs, square from, action act) {
 		mv->castlingMove = act.castlingMove;
 		
 		mvs->ix = mvs->ix + 1;
+		
 	}
 	else {
 		printf("\nMaximum moves size exceeded.\n");
 		exit(EXIT_FAILURE);
 	}
+	
 }
 
 
@@ -191,7 +197,7 @@ void addBlockableSquares(actionList* mvs, board* b, square from, int xVector, in
 // Add a pawn move to the movelist.  We need a special method for this to take into account the ability
 // of pawns to transform into another piece when it reaches the last rank.
 //
-void addPawnAction(actionList* mvs, byte x, byte y, int lastrank, int diagonalMove) {
+void addPawnAction(actionList* mvs, byte x, byte y, int lastrank) {
 	
 	if (y == lastrank) {
 		//
@@ -208,11 +214,7 @@ void addPawnAction(actionList* mvs, byte x, byte y, int lastrank, int diagonalMo
 		// attacks for all four of these pieces !
 	}
 	else {
-		// Non-diagonal moves do not get added to the attack list 
-		// (unless they are on the last rank as mentioned above).
-		if (movesMode == MODE_MOVES_LIST || diagonalMove == 1) {
-			addAction(mvs,x,y);
-		}
+		addAction(mvs,x,y);
 	}
 }
 
@@ -370,12 +372,12 @@ void allowedActions(actionList* mvs, board* b, square from) {
 			if (y != lastrank) {
 			
 				if (boardAt(b,x,y+forward) == 0) {
-					addPawnAction(mvs,x,y+forward,lastrank,0);
+					addPawnAction(mvs,x,y+forward,lastrank);
 					
 					// If the square ahead is clear, and it's first pawn move, 
 					// then add the move 2 squares distant (if that square is also vacant.)
 					if (y == firstrank && boardAt(b,x,y+(2*forward)) == 0) {
-						addPawnAction(mvs,x,y+(2*forward),lastrank,0);
+						addPawnAction(mvs,x,y+(2*forward),lastrank);
 					}
 					
 				}
@@ -383,14 +385,14 @@ void allowedActions(actionList* mvs, board* b, square from) {
 				// if an enemy piece is present, can move diagonally to take.
 				if (x < 7) {
 					byte p = boardAt(b,x+1,y+forward);
-					if (p > 0 && teamOf(p) == opponentOf(team)) {
-						addPawnAction(mvs,x+1,y+forward,lastrank,1);
+					if (movesMode == MODE_ATTACK_LIST || (p > 0 && teamOf(p) == opponentOf(team))) {
+						addPawnAction(mvs,x+1,y+forward,lastrank);
 					}
 				}
 				if (x > 1) {
 					byte p = boardAt(b,x-1,y+forward);
-					if (p > 0 && teamOf(p) == opponentOf(team)) {
-						addPawnAction(mvs,x-1,y+forward,lastrank,1);
+					if (movesMode == MODE_ATTACK_LIST || (p > 0 && teamOf(p) == opponentOf(team))) {
+						addPawnAction(mvs,x-1,y+forward,lastrank);
 					}
 				}
 			}
@@ -398,47 +400,9 @@ void allowedActions(actionList* mvs, board* b, square from) {
 			break;
 			
 		default:
-			printf("\nallowedActions() called for unknown piece type\n");
+			printf("\nallowedActions() called for unknown piece type %d at square [%d,%d]\n", type, from.x, from.y);
 	}
 }	
-
-//
-// Take all the actions of a piece and add it to the overall movelist for the board.
-//
-void addActionListToMoveList(actionList* acts, square from, moveList* mvs) {
-	for (int i = 0; i < acts->ix; i++) {
-		addMove(mvs,from,acts->actions[i]);
-	}
-}
-
-//
-// Build a list of allowedMoves for a team on board b.
-//
-// Uses the team specified in parameter, rather than b->whosTurn.
-// This allows for calculating checked squares as well as building move lists.
-//
-void allowedMoves(moveList* mvs, board* b, byte team) {
-
-	// Ensure the movelist is initialised
-	mvs->ix = 0;
-
-	int x,y;
-	for (x=0;x<8;x++) {
-		for (y=0;y<8;y++) {
-			square from = {x,y};
-			if (teamOf(boardAt(b,x,y)) == team) {
-
-				//				
-				// We have found a square with one of the specified team's pieces on it.
-				// Build it's allowed actions and add them to the movelist.
-				//				
-				actionList acts;
-				allowedActions(&acts, b, from);
-				addActionListToMoveList(&acts, from, mvs);
-			}
-		}
-	}
-}
 
 // Kind of retarded.  It will print the piece in the FROM square.
 void printMove(board* b, move mv) {
@@ -462,6 +426,93 @@ void printMove(board* b, move mv) {
 		}
 		
 	}
+}
+
+//
+// Build a list of allowedMoves for a team on board b.
+//
+// Uses the team specified in parameter, rather than b->whosTurn.
+// This allows for calculating checked squares as well as building move lists.
+//
+void buildMoveList(moveList* mvs, board* b, byte team, int mode) {
+
+	// WARNING: this here is a SIDE EFFECT.
+	int currentMode = movesMode;
+	movesMode = mode;
+
+
+	// Ensure the movelist is initialised
+	mvs->ix = 0;
+
+	int x,y;
+	for (x=0;x<8;x++) { 
+		for (y=0;y<8;y++) {
+			square from = {x,y};
+			
+			if (teamOf(boardAt(b,x,y)) == team) {
+
+				//				
+				// We have found a square with one of the specified team's pieces on it.
+				// Build it's allowed actions and add them to the movelist.
+				//				
+				actionList acts;
+				allowedActions(&acts, b, from);
+				for (int i = 0; i < acts.ix; i++) {
+										
+					// Add the move to the movelist.  This also creates the move.
+					addMove(mvs,from,acts.actions[i]);
+
+					// If we're building a moves list, then a few extra's need doing.
+					if (movesMode == MODE_MOVES_LIST) {
+
+						// Grab a pointer to the board field in the newly created move.
+						board* nextBoard = &(lastAddedMove(mvs).resultingBoard);
+						
+						// Prespawn a board into that field, it's going to be used a few times.
+						makeMove(b, nextBoard, lastAddedMove(mvs)); 
+					
+						// Check for illegal moves.  This involves switching modes
+						// and then re-entry into buildMoveList in ATTACK mode.
+						moveList attacks;
+						
+						// RE-ENTRANT CALL IN ATTACK MODE.
+						// Get a list of opponent moves for nextBoard.
+						buildMoveList(&attacks, nextBoard, opponentOf(team), MODE_ATTACK_LIST);
+						
+						int isLegal = BOARD_LEGAL;
+						int j;
+						for (j = 0; j < attacks.ix; j++) {
+							byte p = boardAtSq(nextBoard, attacks.moves[j].to);
+							if (typeOf(p) == KING && team == teamOf(p)) {
+								// If it's not your turn, then your King cannot be in check.
+			 					// Dat's da rules.
+								isLegal = BOARD_NOT_LEGAL;
+								break;
+							}
+						}
+
+						// If the resulting board is illegal just chuck this move out.
+						if (isLegal == BOARD_NOT_LEGAL) {
+							mvs->ix--;
+						}
+						 
+					}
+					
+				} // for i
+			} // if team
+		} // for y
+	} // for x
+
+	// Restore the movesMode we were in before this method was called.
+	// should always restore to MODE_MOVES_LIST
+	movesMode = currentMode;
+}
+
+//
+// Build a list of allowedMoves for a team on board b.
+//
+void allowedMoves(moveList* mvs, board* b, byte team) {
+	buildMoveList(mvs, b, team, MODE_MOVES_LIST);
 }
 
 void printAllowedMoves(board* b) {
