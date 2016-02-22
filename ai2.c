@@ -359,14 +359,16 @@ void aiMove(board* current, board* next) {
 	printf(" ");printMove(current, bestmove.mv);printf(" (score: %d)\n",bestmove.score);
     printf("Ai Move Time Taken: %f\n", timetaken);
 
-	if (timetaken < 10) {
+/*
+	if (timetaken < 5) {
 		aiStrength++;
 		printf("Raising ai strength to %d\n", aiStrength);
 	}
-	else if (timetaken > 60) {
+	else if (timetaken > 300) {
 		aiStrength--;
 		printf("Lowering ai strength to %d\n", aiStrength);
 	}
+*/
 
 	printBoardClassic(next);
 	

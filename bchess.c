@@ -30,14 +30,14 @@ int main() {
 	b1ptr = &b1;
 	b2ptr = &b2;
 
-//	initBoard(b1ptr);
-	crashTest(b1ptr);
+	initBoard(b1ptr);
+//	crashTest(b1ptr);
 	printAllowedMoves(b1ptr);
 	printBoardClassic(b1ptr);
 //	exit(1);
 
 	printf("\n-------------- ai test ----------------\n");
-	aiStrength = 6; // i.e. think that many moves ahead.
+	aiStrength = 4; // i.e. think that many moves ahead.
 
 	int turn;
 	for (turn = 0; turn < 200; turn++) { // for this demo, limit to 50 moves.
