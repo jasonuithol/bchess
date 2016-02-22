@@ -30,12 +30,14 @@ int main() {
 	b1ptr = &b1;
 	b2ptr = &b2;
 
-	initBoard(b1ptr);
+//	initBoard(b1ptr);
+	crashTest(b1ptr);
 	printAllowedMoves(b1ptr);
 	printBoardClassic(b1ptr);
+//	exit(1);
 
 	printf("\n-------------- ai test ----------------\n");
-	aiStrength = 3; // i.e. think that many moves ahead.
+	aiStrength = 6; // i.e. think that many moves ahead.
 
 	int turn;
 	for (turn = 0; turn < 200; turn++) { // for this demo, limit to 50 moves.
@@ -48,6 +50,21 @@ int main() {
 		tempPtr = b1ptr;
 		b1ptr = b2ptr;
 		b2ptr = tempPtr;
+		
+		int gamestate = detectCheckmate(b1ptr);
+		switch(gamestate) {
+			case BOARD_CHECKMATE:
+				printf("CHECKMATE !!! Victory to ");
+				printTeam(teamOf(opponentOf(b1ptr->whosTurn)) );
+				printf("\n");
+				fflush(stdout);	
+				exit(0);	
+			case BOARD_STALEMATE:
+				printf("STALEMATE !!! It's draw.\n");
+				fflush(stdout);		
+				exit(0);	
+		}
+		
 	}
 
 	time_t finishTime = time(NULL);

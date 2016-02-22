@@ -15,9 +15,15 @@
 
 #define MODE_MOVES_LIST (0)
 #define MODE_ATTACK_LIST (1)
+#define MODE_MOBILITY_LIST (2)
 
 #define BOARD_LEGAL (1)
 #define BOARD_NOT_LEGAL (0)
+
+#define BOARD_NORMAL (0)
+#define BOARD_CHECKMATE (1)
+#define BOARD_STALEMATE (2)
+
 
 // NOTE: MODE_MOVES_LIST is the default mode.
 // Any code switching to MODE_ATTACK_LIST absolutely must 
@@ -253,7 +259,7 @@ void allowedActions(actionList* mvs, board* b, square from) {
 			addUnblockableSquare(mvs,b,from,x+1,y+1);
 
 
-			if (movesMode == MODE_MOVES_LIST) {
+			if (movesMode == MODE_MOVES_LIST && movesMode == MODE_MOBILITY_LIST) {
 			
 				//
 				// Make a list of all the castling options still available at this point.
@@ -513,6 +519,38 @@ void buildMoveList(moveList* mvs, board* b, byte team, int mode) {
 //
 void allowedMoves(moveList* mvs, board* b, byte team) {
 	buildMoveList(mvs, b, team, MODE_MOVES_LIST);
+}
+
+
+void assessMobility(moveList* mvs, board* b, byte team) {
+	// Skips chucking out illegal moves.  
+	// Less accurate but WAY faster.
+	buildMoveList(mvs, b, team, MODE_MOBILITY_LIST);
+}
+
+int detectCheckmate(board* b) {
+
+	moveList mvs, attacks;
+	allowedMoves(&mvs, b, b->whosTurn);
+	
+	// Checkmate/stalemate detection.
+	if (mvs.ix == 0) {
+		
+		// Get a list of opponent moves for nextBoard.
+		buildMoveList(&attacks, b, opponentOf(b->whosTurn), MODE_ATTACK_LIST);
+		
+		int j;
+		for (j = 0; j < attacks.ix; j++) {
+			byte p = boardAtSq(b, attacks.moves[j].to);
+			if (typeOf(p) == KING && b->whosTurn == teamOf(p)) {
+				return BOARD_CHECKMATE;
+			}
+		}
+		return BOARD_STALEMATE;
+	}
+	else {
+		return BOARD_NORMAL;
+	}	
 }
 
 void printAllowedMoves(board* b) {

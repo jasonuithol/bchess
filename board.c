@@ -29,6 +29,33 @@ typedef struct {
 #define boardAt(b,x,y) (b)->squares[(x)][(y)]
 #define boardAtSq(b,sq) (b)->squares[(sq).x][(sq).y]
 
+void clearBoard(board* b) {
+	int x,y;
+	for (x = 0; x < 8; x++) {
+		for (y = 0; y < 8; y++) {
+			b->squares[x][y] = 0;
+		}
+	}
+	b->piecesMoved = 0;
+	b->whosTurn = WHITE;
+}
+
+void crashTest(board* b) {
+	
+	clearBoard(b);
+	
+	boardAt(b,1,1) = WHITE + KING;
+	
+	boardAt(b,1,4) = BLACK + KING;
+	boardAt(b,2,3) = BLACK + PAWN;
+	boardAt(b,3,5) = BLACK + PAWN;
+	boardAt(b,4,2) = BLACK + QUEEN;
+	boardAt(b,5,4) = BLACK + BISHOP;
+	
+	b->whosTurn = BLACK;
+	b->piecesMoved = BLACK_KING_MOVED + WHITE_KING_MOVED;
+}
+
 void initBoard(board* b) {
 
 	b->squares[0][0] = WHITE + ROOK;

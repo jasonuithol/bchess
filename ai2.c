@@ -32,6 +32,10 @@ typedef struct {
 
 // Convert a move into an analysisMove.
 void populateAnalysisMove(analysisMove* amv, move mv, int score) {
+	
+//	printf("About to populateAnalysisMove...");
+//	fflush(stdout);
+	
 	amv->mv.from.x = mv.from.x;
 	amv->mv.from.y = mv.from.y;
 	amv->mv.to.x = mv.to.x;
@@ -40,12 +44,19 @@ void populateAnalysisMove(analysisMove* amv, move mv, int score) {
 	amv->mv.promoteTo = mv.promoteTo;
 	memcpy((void*)&(amv->mv.resultingBoard), (void*)&(mv.resultingBoard), sizeof(board));
 	amv->score = score;
+
+//	printf("DONE\n");
+//	fflush(stdout);
+
 }
 
 //
 // Add an analysis move to the analysis movelist, with bounds checking.
 //
 void addAnalysisMove(analysisList* amvs, analysisMove amv2, int numMoves) {
+
+//	printf("About to addAnalysisMove...");
+//	fflush(stdout);
 		
 	int ix = aiStrength - numMoves;	
 		
@@ -67,6 +78,9 @@ void addAnalysisMove(analysisList* amvs, analysisMove amv2, int numMoves) {
 		printf("\nMaximum analysis moves size exceeded.\n");
 		exit(EXIT_FAILURE);
 	}
+
+//	printf("DONE\n");
+//	fflush(stdout);
 	
 }
 
@@ -134,8 +148,8 @@ int evaluateMobility(board* b, byte team) {
 	byte opposingTeam = opponentOf(team);
 	moveList teamMoves, opponentMoves;
 	
-	allowedMoves(&teamMoves, b, team);
-	allowedMoves(&opponentMoves, b, opposingTeam);
+	assessMobility(&teamMoves, b, team);
+	assessMobility(&opponentMoves, b, opposingTeam);
 
 //	printf("mobility score: %d\n", teamMoves.ix - opponentMoves.ix); 
 
@@ -158,20 +172,40 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 		moveList mvs;
 		allowedMoves(&mvs, b, b->whosTurn);
 		
-		// Checkmate/stalemate detection.
+		// Checkmate/stalemate detection for AI.  Game over decision made elsewhere.
 		if (mvs.ix == 0) {
 			
 			if (b->whosTurn == scoringTeam) {
-				printf("Detected possible checkmate defeat\n");
-				printBoardClassic(b);
 				
-				bestMove->score = -9999;
+				if (aiStrength == numMoves) {
+					printf("OOOPSSSS !!!! I've been asked to move when the game has finished !!!\n");
+					exit(1);
+				} 
+				
+				int boardState = detectCheckmate(b);
+				if (boardState == BOARD_CHECKMATE) {
+//					printf("Detected possible checkmate defeat at depth %d\n",aiStrength - numMoves);
+//					printBoardClassic(b);
+					bestMove->score = -9998 + (aiStrength - numMoves);
+				}
+				else {
+//					printf("Detected possible stalemate at depth %d\n",aiStrength - numMoves);
+//					printBoardClassic(b);
+					bestMove->score = 0;
+				}
 			}
 			else {
-				printf("Detected possible checkmate victory\n");
-				printBoardClassic(b);
-				
-				bestMove->score = 9999;
+				int boardState = detectCheckmate(b);
+				if (boardState == BOARD_CHECKMATE) {
+//					printf("Detected possible checkmate victory at depth %d\n",aiStrength - numMoves);
+//					printBoardClassic(b);
+					bestMove->score = 9998 - (aiStrength - numMoves);
+				}
+				else {
+//					printf("Detected possible stalemate at depth %d\n",aiStrength - numMoves);
+//					printBoardClassic(b);
+					bestMove->score = 0;
+				}
 			}
 			
 			// Since this end result might be the one true path, be presumptious and allocate a new
@@ -188,6 +222,14 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 		analysisList* history;
 		for (z=0;z<mvs.ix;z++) {	
 
+/*
+			printf("Pondering Move at depth %d: ",aiStrength - numMoves);
+			printMove(b, mvs.moves[z]);
+			printBoardClassic(&(mvs.moves[z].resultingBoard));
+			printf("\n");
+			fflush(stdout);
+*/
+
 			//
 			// Assess the move [from]->[to] on board b to depth numMoves-1.
 			//
@@ -199,6 +241,14 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 			analysisMove bestNextMove;
 			history = getBestMove(&bestNextMove, &(mvs.moves[z].resultingBoard), scoringTeam, numMoves - 1);
 			int score = bestNextMove.score;
+
+/*
+			printf("FINISHED Pondering Move at depth %d: ",aiStrength - numMoves);
+			printMove(b, mvs.moves[z]);
+			printBoardClassic(&(mvs.moves[z].resultingBoard));
+			printf("\n");
+			fflush(stdout);
+*/
 			
 			//
 			// Update bestscore to be the best score.
@@ -245,6 +295,14 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 					free(history);
 				}
 			}
+
+/*
+			printf("FINISHED COMPARING Move at depth %d: ",aiStrength - numMoves);
+			printMove(b, mvs.moves[z]);
+			printBoardClassic(&(mvs.moves[z].resultingBoard));
+			printf("\n");
+			fflush(stdout);
+*/
 			
 		} // for z
 
@@ -280,6 +338,7 @@ void aiMove(board* current, board* next) {
 	analysisList* bestAnalysis = getBestMove(&bestmove, current, current->whosTurn, aiStrength);
 
 	printf("Reasoning now being printed\n");
+	fflush(stdout);
 	int i;
 	for (i = 0; i < aiStrength; i++) {
 		printf("Depth %d, score %d\n", i + 1, bestAnalysis->moves[i].score);
@@ -293,12 +352,23 @@ void aiMove(board* current, board* next) {
 	makeMove(current, next, bestmove.mv);
 
 	time_t finishTime = time(NULL);
+	double timetaken = difftime(finishTime, startTime);
 	
 	printf("===== ai move for ");printTeam(current->whosTurn);printf(" =====\n");
 	printf("Move chosen: ");
 	printf(" ");printMove(current, bestmove.mv);printf(" (score: %d)\n",bestmove.score);
-    printf("Ai Move Time Taken: %f\n", difftime(finishTime, startTime));
+    printf("Ai Move Time Taken: %f\n", timetaken);
+
+	if (timetaken < 10) {
+		aiStrength++;
+		printf("Raising ai strength to %d\n", aiStrength);
+	}
+	else if (timetaken > 60) {
+		aiStrength--;
+		printf("Lowering ai strength to %d\n", aiStrength);
+	}
 
 	printBoardClassic(next);
 	
+	fflush(stdout);	
 }
