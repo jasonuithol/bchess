@@ -13,6 +13,7 @@
 #include "board.c"
 #include "moves.c"
 #include "ai2.c"
+#include "human.c"
 
 int main() {
 
@@ -43,8 +44,13 @@ int main() {
 	for (turn = 0; turn < 200; turn++) { // for this demo, limit to 50 moves.
 		printf("==== TURN %d =====\n\n",turn);
 
-		// For this demo, the AI plays against itself.
-		aiMove(b1ptr,b2ptr);
+		// For this demo, the AI plays black.
+		if (b1ptr->whosTurn == WHITE) {
+			humanMove(b1ptr,b2ptr);
+		}
+		else {
+			aiMove(b1ptr,b2ptr);
+		}
 
 		// swap board pointers to make the new board the next old board.
 		tempPtr = b1ptr;
