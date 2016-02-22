@@ -4,6 +4,9 @@
 
 #define COMMAND_MOVE (0)
 #define COMMAND_PRINTMOVES (1)
+#define COMMAND_UNDO (2)
+
+board undoBoard;
 
 int inputMove(move* parsedMove) {
 	
@@ -14,7 +17,8 @@ int inputMove(move* parsedMove) {
    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
 
 		switch (buffer[0]) {
-			case 'M': return COMMAND_PRINTMOVES;
+			case 'M': return COMMAND_PRINTMOVES; break;
+			case 'U': return COMMAND_UNDO; break;
 		}
 
 		parsedMove->from.x = (byte)(buffer[0] - 'a');
@@ -49,6 +53,11 @@ void humanMove(board* current, board* next) {
 			case COMMAND_PRINTMOVES:
 				printAllowedMoves(current);
 				break;
+			case COMMAND_UNDO:
+				printf("Undoing move...\n");
+				memcpy((void*)current, (void*)(&undoBoard), sizeof(board));
+				printBoardClassic(current);
+				break;
 			case COMMAND_MOVE:
 				// Check that it's valid.
 				allowedMoves(&myAllowedMoves, current, current->whosTurn);
@@ -69,6 +78,10 @@ void humanMove(board* current, board* next) {
 		}
 		
 	} while (isValid == 0);
+
+
+	// Before we actually do anything, ensure we can go back one move.
+	memcpy((void*)(&undoBoard), (void*)current, sizeof(board));
 
 	// Now actually make the move
 	makeMove(current, next, mv);
