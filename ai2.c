@@ -40,7 +40,7 @@ void populateAnalysisMove(analysisMove* amv, move mv, int score) {
 	amv->mv.from.y = mv.from.y;
 	amv->mv.to.x = mv.to.x;
 	amv->mv.to.y = mv.to.y;
-	amv->mv.castlingMove = mv.castlingMove;
+//	amv->mv.castlingMove = mv.castlingMove;
 	amv->mv.promoteTo = mv.promoteTo;
 	memcpy((void*)&(amv->mv.resultingBoard), (void*)&(mv.resultingBoard), sizeof(board));
 	amv->score = score;
@@ -69,7 +69,7 @@ void addAnalysisMove(analysisList* amvs, analysisMove amv2, int numMoves) {
 		amv->mv.to.x = amv2.mv.to.x;
 		amv->mv.to.y = amv2.mv.to.y;
 		amv->mv.promoteTo = amv2.mv.promoteTo;	   
-		amv->mv.castlingMove = amv2.mv.castlingMove;
+//		amv->mv.castlingMove = amv2.mv.castlingMove;
 		amv->score = amv2.score;
 		memcpy((void*)&(amv->mv.resultingBoard), (void*)&(amv2.mv.resultingBoard), sizeof(board));
 		

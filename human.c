@@ -2,7 +2,10 @@
 // Ask a human agent to make a move.
 //
 
-void inputMove(move* parsedMove) {
+#define COMMAND_MOVE (0)
+#define COMMAND_PRINTMOVES (1)
+
+int inputMove(move* parsedMove) {
 	
    char buffer[20];
 	
@@ -10,22 +13,22 @@ void inputMove(move* parsedMove) {
    fflush(stdout);
    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
 
-	   parsedMove->from.x = (byte)(buffer[0] - 'a');
-	   parsedMove->from.y = (byte)(buffer[1] - '1');
-	   parsedMove->to.x = (byte)(buffer[3] - 'a');
-	   parsedMove->to.y = (byte)(buffer[4] - '1');
+		switch (buffer[0]) {
+			case 'M': return COMMAND_PRINTMOVES;
+		}
+
+		parsedMove->from.x = (byte)(buffer[0] - 'a');
+		parsedMove->from.y = (byte)(buffer[1] - '1');
+		parsedMove->to.x = (byte)(buffer[3] - 'a');
+		parsedMove->to.y = (byte)(buffer[4] - '1');
 	   
-//      char *newline = strchr(buffer, '\n'); /* search for newline character */
-//      if (newline != NULL) {
-//         *newline = '\0'; /* overwrite trailing newline */
-//      }
    }
    else {
 	   printf("fgets() is no better than anything else around\n");
 	   fflush(stdout);
    }
    
-   	
+   return COMMAND_MOVE;	
 }
 
 
@@ -36,26 +39,33 @@ void humanMove(board* current, board* next) {
 	// First up, actually get the move from the human player.
 	move mv;
 	
-	int i,isValid;
+	int i,isValid,command;
 	do {
-		inputMove(&mv);
+		command = inputMove(&mv);
 		
-		// Check that it's valid.
 		moveList myAllowedMoves;
-		allowedMoves(&myAllowedMoves, current, current->whosTurn);
-		isValid = 0;
-		for (i = 0; i < myAllowedMoves.ix; i++) {
-			if (myAllowedMoves.moves[i].from.x == mv.from.x 
-				&& myAllowedMoves.moves[i].from.y == mv.from.y
-				&& myAllowedMoves.moves[i].to.x == mv.to.x
-				&& myAllowedMoves.moves[i].to.y == mv.to.y) {
-					
-					isValid = 1;
-//					break; // breaks to while loop, not main function.
+		
+		switch (command) {
+			case COMMAND_PRINTMOVES:
+				printAllowedMoves(current);
+				break;
+			case COMMAND_MOVE:
+				// Check that it's valid.
+				allowedMoves(&myAllowedMoves, current, current->whosTurn);
+				isValid = 0;
+				for (i = 0; i < myAllowedMoves.ix; i++) {
+					if (myAllowedMoves.moves[i].from.x == mv.from.x 
+						&& myAllowedMoves.moves[i].from.y == mv.from.y
+						&& myAllowedMoves.moves[i].to.x == mv.to.x
+						&& myAllowedMoves.moves[i].to.y == mv.to.y) {
+							
+							isValid = 1;
+					}
 				}
-		}
-		if (isValid  == 0) {
-			printf("Entered move is not valid, please try again\n");
+				if (isValid  == 0) {
+					printf("Entered move is not valid, please try again\n");
+				}
+				break;
 		}
 		
 	} while (isValid == 0);
