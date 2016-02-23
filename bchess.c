@@ -46,7 +46,8 @@ int main() {
 
 		// For this demo, the AI plays black.
 		if (b1ptr->whosTurn == WHITE) {
-			humanMove(b1ptr,b2ptr);
+			aiMove(b1ptr,b2ptr);
+//			humanMove(b1ptr,b2ptr);
 		}
 		else {
 			aiMove(b1ptr,b2ptr);

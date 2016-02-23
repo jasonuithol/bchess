@@ -25,10 +25,6 @@
 #define BOARD_STALEMATE (2)
 
 
-// NOTE: MODE_MOVES_LIST is the default mode.
-// Any code switching to MODE_ATTACK_LIST absolutely must 
-// switch the mode back to MODE_MOVES_LIST afterwards.
-byte movesMode = MODE_MOVES_LIST;
 
 typedef struct {
 	byte x;
@@ -151,7 +147,7 @@ void addMove(moveList* mvs, square from, action act) {
 // Note that in MODE_MOVES_LIST, if the destination square is occupied by another piece of 
 // the same team, the move will not be added.
 //
-void addUnblockableSquare(actionList* mvs, board* b, square from, int x, int y) {
+void addUnblockableSquare(actionList* mvs, board* b, square from, int x, int y, int movesMode) {
 	if (x >= 0 && x <= 7 && y >= 0 && y <= 7) {
 		byte mover = boardAtSq(b,from);
 		byte victim = boardAt(b,x,y);
@@ -166,7 +162,7 @@ void addUnblockableSquare(actionList* mvs, board* b, square from, int x, int y) 
 //
 // Add all moves that radiate out in a particular direction, stopping when we hit a piece or the edge of the board.
 //
-void addBlockableSquares(actionList* mvs, board* b, square from, int xVector, int yVector) {
+void addBlockableSquares(actionList* mvs, board* b, square from, int xVector, int yVector, int movesMode) {
 
 	int n = 1;
 	int nx = from.x;
@@ -234,7 +230,7 @@ void addPawnAction(actionList* mvs, byte x, byte y, int lastrank) {
 //
 // Populate a list with all the allowed actions that a specific piece can make.
 //
-void allowedActions(actionList* mvs, board* b, square from) {
+void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 
 	byte team = teamOf(boardAtSq(b,from));
 	byte type = typeOf(boardAtSq(b,from));
@@ -254,16 +250,16 @@ void allowedActions(actionList* mvs, board* b, square from) {
 		case KING:
 		
 			// immediately surrounding squares
-			addUnblockableSquare(mvs,b,from,x-1,y-1);
-			addUnblockableSquare(mvs,b,from,x,y-1);
-			addUnblockableSquare(mvs,b,from,x+1,y-1);
+			addUnblockableSquare(mvs,b,from,x-1,y-1,movesMode);
+			addUnblockableSquare(mvs,b,from,x,y-1,movesMode);
+			addUnblockableSquare(mvs,b,from,x+1,y-1,movesMode);
 
-			addUnblockableSquare(mvs,b,from,x-1,y);
-			addUnblockableSquare(mvs,b,from,x+1,y);
+			addUnblockableSquare(mvs,b,from,x-1,y,movesMode);
+			addUnblockableSquare(mvs,b,from,x+1,y,movesMode);
 
-			addUnblockableSquare(mvs,b,from,x-1,y+1);
-			addUnblockableSquare(mvs,b,from,x,y+1);
-			addUnblockableSquare(mvs,b,from,x+1,y+1);
+			addUnblockableSquare(mvs,b,from,x-1,y+1,movesMode);
+			addUnblockableSquare(mvs,b,from,x,y+1,movesMode);
+			addUnblockableSquare(mvs,b,from,x+1,y+1,movesMode);
 
 
 			if (movesMode == MODE_MOVES_LIST || movesMode == MODE_MOBILITY_LIST) {
@@ -332,44 +328,44 @@ void allowedActions(actionList* mvs, board* b, square from) {
 		case QUEEN:
 		
 			//diagonals
-			addBlockableSquares(mvs,b,from,1,1);
-			addBlockableSquares(mvs,b,from,1,-1);
-			addBlockableSquares(mvs,b,from,-1,1);
-			addBlockableSquares(mvs,b,from,-1,-1);
+			addBlockableSquares(mvs,b,from,1,1,movesMode);
+			addBlockableSquares(mvs,b,from,1,-1,movesMode);
+			addBlockableSquares(mvs,b,from,-1,1,movesMode);
+			addBlockableSquares(mvs,b,from,-1,-1,movesMode);
 
 			//rank and file moves
-			addBlockableSquares(mvs,b,from,1,0);
-			addBlockableSquares(mvs,b,from,-1,0);
-			addBlockableSquares(mvs,b,from,0,1);
-			addBlockableSquares(mvs,b,from,0,-1);
+			addBlockableSquares(mvs,b,from,1,0,movesMode);
+			addBlockableSquares(mvs,b,from,-1,0,movesMode);
+			addBlockableSquares(mvs,b,from,0,1,movesMode);
+			addBlockableSquares(mvs,b,from,0,-1,movesMode);
 			break;
 			
 		case ROOK:
 			//rank and file moves
-			addBlockableSquares(mvs,b,from,1,0);
-			addBlockableSquares(mvs,b,from,-1,0);
-			addBlockableSquares(mvs,b,from,0,1);
-			addBlockableSquares(mvs,b,from,0,-1);
+			addBlockableSquares(mvs,b,from,1,0,movesMode);
+			addBlockableSquares(mvs,b,from,-1,0,movesMode);
+			addBlockableSquares(mvs,b,from,0,1,movesMode);
+			addBlockableSquares(mvs,b,from,0,-1,movesMode);
 			break;
 			
 		case BISHOP:
 			//diagonals
-			addBlockableSquares(mvs,b,from,1,1);
-			addBlockableSquares(mvs,b,from,1,-1);
-			addBlockableSquares(mvs,b,from,-1,1);
-			addBlockableSquares(mvs,b,from,-1,-1);
+			addBlockableSquares(mvs,b,from,1,1,movesMode);
+			addBlockableSquares(mvs,b,from,1,-1,movesMode);
+			addBlockableSquares(mvs,b,from,-1,1,movesMode);
+			addBlockableSquares(mvs,b,from,-1,-1,movesMode);
 			break;
 			
 		case KNIGHT:
-			addUnblockableSquare(mvs,b,from,x+1,y+2);
-			addUnblockableSquare(mvs,b,from,x+1,y-2);
-			addUnblockableSquare(mvs,b,from,x+2,y+1);
-			addUnblockableSquare(mvs,b,from,x+2,y-1);
+			addUnblockableSquare(mvs,b,from,x+1,y+2,movesMode);
+			addUnblockableSquare(mvs,b,from,x+1,y-2,movesMode);
+			addUnblockableSquare(mvs,b,from,x+2,y+1,movesMode);
+			addUnblockableSquare(mvs,b,from,x+2,y-1,movesMode);
 
-			addUnblockableSquare(mvs,b,from,x-1,y+2);
-			addUnblockableSquare(mvs,b,from,x-1,y-2);
-			addUnblockableSquare(mvs,b,from,x-2,y+1);
-			addUnblockableSquare(mvs,b,from,x-2,y-1);
+			addUnblockableSquare(mvs,b,from,x-1,y+2,movesMode);
+			addUnblockableSquare(mvs,b,from,x-1,y-2,movesMode);
+			addUnblockableSquare(mvs,b,from,x-2,y+1,movesMode);
+			addUnblockableSquare(mvs,b,from,x-2,y-1,movesMode);
 			break;
 			
 		case PAWN:
@@ -460,12 +456,7 @@ void printMove(board* b, move mv) {
 // Uses the team specified in parameter, rather than b->whosTurn.
 // This allows for calculating checked squares as well as building move lists.
 //
-void buildMoveList(moveList* mvs, board* b, byte team, int mode) {
-
-	// WARNING: this here is a SIDE EFFECT.
-	int currentMode = movesMode;
-	movesMode = mode;
-
+void buildMoveList(moveList* mvs, board* b, byte team, int movesMode) {
 
 	// Ensure the movelist is initialised
 	mvs->ix = 0;
@@ -482,7 +473,7 @@ void buildMoveList(moveList* mvs, board* b, byte team, int mode) {
 				// Build it's allowed actions and add them to the movelist.
 				//				
 				actionList acts;
-				allowedActions(&acts, b, from);
+				allowedActions(&acts, b, from, movesMode);
 				for (int i = 0; i < acts.ix; i++) {
 										
 					// Add the move to the movelist.  This also creates the move.
@@ -529,9 +520,6 @@ void buildMoveList(moveList* mvs, board* b, byte team, int mode) {
 		} // for y
 	} // for x
 
-	// Restore the movesMode we were in before this method was called.
-	// should always restore to MODE_MOVES_LIST
-	movesMode = currentMode;
 }
 
 //
