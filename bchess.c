@@ -38,7 +38,6 @@ int main() {
 //	exit(1);
 
 	printf("\n-------------- ai test ----------------\n");
-	aiStrength = 4; // i.e. think that many moves ahead.
 
 	int turn;
 	for (turn = 0; turn < 200; turn++) { // for this demo, limit to 50 moves.
@@ -46,11 +45,11 @@ int main() {
 
 		// For this demo, the AI plays black.
 		if (b1ptr->whosTurn == WHITE) {
-			aiMove(b1ptr,b2ptr);
+			aiMove(b1ptr,b2ptr, turn);
 //			humanMove(b1ptr,b2ptr);
 		}
 		else {
-			aiMove(b1ptr,b2ptr);
+			aiMove(b1ptr,b2ptr, turn);
 		}
 
 		// swap board pointers to make the new board the next old board.

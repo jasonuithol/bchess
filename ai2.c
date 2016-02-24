@@ -12,7 +12,7 @@
 
 
 int nodesCalculated;
-int aiStrength;
+int queenCanMove;
 
 typedef struct {
 
@@ -53,16 +53,14 @@ void populateAnalysisMove(analysisMove* amv, move mv, int score) {
 //
 // Add an analysis move to the analysis movelist, with bounds checking.
 //
-void addAnalysisMove(analysisList* amvs, analysisMove amv2, int numMoves) {
+void addAnalysisMove(analysisList* amvs, analysisMove amv2, int depth) {
 
 //	printf("About to addAnalysisMove...");
 //	fflush(stdout);
+				
+	if (depth < ANALYSIS_SIZE) {
 		
-	int ix = aiStrength - numMoves;	
-		
-	if (ix < ANALYSIS_SIZE) {
-		
-		analysisMove* amv = &(amvs->moves[ix]);
+		analysisMove* amv = &(amvs->moves[depth]);
 		
 		amv->mv.from.x = amv2.mv.from.x;
 		amv->mv.from.y = amv2.mv.from.y;
@@ -113,27 +111,50 @@ void displaySpinningPulse() {
 //
 // A strategy for deciding the best move based on how much material the player has at the end of each possible move.
 //
-int evaluateMaterial(board* b, byte team) {
+
+int pieceScore(byte p, int includeKing) {
+	switch(typeOf(p)) {
+		case PAWN:   return 1; break;
+		case KNIGHT: return 4; break;
+		case BISHOP: return 6; break;
+		case ROOK:   return 14; break;
+		case QUEEN:  return 21; break;
+		
+		case KING:   
+			if (includeKing != 0) {
+				return 10;  // This scores "check" in evaluateInitiative()
+			}
+			else {
+				return 0;
+			}
+			break;
+			
+		default: return 0;
+	}
+}
+
+int evaluateMaterial(board* b, byte team, int mode) {
 	int score = 0;
 	int x,y;
 	int teamMultiplier = 0;
+	byte p;
 	for (x=0;x<8;x++) {
 		for (y=0;y<8;y++) {
-			byte p = boardAt(b,x,y);
+			p = boardAt(b,x,y);
 			if (teamOf(p) == team) {
 				teamMultiplier = 1;
 			}
 			else {
-				teamMultiplier = -1;
+				if (mode == 0) {
+					teamMultiplier = -1;
+				}
+				else {
+					teamMultiplier = 0;
+				}					
 			}
-			switch(typeOf(p)) {
-				case PAWN:   score += teamMultiplier * 10; break;
-				case KNIGHT: score += teamMultiplier * 30; break;
-				case BISHOP: score += teamMultiplier * 40; break;
-				case ROOK:   score += teamMultiplier * 70; break;
-				case QUEEN:  score += teamMultiplier * 100; break;
-				case KING:   score += teamMultiplier * 1000; break;
-			} 
+			score += teamMultiplier * pieceScore(p, 0);
+//				printf("teamMultiplier %d\n", teamMultiplier);
+//				printf("piece %d, score %d\n", p, score);
 		}
 	}
 	return score;
@@ -156,12 +177,51 @@ int evaluateMobility(board* b, byte team) {
 	return teamMoves.ix - opponentMoves.ix;	
 }
 
+//
+// A strategy for deciding the best move based on initiative 
+// (i.e. how much potential material gain exists statically on the board)
+//
+int evaluateInitiative(board* b, byte team) {
+	int score = 0;
+	int x,y,i;
+	int teamMultiplier = 0;
+	byte p,q;
+	square from;
+	for (x=0;x<8;x++) {
+		for (y=0;y<8;y++) {
+			p = boardAt(b,x,y);
+			if (p > 0) {
+				if (teamOf(p) == team) {
+					teamMultiplier = 1;
+				}
+				else {
+					teamMultiplier = -1;
+				}
+				from.x = x;
+				from.y = y;
+				actionList attacks; 
+				allowedActions(&attacks, b, from, MODE_ATTACK_LIST);
+				for (i=0;i<attacks.ix; i++) {
+					byte q = boardAt(b, attacks.actions[i].x, attacks.actions[i].y);
+					if (q > 0 && teamOf(p) == opponentOf(teamOf(q))) {
+						score += teamMultiplier * pieceScore(q, 1);
+					}
+				}
+			}
+		}	
+	}
+	return score;
+}
+
+
 
 //
 // Recursively search for the best move and set "bestMove" to point to it.
 // Search depth set by "numMoves"
 //
-analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMoves) {
+analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMoves, int aiStrength) {
+
+	int depth = aiStrength - numMoves;
 
 	if (numMoves > 0) {
 
@@ -222,11 +282,17 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 		analysisList* history;
 		for (z=0;z<mvs.ix;z++) {	
 
+			if (queenCanMove == 0) {
+				if (typeOf(boardAtSq(b, mvs.moves[z].from)) == QUEEN) {
+					continue;
+				}
+			}
+
 /*
 			printf("Pondering Move at depth %d: ",aiStrength - numMoves);
 			printMove(b, mvs.moves[z]);
 			printBoardClassic(&(mvs.moves[z].resultingBoard));
-			printf("\n");
+			printf("\n");e
 			fflush(stdout);
 */
 
@@ -239,7 +305,7 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 			// than what we have now.
 			//
 			analysisMove bestNextMove;
-			history = getBestMove(&bestNextMove, &(mvs.moves[z].resultingBoard), scoringTeam, numMoves - 1);
+			history = getBestMove(&bestNextMove, &(mvs.moves[z].resultingBoard), scoringTeam, numMoves - 1, aiStrength);
 			int score = bestNextMove.score;
 
 /*
@@ -266,7 +332,7 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 					bestHistory = history;
 
 					// Pop the move into the new best analysis history.
-					addAnalysisMove(bestHistory, *bestMove, numMoves);
+					addAnalysisMove(bestHistory, *bestMove, depth);
 				}
 				else {
 					// deallocate the now defunct analysis history
@@ -288,7 +354,7 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 					bestHistory = history;
 
 					// Pop the move into the new best analysis history.
-					addAnalysisMove(bestHistory, *bestMove, numMoves);
+					addAnalysisMove(bestHistory, *bestMove, depth);
 				}
 				else {
 					// deallocate the now defunct analysis history
@@ -316,33 +382,84 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 		displaySpinningPulse();
 	
 		// We have hit the limit of our depth search - time to score the board.
-		bestMove->score = evaluateMobility(b, scoringTeam) + evaluateMaterial(b, scoringTeam);	
-		
+		bestMove->score =   (2 * evaluateMobility(  b, scoringTeam))
+						  + (4 * evaluateMaterial(  b, scoringTeam, 0));	
+						  + (1 * evaluateInitiative(b, scoringTeam));
+						  
 		// Since this end result might be the one true path, be presumptious and allocate a new
 		// move history for it.
 		return (analysisList*)malloc(sizeof(analysisList));	
 	}
 }
 
+int determineAiStrength(board* current) {
+
+	moveList myMoves, theirMoves;
+	
+	int n = evaluateMaterial(current,current->whosTurn, 1) 
+			+ evaluateMaterial(current,opponentOf(current->whosTurn), 1);
+	// Maximum material is 92	
+		
+	printf("Material score: %d\n", n);	
+		
+	if (n >= 50) {
+		return 4;
+	}
+	else if (n >= 30) {
+		return 5;
+	}
+	else if (n >= 15) {
+		return 6;
+	}
+	else if (n >= 5) {
+		return 7;
+	}
+	else {
+		return 8;
+	}
+}
+
 //
 // Ask an AI agent to make a move.
 //
-void aiMove(board* current, board* next) {
+void aiMove(board* current, board* next, int turnNumber) {
 
 	time_t startTime = time(NULL);
+
+	// I'm just sick of the queen based games.
+	if (turnNumber > 5) {
+		queenCanMove = 1;
+	}
+	else {
+		queenCanMove = 0;
+	}
 	
 	nodesCalculated = 0;
 	analysisMove bestmove;
+	int aiStrength = determineAiStrength(current);
+			
+	printf("Choosing aiStrength %d\n", aiStrength);
+	fflush(stdout);
 	
 	// TODO: Pick an AI strategy and pass it into this method call.
-	analysisList* bestAnalysis = getBestMove(&bestmove, current, current->whosTurn, aiStrength);
+	analysisList* bestAnalysis = getBestMove(&bestmove, current, current->whosTurn, aiStrength, aiStrength);
 
 	printf("Reasoning now being printed\n");
 	fflush(stdout);
 	int i;
 	for (i = 0; i < aiStrength; i++) {
-		printf("Depth %d, score %d\n", i + 1, bestAnalysis->moves[i].score);
-		printBoardClassic(&(bestAnalysis->moves[i].mv.resultingBoard));
+		int mat, mob, ini;
+		board* r;
+		r = &(bestAnalysis->moves[i].mv.resultingBoard);
+		mat = evaluateMaterial(r, current->whosTurn, 0);
+		mob = evaluateMobility(r, current->whosTurn);
+		ini = evaluateInitiative(r, current->whosTurn);
+		printf("Depth %d, material %d, mobility %d, initiative %d\n", i + 1, mat, mob, ini);
+		printBoardClassic(r);
+		if (detectCheckmate(r)) {
+			printf("CHECKMATE/STALEMATE\n");
+			break;
+		}
 	}
 
 	// deallocate the now useless history.
@@ -354,21 +471,11 @@ void aiMove(board* current, board* next) {
 	time_t finishTime = time(NULL);
 	double timetaken = difftime(finishTime, startTime);
 	
-	printf("===== ai move for ");printTeam(current->whosTurn);printf(" =====\n");
+	printf("===== ai move for ");printTeam(current->whosTurn);printf(" at ai strength %d =====\n", aiStrength);
 	printf("Move chosen: ");
 	printf(" ");printMove(current, bestmove.mv);printf(" (score: %d)\n",bestmove.score);
     printf("Ai Move Time Taken: %f\n", timetaken);
 
-/*
-	if (timetaken < 5) {
-		aiStrength++;
-		printf("Raising ai strength to %d\n", aiStrength);
-	}
-	else if (timetaken > 300) {
-		aiStrength--;
-		printf("Lowering ai strength to %d\n", aiStrength);
-	}
-*/
 
 	printBoardClassic(next);
 	

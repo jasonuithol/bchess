@@ -327,17 +327,23 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 			
 		case QUEEN:
 		
-			//diagonals
-			addBlockableSquares(mvs,b,from,1,1,movesMode);
-			addBlockableSquares(mvs,b,from,1,-1,movesMode);
-			addBlockableSquares(mvs,b,from,-1,1,movesMode);
-			addBlockableSquares(mvs,b,from,-1,-1,movesMode);
+//			if (movesMode != MODE_MOBILITY_LIST) { // kill off the ai's obsession
+												   // with the queen.
+				
+				//diagonals
+				addBlockableSquares(mvs,b,from,1,1,movesMode);
+				addBlockableSquares(mvs,b,from,1,-1,movesMode);
+				addBlockableSquares(mvs,b,from,-1,1,movesMode);
+				addBlockableSquares(mvs,b,from,-1,-1,movesMode);
 
-			//rank and file moves
-			addBlockableSquares(mvs,b,from,1,0,movesMode);
-			addBlockableSquares(mvs,b,from,-1,0,movesMode);
-			addBlockableSquares(mvs,b,from,0,1,movesMode);
-			addBlockableSquares(mvs,b,from,0,-1,movesMode);
+				//rank and file moves
+				addBlockableSquares(mvs,b,from,1,0,movesMode);
+				addBlockableSquares(mvs,b,from,-1,0,movesMode);
+				addBlockableSquares(mvs,b,from,0,1,movesMode);
+				addBlockableSquares(mvs,b,from,0,-1,movesMode);
+				
+//			}
+			
 			break;
 			
 		case ROOK:
