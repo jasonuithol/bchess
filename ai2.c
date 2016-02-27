@@ -73,8 +73,7 @@ void addAnalysisMove(analysisList* amvs, analysisMove amv2, int depth) {
 		
 	}
 	else {
-		printf("\nMaximum analysis moves size exceeded.\n");
-		exit(EXIT_FAILURE);
+		error("\nMaximum analysis moves size exceeded.\n");
 	}
 
 //	printf("DONE\n");
@@ -83,7 +82,12 @@ void addAnalysisMove(analysisList* amvs, analysisMove amv2, int depth) {
 }
 
 
+//
 // Animates a little spinner to show that we are still alive.
+//
+// IMPORTANT: Do not use print() !! Instead, use printf() 
+// We don't want this going into the logs !!!!
+//
 void displaySpinningPulse() {
 
 	nodesCalculated = (nodesCalculated + 1) % 100000;
@@ -238,18 +242,17 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 			if (b->whosTurn == scoringTeam) {
 				
 				if (aiStrength == numMoves) {
-					printf("OOOPSSSS !!!! I've been asked to move when the game has finished !!!\n");
-					exit(1);
+					error("OOOPSSSS !!!! I've been asked to move when the game has finished !!!\n");
 				} 
 				
 				int boardState = detectCheckmate(b);
 				if (boardState == BOARD_CHECKMATE) {
-//					printf("Detected possible checkmate defeat at depth %d\n",aiStrength - numMoves);
+					logg("Detected possible checkmate defeat at depth %d\n",aiStrength - numMoves);
 //					printBoardClassic(b);
 					bestMove->score = -9998 + (aiStrength - numMoves);
 				}
 				else {
-//					printf("Detected possible stalemate at depth %d\n",aiStrength - numMoves);
+					logg("Detected possible stalemate at depth %d\n",aiStrength - numMoves);
 //					printBoardClassic(b);
 					bestMove->score = 0;
 				}
@@ -257,12 +260,12 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 			else {
 				int boardState = detectCheckmate(b);
 				if (boardState == BOARD_CHECKMATE) {
-//					printf("Detected possible checkmate victory at depth %d\n",aiStrength - numMoves);
+					logg("Detected possible checkmate victory at depth %d\n",aiStrength - numMoves);
 //					printBoardClassic(b);
 					bestMove->score = 9998 - (aiStrength - numMoves);
 				}
 				else {
-//					printf("Detected possible stalemate at depth %d\n",aiStrength - numMoves);
+					logg("Detected possible stalemate at depth %d\n",aiStrength - numMoves);
 //					printBoardClassic(b);
 					bestMove->score = 0;
 				}
@@ -396,27 +399,53 @@ int determineAiStrength(board* current) {
 
 	moveList myMoves, theirMoves;
 	
-	int n = evaluateMaterial(current,current->whosTurn, 1) 
-			+ evaluateMaterial(current,opponentOf(current->whosTurn), 1);
-	// Maximum material is 92	
+	int material = evaluateMaterial(current,current->whosTurn, 1) 
+			     + evaluateMaterial(current,opponentOf(current->whosTurn), 1);
 		
-	printf("Material score: %d\n", n);	
+	logg("Material score for determining ai strength: %d\n", material);	
+	
+	int strength = 8;
 		
-	if (n >= 50) {
-		return 4;
+	// NOTE: Maximum material is 154, minimum is 0
+	if (material > 154 || material < 0) {
+		error("Bad absolute material value calculated: %d\n", material); 
 	}
-	else if (n >= 30) {
-		return 5;
+		
+	if (material >= 50) {
+		strength = 4;
 	}
-	else if (n >= 15) {
-		return 6;
+	else if (material >= 30) {
+		strength = 5;
 	}
-	else if (n >= 5) {
-		return 7;
+	else if (material >= 15) {
+		strength = 6;
 	}
-	else {
-		return 8;
+	else if (material >= 5) {
+		strength = 7;
 	}
+	
+	return strength;
+}
+
+void printReasoning(analysisList* bestAnalysis, board* current, int aiStrength) {
+
+	logg("Reasoning now being printed\n");
+	int i;
+	for (i = 0; i < aiStrength; i++) {
+		int mat, mob, ini;
+		board* r;
+		r = &(bestAnalysis->moves[i].mv.resultingBoard);
+		mat = evaluateMaterial(r, current->whosTurn, 0);
+		mob = evaluateMobility(r, current->whosTurn);
+		ini = evaluateInitiative(r, current->whosTurn);
+		logg("Depth %d, material %d, mobility %d, initiative %d\n", i + 1, mat, mob, ini);
+		printBoardToLog(r);
+		if (detectCheckmate(r)) {
+			logg("CHECKMATE/STALEMATE\n");
+			break;
+		}
+	}
+	
 }
 
 //
@@ -438,46 +467,30 @@ void aiMove(board* current, board* next, int turnNumber) {
 	analysisMove bestmove;
 	int aiStrength = determineAiStrength(current);
 			
-	printf("Choosing aiStrength %d\n", aiStrength);
-	fflush(stdout);
+	print("Choosing aiStrength %d\n", aiStrength);
 	
 	// TODO: Pick an AI strategy and pass it into this method call.
 	analysisList* bestAnalysis = getBestMove(&bestmove, current, current->whosTurn, aiStrength, aiStrength);
 
-	printf("Reasoning now being printed\n");
-	fflush(stdout);
-	int i;
-	for (i = 0; i < aiStrength; i++) {
-		int mat, mob, ini;
-		board* r;
-		r = &(bestAnalysis->moves[i].mv.resultingBoard);
-		mat = evaluateMaterial(r, current->whosTurn, 0);
-		mob = evaluateMobility(r, current->whosTurn);
-		ini = evaluateInitiative(r, current->whosTurn);
-		printf("Depth %d, material %d, mobility %d, initiative %d\n", i + 1, mat, mob, ini);
-		printBoardClassic(r);
-		if (detectCheckmate(r)) {
-			printf("CHECKMATE/STALEMATE\n");
-			break;
-		}
-	}
+	// Print/log reasoning behind move.
+	printReasoning(bestAnalysis, current, aiStrength);
 
 	// deallocate the now useless history.
 	free(bestAnalysis);
 
-	printf("\n");
+	print("\n");
 	makeMove(current, next, bestmove.mv);
 
 	time_t finishTime = time(NULL);
 	double timetaken = difftime(finishTime, startTime);
 	
-	printf("===== ai move for ");printTeam(current->whosTurn);printf(" at ai strength %d =====\n", aiStrength);
-	printf("Move chosen: ");
-	printf(" ");printMove(current, bestmove.mv);printf(" (score: %d)\n",bestmove.score);
-    printf("Ai Move Time Taken: %f\n", timetaken);
+	print("===== ai move for ");printTeam(current->whosTurn);
+	print(" at ai strength %d =====\n", aiStrength);
 
+	print("Move chosen: ");
+	printMove(current, bestmove.mv);
+	print(" (score: %d)\n", bestmove.score);
+    print("Ai Move Time Taken: %f\n", timetaken);
 
-	printBoardClassic(next);
-	
-	fflush(stdout);	
+	printBoardUnicode(next);	
 }

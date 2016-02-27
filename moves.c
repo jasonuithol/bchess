@@ -111,8 +111,7 @@ void addAction(actionList* acts, byte x, byte y) {
 		acts->ix = acts->ix + 1;
 	}
 	else {
-		printf("\nMaximum actions size exceeded.\n");
-		exit(EXIT_FAILURE);
+		error("\nMaximum actions size exceeded.\n");
 	}
 }
 
@@ -135,7 +134,7 @@ void addMove(moveList* mvs, square from, action act) {
 		
 	}
 	else {
-		printf("\nMaximum moves size exceeded.\n");
+		error("\nMaximum moves size exceeded.\n");
 		exit(EXIT_FAILURE);
 	}
 	
@@ -424,7 +423,7 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 			break;
 			
 		default:
-			printf("\nallowedActions() called for unknown piece type %d at square [%d,%d]\n", type, from.x, from.y);
+			error("\nallowedActions() called for unknown piece type %d at square [%d,%d]\n", type, from.x, from.y);
 	}
 }	
 
@@ -441,16 +440,16 @@ void printMove(board* b, move mv) {
 		byte p = boardAtSq(b,mv.from);
 		printPiece(p);
 		
-		printf(" [%c%c-%c%c]",
+		print(" [%c%c-%c%c]",
 				(char)(mv.from.x + 'a'), 
 				(char)(mv.from.y + '1'),
 				(char)(mv.to.x + 'a'), 
 				(char)(mv.to.y + '1') );
 		
 		if (mv.promoteTo > 0) {
-			printf(" *** Promote to ");
+			print(" *** Promote to ");
 			printType(mv.promoteTo);
-			printf(" ***");
+			print(" ***");
 		}
 		
 //	}
@@ -572,9 +571,9 @@ void printAllowedMoves(board* b) {
 	allowedMoves(&mvs,b,b->whosTurn);
 	for (int i = 0; i < mvs.ix; i++) {
 		printMove(b, mvs.moves[i]);
-		printf("\n");
+		print("\n");
 	}
-	printf("\n");
+	print("\n");
 }
 
 

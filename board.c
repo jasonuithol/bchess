@@ -56,6 +56,32 @@ void crashTest(board* b) {
 	b->piecesMoved = BLACK_KING_MOVED + WHITE_KING_MOVED;
 }
 
+void pawnPromotionTest(board* b) {
+	//
+	// Pawn Promotion Test
+	//
+	int n;
+	for (n=0;n<8;n++) {
+		b->squares[n][0] = 0;
+		b->squares[n][1] = 0;
+		b->squares[n][2] = 0;
+		b->squares[n][3] = 0;
+		b->squares[n][4] = 0;
+		b->squares[n][5] = 0;
+		b->squares[n][6] = 0;
+		b->squares[n][7] = 0;
+	}
+
+	b->squares[0][5] = WHITE + PAWN;
+	b->squares[1][5] = WHITE + PAWN;
+	b->squares[4][0] = WHITE + KING;
+	b->squares[7][7] = BLACK + KING;
+//	b->squares[7][6] = BLACK + PAWN;
+
+	b->whosTurn = WHITE;
+	b->piecesMoved = BLACK_KING_MOVED + WHITE_KING_MOVED;
+}
+
 void initBoard(board* b) {
 
 	b->squares[0][0] = WHITE + ROOK;
@@ -89,31 +115,6 @@ void initBoard(board* b) {
 	b->whosTurn = WHITE;
 	b->piecesMoved = 0;
 
-/*
-	//
-	// Pawn Promotion Test
-	//
-	int n;
-	for (n=0;n<8;n++) {
-		b->squares[n][0] = 0;
-		b->squares[n][1] = 0;
-		b->squares[n][2] = 0;
-		b->squares[n][3] = 0;
-		b->squares[n][4] = 0;
-		b->squares[n][5] = 0;
-		b->squares[n][6] = 0;
-		b->squares[n][7] = 0;
-	}
-
-	b->squares[0][5] = WHITE + PAWN;
-	b->squares[1][5] = WHITE + PAWN;
-	b->squares[4][0] = WHITE + KING;
-	b->squares[7][7] = BLACK + KING;
-//	b->squares[7][6] = BLACK + PAWN;
-
-	b->whosTurn = WHITE;
-	b->piecesMoved = 0;
-*/
 }
 
 void spawnBoard(board* old, board* new, square from, square to) {
@@ -142,57 +143,57 @@ void spawnBoard(board* old, board* new, square from, square to) {
 }
 
 void printSquare(square s) {
-	printf("[%d,%d]",s.x,s.y);
+	print("[%d,%d]",s.x,s.y);
 }
 
-void printBoard(board* b) {
+void printBoardToLog(board* b) {
 	int x,y;
 	byte p;
-	for(y=0;y<8;y++) {
+	for(y=7;y>=0;y--) {
+		logg("-----------------------------------\n");
 		for (x=0;x<8;x++) {
-			printSquare((square){x,y});
 			p = b->squares[x][y];
-			if (p > 0) {
-				printPiece(p);
-			}
-			printf("\n");
+			logg("| ");
+			printPieceToLog(p);
+			logg(" ");
 		}
+		logg("|\n");
 	}
-	printf("Historical move flags: %d\n",b->piecesMoved);
-	printf("\nWho's turn ? ");
-	printTeam(b->whosTurn);
-	printf("\n");
+	logg("-----------------------------------\n\n");
+	logg("Historical move flags: %d\n",b->piecesMoved);
+	logg("Who's turn ? %d\n", b->whosTurn);
 }
 
-void printBoardClassic(board* b) {
+void printBoardUnicode(board* b) {
 	int x,y;
 	byte p;
-	printf("\n");
+	print("\n");
 	for(y=7;y>=0;y--) {
 		for (x=0;x<8;x++) {
 			
 			// Set the color of the square
 			if ((x + y) % 2 == 1) {
 				// Reverse
-				printf("\033[47m"); // TODO: Use terminfo/tput, no hardcoding plox
+				print("\033[47m"); // TODO: Use terminfo/tput, no hardcoding plox
 			}
 			else {
 				// Normal
-				printf("\033[40m"); // TODO: Use terminfo/tput, no hardcoding plox
+				print("\033[40m"); // TODO: Use terminfo/tput, no hardcoding plox
 			}
-			printf(" ");
+			print(" ");
 			p = b->squares[x][y];
 			printPieceUnicode(p);
-			printf(" ");
+			print(" ");
 		}
 		// Reset the color codes.
-		printf("\033[49m\033[39m\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
-		printf("\n");
+		print("\033[49m\033[39m\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
+		print("\n");
 	}
 	
-	printf("\n");
+	print("\n");
 	printTeam(b->whosTurn);
-	printf(" to move.\n");
+	print(" to move.\n");
+	print(" to move.\n");
 }
 
 

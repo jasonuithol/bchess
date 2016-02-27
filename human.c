@@ -5,6 +5,7 @@
 #define COMMAND_MOVE (0)
 #define COMMAND_PRINTMOVES (1)
 #define COMMAND_UNDO (2)
+#define COMMAND_LOGGING (3)
 
 board undoBoard;
 
@@ -12,13 +13,13 @@ int inputMove(move* parsedMove) {
 	
    char buffer[20];
 	
-   fputs("enter your move (e.g. a1-b2): ", stdout);
-   fflush(stdout);
+   print("enter your move (e.g. a1-b2): ", stdout);
    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
 
 		switch (buffer[0]) {
 			case 'M': return COMMAND_PRINTMOVES; break;
 			case 'U': return COMMAND_UNDO; break;
+			case 'L': return COMMAND_LOGGING; break;
 		}
 
 		parsedMove->from.x = (byte)(buffer[0] - 'a');
@@ -28,13 +29,33 @@ int inputMove(move* parsedMove) {
 	   
    }
    else {
-	   printf("fgets() is no better than anything else around\n");
-	   fflush(stdout);
+	   error("fgets() is no better than anything else around\n");
    }
    
    return COMMAND_MOVE;	
 }
 
+int inputPawnPromotion() {
+	
+	char buffer[20];
+	
+	print("Please enter which piece to promote pawn to (q,r,b,n): ", stdout);
+	if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+
+		switch (buffer[0]) {
+			case 'q': return QUEEN; break;
+			case 'r': return ROOK; break;
+			case 'b': return BISHOP; break;
+			case 'n': return KNIGHT; break;
+		}
+	}
+	else {
+	   error("fgets() is no better than anything else around\n");
+	}
+
+	return 0;	// This will be intepreted as "no piece", which is not valid.
+
+}
 
 void humanMove(board* current, board* next) {
 
@@ -54,9 +75,19 @@ void humanMove(board* current, board* next) {
 				printAllowedMoves(current);
 				break;
 			case COMMAND_UNDO:
-				printf("Undoing move...\n");
+				print("Undoing move...\n");
 				memcpy((void*)current, (void*)(&undoBoard), sizeof(board));
-				printBoardClassic(current);
+				printBoardUnicode(current);
+				break;
+			case COMMAND_LOGGING:
+				if (logging == 0) {
+					openLog();
+					print("Turning logging ON\n");
+				}
+				else {
+					print("Turning logging OFF\n");
+					closeLog();
+				}
 				break;
 			case COMMAND_MOVE:
 				// Check that it's valid.
@@ -68,13 +99,31 @@ void humanMove(board* current, board* next) {
 						&& myAllowedMoves.moves[i].to.x == mv.to.x
 						&& myAllowedMoves.moves[i].to.y == mv.to.y) {
 							
+						// Ensure this gets zeroed, we will set it explicilty 
+						// iff there's promotion afoot.
+						mv.promoteTo = 0;
+
+						if (myAllowedMoves.moves[i].promoteTo != 0) {
+							
+							int promoted = inputPawnPromotion();
+							
+							if (promoted > 0) {
+								
+								mv.promoteTo = promoted;
+								isValid = 1;
+								break; // out of for loop.
+							}
+						}
+						else {
 							isValid = 1;
+							break; // out of for loop.
+						}	
 					}
 				}
 				if (isValid  == 0) {
-					printf("Entered move is not valid, please try again\n");
+					print("Entered move is not valid, please try again\n");
 				}
-				break;
+				break; // out of while loop.
 		}
 		
 	} while (isValid == 0);
@@ -90,12 +139,11 @@ void humanMove(board* current, board* next) {
 	time_t finishTime = time(NULL);
 	double timetaken = difftime(finishTime, startTime);
 	
-	printf("===== human move for ");printTeam(current->whosTurn);printf(" =====\n");
-	printf("Move chosen: ");
-	printf(" ");printMove(current, mv);printf("\n");
-    printf("Human Move Time Taken: %f\n", timetaken);
+	print("===== human move for ");printTeam(current->whosTurn);printf(" =====\n");
+	print("Move chosen: ");
+	print(" ");printMove(current, mv);printf("\n");
+    print("Human Move Time Taken: %f\n", timetaken);
 
-	printBoardClassic(next);
+	printBoardUnicode(next);
 	
-	fflush(stdout);	
 }
