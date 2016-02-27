@@ -112,10 +112,12 @@ void printPieceToLog(byte p) {
 //
 // gcc -std=c99 bchess.c
 //
-void printPieceUnicode(byte p) {
-	
-	const int SET_TO_USE = BLACK;
-	
+
+#define UNICODESET_SOLID (0)
+#define UNICODESET_GHOST (1)
+
+void printPieceUnicode(byte p, int setToUse) {
+		
 	if (teamOf(p) == WHITE) {
 		print("\033[31m\033[1m");  // bright red
 	} 
@@ -123,7 +125,7 @@ void printPieceUnicode(byte p) {
 		print("\033[34m\033[1m");  // bright blue
 	}
 	
-	if(SET_TO_USE == WHITE) {
+	if(setToUse == UNICODESET_GHOST) {
 		switch (typeOf(p)) {
 			case 0: print(" ");break;
 			case KING:   print("\u2654"); break;

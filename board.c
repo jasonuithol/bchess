@@ -182,7 +182,7 @@ void printBoardUnicode(board* b) {
 			}
 			print(" ");
 			p = b->squares[x][y];
-			printPieceUnicode(p);
+			printPieceUnicode(p, UNICODESET_SOLID);
 			print(" ");
 		}
 		// Reset the color codes.
