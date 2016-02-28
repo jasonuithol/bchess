@@ -40,7 +40,7 @@ int main() {
 
 	initBoard(b1ptr);
 //	crashTest(b1ptr);
-	pawnPromotionTest(b1ptr);
+//	pawnPromotionTest(b1ptr);
 
 	printAllowedMoves(b1ptr);
 	printBoardUnicode(b1ptr);

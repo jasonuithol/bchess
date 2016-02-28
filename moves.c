@@ -5,13 +5,12 @@
 // The rules for moving pieces are embodied here.
 //
 
-// TODO: Get rid of the magic numbers.
-
 #define ACTIONS_SIZE (28)
 #define MOVES_SIZE (ACTIONS_SIZE * 16)
 
-//#define KINGSIDE_CASTLE_MOVE (1)
-//#define QUEENSIDE_CASTLE_MOVE (2)
+#define NOT_A_CASTLE_MOVE (0)
+#define KINGSIDE_CASTLE_MOVE (1)
+#define QUEENSIDE_CASTLE_MOVE (2)
 
 #define MODE_MOVES_LIST (0)
 #define MODE_ATTACK_LIST (1)
@@ -30,7 +29,6 @@ typedef struct {
 	byte x;
 	byte y;
 	byte promoteTo;
-//	byte castlingMove;
 } action;
 
 typedef struct {
@@ -38,7 +36,6 @@ typedef struct {
 	square from;
 	square to;
 	byte promoteTo;
-//	byte castlingMove;
 	board resultingBoard;
 } move;
 
@@ -55,6 +52,46 @@ typedef struct {
 #define lastAddedAction(acts) ((acts)->actions[(acts)->ix - 1])
 #define lastAddedMove(mvs) ((mvs)->moves[(mvs)->ix - 1])
 
+// Declare the prototype for our most useful re-entrant function up front.
+void buildMoveList(moveList* mvs, board* b, byte team, int movesMode);
+
+int isSquareRangeChecked(board* b, int xleft, int xright, int y, byte team) {
+
+	moveList attacks;
+
+	// Get a list of opponent moves for nextBoard.
+	buildMoveList(&attacks, b, opponentOf(team), MODE_ATTACK_LIST);
+	
+	int j,x;
+	for (j = 0; j < attacks.ix; j++) {
+		for (x = xleft; x <= xright; x++) {
+			if (attacks.moves[j].to.x == x && attacks.moves[j].to.y == y) {
+				return 1;
+			}
+		}
+	}
+	return 0;
+	
+}
+
+int isCastlingMove(board* new, move mv) {
+	
+	if (typeOf(boardAtSq(new,mv.to)) == KING && mv.from.x == 4) {  
+	
+		logg("Detected potential castling move\n");
+	
+		// Kingside Castle cleanup - i.e. move the kingside castle to it's new spot.
+		if (mv.to.x == 6) {
+			return KINGSIDE_CASTLE_MOVE;
+		}
+		
+		// Queenside Castle cleanup - i.e. move the queenside castle to it's new spot.
+		if (mv.to.x == 2) {
+			return QUEENSIDE_CASTLE_MOVE;
+		}
+	}
+	return NOT_A_CASTLE_MOVE;
+}
 
 //
 // Move a piece from one square to another, taking into account special rules for pawn promotion and castling.
@@ -70,30 +107,27 @@ void makeMove(board* old, board* new, move mv) {
 	if (mv.promoteTo > 0) {
 		boardAtSq(new,mv.to) = teamOf(boardAtSq(new,mv.to)) + mv.promoteTo;
 	}
-	
+
 	//
-	// TODO: Use constants instead of magic numbers. 
+	// Castling Logic pt2 (moves the castle over the king).
 	//
-	
-	if (typeOf(boardAtSq(new,mv.to)) == KING && mv.from.x == 4) {  
-	
-//		printf("Detected potential castling move\n");
-	
-		// Kingside Castle cleanup - i.e. move the kingside castle to it's new spot.
-		if (mv.to.x == 6) {
-//			printf("Detected KINGSIDE castle.  Fixing up position of castle\n");
+	switch(isCastlingMove(new, mv)) {
+		case NOT_A_CASTLE_MOVE: break;
+		case KINGSIDE_CASTLE_MOVE: 
+			logg("Detected KINGSIDE castle.  Fixing up position of castle\n");
 			// Castle moves from square [7, y] to [5, y].
 			boardAt(new,5,mv.to.y) = boardAt(new,7,mv.to.y); 
 			boardAt(new,7,mv.to.y) = 0;
-		}
-		// Queenside Castle cleanup - i.e. move the queenside castle to it's new spot.
-		if (mv.to.x == 2) {
-//			printf("Detected QUEENSIDE castle.  Fixing up position of castle\n");
+			break;
+		case QUEENSIDE_CASTLE_MOVE:
+			logg("Detected QUEENSIDE castle.  Fixing up position of castle\n");
 			// Castle moves from square [0, y] to [3, y].	
 			boardAt(new,3,mv.to.y) = boardAt(new,0,mv.to.y); 
 			boardAt(new,0,mv.to.y) = 0;
-		}
+			break;
+		default: break;
 	}
+	
 }	
 
 //
@@ -104,9 +138,7 @@ void addAction(actionList* acts, byte x, byte y) {
 		action* act = &(acts->actions[acts->ix]);
 		act->x = x;
 		act->y = y;
-		
 		act->promoteTo = 0;		// default value.  Must be explicitly set by caller if different.
-//		act->castlingMove = 0;  // default value.  Must be explicitly set by caller if different.
 
 		acts->ix = acts->ix + 1;
 	}
@@ -128,7 +160,6 @@ void addMove(moveList* mvs, square from, action act) {
 		mv->to.x = act.x;
 		mv->to.y = act.y;
 		mv->promoteTo = act.promoteTo;	   
-//		mv->castlingMove = act.castlingMove;
 		
 		mvs->ix = mvs->ix + 1;
 		
@@ -217,9 +248,10 @@ void addPawnAction(actionList* mvs, byte x, byte y, int lastrank) {
 		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = ROOK;
 		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = BISHOP;
 		addAction(mvs,x,y); lastAddedAction(mvs).promoteTo = KNIGHT;
-		
-		//TODO: In mode MODE_ATTACK_LIST, the attack list must include the 
-		// attacks for all four of these pieces !
+
+		// NOTE: In MODE_ATTACK_LIST, the non-promoted pawn uses a normal pawn's attack list
+		//       It doesn't have a post-promotion attack list (wait a turn and then use the 
+		//       attack list of the chosen piece ... think about it)
 	}
 	else {
 		addAction(mvs,x,y);
@@ -262,9 +294,7 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 
 
 			if (movesMode == MODE_MOVES_LIST || movesMode == MODE_MOBILITY_LIST) {
-			
-//				if (team == WHITE) { printf("Entering castling logic\n"); } 
-			
+						
 				//
 				// Make a list of all the castling options still available at this point.
 				//
@@ -272,9 +302,6 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 				int blackQueenside = b->piecesMoved & (BLACK_QUEENSIDE_CASTLE_MOVED | BLACK_KING_MOVED);
 				int whiteKingside = b->piecesMoved & (WHITE_KINGSIDE_CASTLE_MOVED | WHITE_KING_MOVED);
 				int blackKingside = b->piecesMoved & (BLACK_KINGSIDE_CASTLE_MOVED | BLACK_KING_MOVED);
-
-//				if (team == WHITE) { printf("Available castling options %d %d %d %d\n", 
-//					whiteQueenside, blackQueenside, whiteKingside, blackKingside); } 
 
 						
 				if ((team == WHITE && whiteQueenside == 0) || (team == BLACK && blackQueenside == 0)) {
@@ -285,14 +312,15 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 					
 					// Check that the intervening squares are clear of pieces.
 					if (boardAt(b,1,y) == 0 && boardAt(b,2,y) == 0 && boardAt(b,3,y) == 0) {
-					
-						// TODO: uh oh, need the opposition's allowedMoves to scan for attacked squares....
 						
-						// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
-						// The castle doesn't need to move when this move is being added to list of moves,
-						// but will need to move should the move actually be played on a board.
-						addAction(mvs,2,y);
-//						lastAddedAction(mvs).castlingMove = QUEENSIDE_CASTLE_MOVE;
+						// Check that none of the squares from the castle to the king inclusive are checked.
+						if (!isSquareRangeChecked(b, 0, 4, y, b->whosTurn)) {
+							
+							// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
+							// The castle doesn't need to move when this move is being added to list of moves,
+							// but will need to move should the move actually be played on a board.
+							addAction(mvs,2,y);
+						}
 					}
 					
 				}
@@ -302,22 +330,18 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 					//
 					// Able to castle now, but first check for ugly stuff.
 					//
-					
-//					if (team == WHITE) { printf("Intervening squares kingside %d %d\n",
-//										 boardAt(b,5,y),boardAt(b,6,y) ); }
-					
+										
 					// Check that the intervening squares are clear of pieces.
 					if (boardAt(b,5,y) == 0 && boardAt(b,6,y) == 0) {
 					
-						// TODO: uh oh, need the opposition's allowedMoves to scan for attacked squares....
-						
-						// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
-						// The castle doesn't need to move when this move is being added to list of moves,
-						// but will need to move should the move actually be played on a board.
-						addAction(mvs,6,y);
-//						lastAddedAction(mvs).castlingMove = KINGSIDE_CASTLE_MOVE;
-						
-//						if (team == WHITE) { printf("Yes, we actually added this move\n"); }
+						// Check that none of the squares from the king to the castle inclusive are checked.
+						if (!isSquareRangeChecked(b, 4, 7, y, b->whosTurn)) {
+							
+							// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
+							// The castle doesn't need to move when this move is being added to list of moves,
+							// but will need to move should the move actually be played on a board.
+							addAction(mvs,6,y);
+						}
 					}
 				}
 			}
@@ -325,10 +349,7 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 			break;
 			
 		case QUEEN:
-		
-//			if (movesMode != MODE_MOBILITY_LIST) { // kill off the ai's obsession
-												   // with the queen.
-				
+						
 				//diagonals
 				addBlockableSquares(mvs,b,from,1,1,movesMode);
 				addBlockableSquares(mvs,b,from,1,-1,movesMode);
@@ -340,8 +361,6 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 				addBlockableSquares(mvs,b,from,-1,0,movesMode);
 				addBlockableSquares(mvs,b,from,0,1,movesMode);
 				addBlockableSquares(mvs,b,from,0,-1,movesMode);
-				
-//			}
 			
 			break;
 			
@@ -427,7 +446,6 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 	}
 }	
 
-void buildMoveList(moveList* mvs, board* b, byte team, int movesMode);
 
 
 //
@@ -459,30 +477,22 @@ int isKingChecked(board* b, byte team) {
 
 // Kind of retarded.  It will print the piece in the FROM square.
 void printMove(board* b, move mv) {
-//	if (mv.castlingMove == QUEENSIDE_CASTLE_MOVE) {
-//		printf("O-O-O");
-//	}
-//	else if (mv.castlingMove == KINGSIDE_CASTLE_MOVE) {
-//		printf("O-O");
-//	}
-//	else {
 		
-		byte p = boardAtSq(b,mv.from);
-		printPiece(p);
+	byte p = boardAtSq(b,mv.from);
+	printPiece(p);
+	
+	print(" [%c%c-%c%c]",
+			(char)(mv.from.x + 'a'), 
+			(char)(mv.from.y + '1'),
+			(char)(mv.to.x + 'a'), 
+			(char)(mv.to.y + '1') );
+	
+	if (mv.promoteTo > 0) {
+		print(" *** Promote to ");
+		printType(mv.promoteTo);
+		print(" ***");
+	}
 		
-		print(" [%c%c-%c%c]",
-				(char)(mv.from.x + 'a'), 
-				(char)(mv.from.y + '1'),
-				(char)(mv.to.x + 'a'), 
-				(char)(mv.to.y + '1') );
-		
-		if (mv.promoteTo > 0) {
-			print(" *** Promote to ");
-			printType(mv.promoteTo);
-			print(" ***");
-		}
-		
-//	}
 }
 
 
@@ -531,7 +541,7 @@ void buildMoveList(moveList* mvs, board* b, byte team, int movesMode) {
 							// Hence, illegal move, remove it.
 							mvs->ix--;
 						}
-						 
+												 
 					}
 					
 				} // for i
