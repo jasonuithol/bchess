@@ -162,6 +162,7 @@ void printBoardToLog(board* b) {
 	logg("-----------------------------------\n\n");
 	logg("Historical move flags: %d\n",b->piecesMoved);
 	logg("Who's turn ? %d\n", b->whosTurn);
+
 }
 
 void printBoardUnicode(board* b) {
@@ -193,7 +194,7 @@ void printBoardUnicode(board* b) {
 	print("\n");
 	printTeam(b->whosTurn);
 	print(" to move.\n");
-	print(" to move.\n");
+	
 }
 
 

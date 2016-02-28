@@ -427,6 +427,36 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 	}
 }	
 
+void buildMoveList(moveList* mvs, board* b, byte team, int movesMode);
+
+
+//
+// Supply the team of the King being checked.
+//
+// This allows for both checking valid check situations
+// as well as being useful for discarding illegal boards
+// (i.e. being in check when it's not your move)
+//
+int isKingChecked(board* b, byte team) {
+
+	moveList attacks;
+
+	// Get a list of opponent moves for nextBoard.
+	buildMoveList(&attacks, b, opponentOf(team), MODE_ATTACK_LIST);
+	
+	int j;
+	for (j = 0; j < attacks.ix; j++) {
+		byte p = boardAtSq(b, attacks.moves[j].to);
+		if (typeOf(p) == KING && team == teamOf(p)) {
+			return 1;
+		}
+	}
+	return 0;
+	
+}
+
+
+
 // Kind of retarded.  It will print the piece in the FROM square.
 void printMove(board* b, move mv) {
 //	if (mv.castlingMove == QUEENSIDE_CASTLE_MOVE) {
@@ -454,6 +484,7 @@ void printMove(board* b, move mv) {
 		
 //	}
 }
+
 
 //
 // Build a list of allowedMoves for a team on board b.
@@ -493,28 +524,11 @@ void buildMoveList(moveList* mvs, board* b, byte team, int movesMode) {
 						// Prespawn a board into that field, it's going to be used a few times.
 						makeMove(b, nextBoard, lastAddedMove(mvs)); 
 					
-						// Check for illegal moves.  This involves switching modes
-						// and then re-entry into buildMoveList in ATTACK mode.
-						moveList attacks;
-						
-						// RE-ENTRANT CALL IN ATTACK MODE.
-						// Get a list of opponent moves for nextBoard.
-						buildMoveList(&attacks, nextBoard, opponentOf(team), MODE_ATTACK_LIST);
-						
-						int isLegal = BOARD_LEGAL;
-						int j;
-						for (j = 0; j < attacks.ix; j++) {
-							byte p = boardAtSq(nextBoard, attacks.moves[j].to);
-							if (typeOf(p) == KING && team == teamOf(p)) {
-								// If it's not your turn, then your King cannot be in check.
-			 					// Dat's da rules.
-								isLegal = BOARD_NOT_LEGAL;
-								break;
-							}
-						}
-
-						// If the resulting board is illegal just chuck this move out.
-						if (isLegal == BOARD_NOT_LEGAL) {
+						// Check for an illegal move.
+						if (isKingChecked(nextBoard, team)) {
+							
+							// You moved, but you're still in check.
+							// Hence, illegal move, remove it.
 							mvs->ix--;
 						}
 						 
@@ -549,17 +563,12 @@ int detectCheckmate(board* b) {
 	// Checkmate/stalemate detection.
 	if (mvs.ix == 0) {
 		
-		// Get a list of opponent moves for nextBoard.
-		buildMoveList(&attacks, b, opponentOf(b->whosTurn), MODE_ATTACK_LIST);
-		
-		int j;
-		for (j = 0; j < attacks.ix; j++) {
-			byte p = boardAtSq(b, attacks.moves[j].to);
-			if (typeOf(p) == KING && b->whosTurn == teamOf(p)) {
-				return BOARD_CHECKMATE;
-			}
+		if (isKingChecked(b, b->whosTurn)) {
+			return BOARD_CHECKMATE;
 		}
-		return BOARD_STALEMATE;
+		else {
+			return BOARD_STALEMATE;
+		}
 	}
 	else {
 		return BOARD_NORMAL;

@@ -489,6 +489,9 @@ void aiMove(board* current, board* next, int turnNumber) {
 
 	print("Move chosen: ");
 	printMove(current, bestmove.mv);
+	if (isKingChecked(next, next->whosTurn)) {
+		print(" >>> CHECK <<<");
+	}
 	print(" (score: %d)\n", bestmove.score);
     print("Ai Move Time Taken: %f\n", timetaken);
 

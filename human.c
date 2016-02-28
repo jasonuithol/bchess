@@ -141,7 +141,11 @@ void humanMove(board* current, board* next) {
 	
 	print("===== human move for ");printTeam(current->whosTurn);printf(" =====\n");
 	print("Move chosen: ");
-	print(" ");printMove(current, mv);printf("\n");
+	print(" ");printMove(current, mv);
+	if (isKingChecked(next, next->whosTurn)) {
+		print(" >>> CHECK <<<");
+	}
+	printf("\n");
     print("Human Move Time Taken: %f\n", timetaken);
 
 	printBoardUnicode(next);
