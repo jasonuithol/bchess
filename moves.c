@@ -53,9 +53,9 @@ typedef struct {
 #define lastAddedMove(mvs) ((mvs)->moves[(mvs)->ix - 1])
 
 // Declare the prototype for our most useful re-entrant function up front.
-void buildMoveList(moveList* mvs, board* b, byte team, int movesMode);
+void buildMoveList(moveList* const mvs, const board* const b, const byte team, const int movesMode);
 
-int isSquareRangeChecked(board* b, int xleft, int xright, int y, byte team) {
+int isSquareRangeChecked(const board* const b, const int xleft, const int xright, const int y, const byte team) {
 
 	moveList attacks;
 
@@ -74,7 +74,7 @@ int isSquareRangeChecked(board* b, int xleft, int xright, int y, byte team) {
 	
 }
 
-int isCastlingMove(board* new, move mv) {
+int isCastlingMove(const board* const new, const move mv) {
 	
 	if (typeOf(boardAtSq(new,mv.to)) == KING && mv.from.x == 4) {  
 	
@@ -96,7 +96,7 @@ int isCastlingMove(board* new, move mv) {
 //
 // Move a piece from one square to another, taking into account special rules for pawn promotion and castling.
 //
-void makeMove(board* old, board* new, move mv) {
+void makeMove(const board* const old, board* const new, const move mv) {
 		
 	// This creates a new board with the piece moved to the new square.
 	spawnBoard(old, new, mv.from, mv.to);
@@ -133,27 +133,37 @@ void makeMove(board* old, board* new, move mv) {
 //
 // Add an action to the actionlist, with bounds checking.
 //
-void addAction(actionList* acts, byte x, byte y) {
+void addAction(actionList* const acts, const byte x, const byte y) {
+
+	#ifdef SAFETY_ON
 	if (acts->ix < ACTIONS_SIZE) {
+	#endif
+	
 		action* act = &(acts->actions[acts->ix]);
 		act->x = x;
 		act->y = y;
 		act->promoteTo = 0;		// default value.  Must be explicitly set by caller if different.
 
 		acts->ix = acts->ix + 1;
+		
+	#ifdef SAFETY_ON
 	}
 	else {
 		error("\nMaximum actions size exceeded.\n");
 	}
+	#endif
 }
 
 
 //
 // Add a move to the movelist, with bounds checking.
 //
-void addMove(moveList* mvs, square from, action act) {
+void addMove(moveList* const mvs, const square from, const action act) {
 		
+	#ifdef SAFETY_ON
 	if (mvs->ix < MOVES_SIZE) {
+	#endif
+		
 		move* mv = &(mvs->moves[mvs->ix]);
 		mv->from.x = from.x;
 		mv->from.y = from.y;
@@ -162,12 +172,13 @@ void addMove(moveList* mvs, square from, action act) {
 		mv->promoteTo = act.promoteTo;	   
 		
 		mvs->ix = mvs->ix + 1;
-		
+
+	#ifdef SAFETY_ON		
 	}
 	else {
 		error("\nMaximum moves size exceeded.\n");
-		exit(EXIT_FAILURE);
 	}
+	#endif
 	
 }
 
@@ -177,10 +188,10 @@ void addMove(moveList* mvs, square from, action act) {
 // Note that in MODE_MOVES_LIST, if the destination square is occupied by another piece of 
 // the same team, the move will not be added.
 //
-void addUnblockableSquare(actionList* mvs, board* b, square from, int x, int y, int movesMode) {
+void addUnblockableSquare(actionList* const mvs, const board* const b, const square from, const int x, const int y, const int movesMode) {
 	if (x >= 0 && x <= 7 && y >= 0 && y <= 7) {
-		byte mover = boardAtSq(b,from);
-		byte victim = boardAt(b,x,y);
+		const byte mover = boardAtSq(b,from);
+		const byte victim = boardAt(b,x,y);
 		if (movesMode == MODE_ATTACK_LIST || (victim == 0 || teamOf(victim) != teamOf(mover))) { 
 			// We have found a square that is not occupied by a teammate piece, so add it to the list.
 			// In MODE_ATTACK_LIST we add all squares.
@@ -192,12 +203,12 @@ void addUnblockableSquare(actionList* mvs, board* b, square from, int x, int y, 
 //
 // Add all moves that radiate out in a particular direction, stopping when we hit a piece or the edge of the board.
 //
-void addBlockableSquares(actionList* mvs, board* b, square from, int xVector, int yVector, int movesMode) {
+void addBlockableSquares(actionList* const mvs, const board* const b, const square from, const int xVector, const int yVector, const int movesMode) {
 
 	int n = 1;
 	int nx = from.x;
 	int ny = from.y;
-	byte mover = boardAtSq(b,from);
+	const byte mover = boardAtSq(b,from);
 	
 	while (n < 8) { // I'm pretty sure this check is useless.  
 					// It's only here to stop a runaway process should we go off the edge of the board.
@@ -236,7 +247,7 @@ void addBlockableSquares(actionList* mvs, board* b, square from, int xVector, in
 // Add a pawn move to the movelist.  We need a special method for this to take into account the ability
 // of pawns to transform into another piece when it reaches the last rank.
 //
-void addPawnAction(actionList* mvs, byte x, byte y, int lastrank) {
+void addPawnAction(actionList* const mvs, const byte x, const byte y, const int lastrank) {
 	
 	if (y == lastrank) {
 		//
@@ -261,12 +272,12 @@ void addPawnAction(actionList* mvs, byte x, byte y, int lastrank) {
 //
 // Populate a list with all the allowed actions that a specific piece can make.
 //
-void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
+void allowedActions(actionList* const mvs, const board* const b, const square from, const int movesMode) {
 
-	byte team = teamOf(boardAtSq(b,from));
-	byte type = typeOf(boardAtSq(b,from));
-	byte x = from.x;
-	byte y = from.y;
+	const byte team = teamOf(boardAtSq(b,from));
+	const byte type = typeOf(boardAtSq(b,from));
+	const byte x = from.x;
+	const byte y = from.y;
 	
 	mvs->ix = 0;
 
@@ -280,7 +291,7 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 	
 		case KING:
 		
-			// immediately surrounding squares
+			// immediately surrounding squareso
 			addUnblockableSquare(mvs,b,from,x-1,y-1,movesMode);
 			addUnblockableSquare(mvs,b,from,x,y-1,movesMode);
 			addUnblockableSquare(mvs,b,from,x+1,y-1,movesMode);
@@ -455,7 +466,7 @@ void allowedActions(actionList* mvs, board* b, square from, int movesMode) {
 // as well as being useful for discarding illegal boards
 // (i.e. being in check when it's not your move)
 //
-int isKingChecked(board* b, byte team) {
+int isKingChecked(const board* const b, const byte team) {
 
 	moveList attacks;
 
@@ -476,9 +487,9 @@ int isKingChecked(board* b, byte team) {
 
 
 // Kind of retarded.  It will print the piece in the FROM square.
-void printMove(board* b, move mv) {
+void printMove(const board* const b, const move mv) {
 		
-	byte p = boardAtSq(b,mv.from);
+	const byte p = boardAtSq(b,mv.from);
 	printPiece(p);
 	
 	print(" [%c%c-%c%c]",
@@ -502,7 +513,7 @@ void printMove(board* b, move mv) {
 // Uses the team specified in parameter, rather than b->whosTurn.
 // This allows for calculating checked squares as well as building move lists.
 //
-void buildMoveList(moveList* mvs, board* b, byte team, int movesMode) {
+void buildMoveList(moveList* const mvs, const board* const b, const byte team, const int movesMode) {
 
 	// Ensure the movelist is initialised
 	mvs->ix = 0;
@@ -554,18 +565,18 @@ void buildMoveList(moveList* mvs, board* b, byte team, int movesMode) {
 //
 // Build a list of allowedMoves for a team on board b.
 //
-void allowedMoves(moveList* mvs, board* b, byte team) {
+void allowedMoves(moveList* const mvs, const board* const b, const byte team) {
 	buildMoveList(mvs, b, team, MODE_MOVES_LIST);
 }
 
 
-void assessMobility(moveList* mvs, board* b, byte team) {
+void assessMobility(moveList* const mvs, const board* const b, const byte team) {
 	// Skips chucking out illegal moves.  
 	// Less accurate but WAY faster.
 	buildMoveList(mvs, b, team, MODE_MOBILITY_LIST);
 }
 
-int detectCheckmate(board* b) {
+int detectCheckmate(const board* const b) {
 
 	moveList mvs, attacks;
 	allowedMoves(&mvs, b, b->whosTurn);
@@ -585,7 +596,7 @@ int detectCheckmate(board* b) {
 	}	
 }
 
-void printAllowedMoves(board* b) {
+void printAllowedMoves(const board* const b) {
 	moveList mvs;
 	allowedMoves(&mvs,b,b->whosTurn);
 	for (int i = 0; i < mvs.ix; i++) {

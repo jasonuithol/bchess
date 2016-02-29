@@ -20,11 +20,11 @@
 #define PAWN 	((byte)1)
 
 
-byte teamOf(byte p) {
+byte teamOf(const byte p) {
 	return p & (WHITE | BLACK);
 }
 
-byte opponentOf(byte t) {
+byte opponentOf(const byte t) {
 	switch(t) {
 		case 0:
 			return 0;
@@ -38,11 +38,15 @@ byte opponentOf(byte t) {
 	}
 }
 
-byte typeOf(byte p) {
+int areOnSameTeam(const byte p1, const byte p2) {
+	return p1 & p2 & (WHITE | BLACK);
+}
+
+byte typeOf(const byte p) {
 	return p & ~(WHITE | BLACK);
 }
 
-void printTeam(byte t) {
+void printTeam(const byte t) {
 	switch (t) {
 		case WHITE:
 			print("WHITE"); 
@@ -55,7 +59,7 @@ void printTeam(byte t) {
 	}
 }
 
-void printType(byte t) {
+void printType(const byte t) {
 	switch (t) {
 		case KING :
 			print("KING"); 
@@ -80,13 +84,13 @@ void printType(byte t) {
 	}
 }
 
-void printPiece(byte p) {
+void printPiece(const byte p) {
 	printTeam(teamOf(p));
 	print(" ");
 	printType(typeOf(p));
 }
 
-void printPieceToLog(byte p) {
+void printPieceToLog(const byte p) {
 	char teamCapitalOffset = 0;
 	char typeChar = '?';
 	if(teamOf(p) == BLACK) {
@@ -116,7 +120,7 @@ void printPieceToLog(byte p) {
 #define UNICODESET_SOLID (0)
 #define UNICODESET_GHOST (1)
 
-void printPieceUnicode(byte p, int setToUse) {
+void printPieceUnicode(const byte p, const int setToUse) {
 		
 	if (teamOf(p) == WHITE) {
 		print("\033[31m\033[1m");  // bright red

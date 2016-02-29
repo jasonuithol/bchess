@@ -5,10 +5,14 @@
 // The main() function is located here.
 //
 
+//#define SAFETY_ON
+#define SAFETY_OFF
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <string.h>
+#include <string.h> 
 #include "logging.c"
 #include "piece.c"
 #include "board.c"
@@ -30,6 +34,8 @@ int main() {
 	//
 	// ----------------------
 
+//	openLog();
+
 	time_t startTime = time(NULL);
 
 	// Maintain pointers to a "current" board and a "next move" board.
@@ -49,13 +55,13 @@ int main() {
 	print("\n-------------- ai test ----------------\n");
 
 	int turn;
-	for (turn = 0; turn < 200; turn++) { // for this demo, limit to 50 moves.
+	for (turn = 0; turn <= 10; turn++) { // for this demo, limit to 50 moves.
 		print("==== TURN %d =====\n\n",turn);
 
 		// For this demo, the AI plays black.
 		if (b1ptr->whosTurn == WHITE) {
-//			aiMove(b1ptr,b2ptr, turn);
-			humanMove(b1ptr,b2ptr);
+			aiMove(b1ptr,b2ptr, turn);
+//			humanMove(b1ptr,b2ptr);
 		}
 		else {
 			aiMove(b1ptr,b2ptr, turn);

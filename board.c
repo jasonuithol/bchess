@@ -117,7 +117,7 @@ void initBoard(board* b) {
 
 }
 
-void spawnBoard(board* old, board* new, square from, square to) {
+void spawnBoard(const board* const old, board* const new, const square from, const square to) {
 
 	// To create a new board from a current board, first copy the current board's content to the new one.
 	memcpy((void*)new, (void*)old, sizeof(board));
@@ -146,7 +146,7 @@ void printSquare(square s) {
 	print("[%d,%d]",s.x,s.y);
 }
 
-void printBoardToLog(board* b) {
+void printBoardToLog(const board* const b) {
 	int x,y;
 	byte p;
 	for(y=7;y>=0;y--) {

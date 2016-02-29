@@ -65,6 +65,7 @@ void humanMove(board* current, board* next) {
 	move mv;
 	
 	int i,isValid,command;
+	isValid = 0; // shut the compiler up.
 	do {
 		command = inputMove(&mv);
 		

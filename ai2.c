@@ -116,7 +116,7 @@ void displaySpinningPulse() {
 // A strategy for deciding the best move based on how much material the player has at the end of each possible move.
 //
 
-int pieceScore(byte p, int includeKing) {
+int pieceScore(const byte p, const int includeKing) {
 	switch(typeOf(p)) {
 		case PAWN:   return 1; break;
 		case KNIGHT: return 4; break;
@@ -137,7 +137,7 @@ int pieceScore(byte p, int includeKing) {
 	}
 }
 
-int evaluateMaterial(board* b, byte team, int mode) {
+int evaluateMaterial(const board* const b, const byte team, const int mode) {
 	int score = 0;
 	int x,y;
 	int teamMultiplier = 0;
@@ -168,9 +168,9 @@ int evaluateMaterial(board* b, byte team, int mode) {
 //
 // A strategy for deciding the best move based on how many more possible moves the player has than it's opponent.
 //
-int evaluateMobility(board* b, byte team) {
+int evaluateMobility(const board* const b, const byte team) {
 
-	byte opposingTeam = opponentOf(team);
+	const byte opposingTeam = opponentOf(team);
 	moveList teamMoves, opponentMoves;
 	
 	assessMobility(&teamMoves, b, team);
@@ -185,7 +185,7 @@ int evaluateMobility(board* b, byte team) {
 // A strategy for deciding the best move based on initiative 
 // (i.e. how much potential material gain exists statically on the board)
 //
-int evaluateInitiative(board* b, byte team) {
+int evaluateInitiative(const board* const b, const byte team) {
 	int score = 0;
 	int x,y,i;
 	int teamMultiplier = 0;
@@ -223,9 +223,9 @@ int evaluateInitiative(board* b, byte team) {
 // Recursively search for the best move and set "bestMove" to point to it.
 // Search depth set by "numMoves"
 //
-analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, int numMoves, int aiStrength) {
+analysisList* getBestMove(analysisMove* const bestMove, const board* const b, const byte scoringTeam, const int numMoves, const int aiStrength) {
 
-	int depth = aiStrength - numMoves;
+	const int depth = aiStrength - numMoves;
 
 	if (numMoves > 0) {
 
@@ -248,12 +248,10 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 				int boardState = detectCheckmate(b);
 				if (boardState == BOARD_CHECKMATE) {
 					logg("Detected possible checkmate defeat at depth %d\n",aiStrength - numMoves);
-//					printBoardClassic(b);
 					bestMove->score = -9998 + (aiStrength - numMoves);
 				}
 				else {
 					logg("Detected possible stalemate at depth %d\n",aiStrength - numMoves);
-//					printBoardClassic(b);
 					bestMove->score = 0;
 				}
 			}
@@ -261,12 +259,10 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 				int boardState = detectCheckmate(b);
 				if (boardState == BOARD_CHECKMATE) {
 					logg("Detected possible checkmate victory at depth %d\n",aiStrength - numMoves);
-//					printBoardClassic(b);
 					bestMove->score = 9998 - (aiStrength - numMoves);
 				}
 				else {
 					logg("Detected possible stalemate at depth %d\n",aiStrength - numMoves);
-//					printBoardClassic(b);
 					bestMove->score = 0;
 				}
 			}
@@ -325,6 +321,9 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 			if (b->whosTurn == scoringTeam) {
 				// We analysed one of our moves, so pick the highest scoring move.
 				if (score > bestScore) {
+					
+					logg("New best score found at depth %d for my move: %d\n", depth, score);
+					
 					bestScore = score;
 					populateAnalysisMove(bestMove, mvs.moves[z], score);
 
@@ -340,6 +339,12 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 				else {
 					// deallocate the now defunct analysis history
 					free(history);
+					
+					// For now, only log possible alternative moves.
+					if (score > bestScore - 4 && depth == 0) {
+						logg("Found competing alternative to best scoring move so far for score: %d\n", score);
+					}
+					
 				}
 			}
 			else {
@@ -347,6 +352,9 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 				// This basically assumes that the opponent will play to their best ability.
 				// Note that the score is OUR score, not the moving team's score.
 				if (score < bestScore) {
+					
+					logg("New best score found at depth %d for their move: %d\n", depth, score);
+					
 					bestScore = score;
 					populateAnalysisMove(bestMove, mvs.moves[z], score);
 
@@ -395,11 +403,11 @@ analysisList* getBestMove(analysisMove* bestMove, board* b, byte scoringTeam, in
 	}
 }
 
-int determineAiStrength(board* current) {
+int determineAiStrength(const board* const current) {
 
 	moveList myMoves, theirMoves;
 	
-	int material = evaluateMaterial(current,current->whosTurn, 1) 
+	const int material = evaluateMaterial(current,current->whosTurn, 1) 
 			     + evaluateMaterial(current,opponentOf(current->whosTurn), 1);
 		
 	logg("Material score for determining ai strength: %d\n", material);	
@@ -427,20 +435,18 @@ int determineAiStrength(board* current) {
 	return strength;
 }
 
-void printReasoning(analysisList* bestAnalysis, board* current, int aiStrength) {
+void printReasoning(const analysisList* const bestAnalysis, const board* const current, const int aiStrength) {
 
 	logg("Reasoning now being printed\n");
 	int i;
 	for (i = 0; i < aiStrength; i++) {
-		int mat, mob, ini;
-		board* r;
-		r = &(bestAnalysis->moves[i].mv.resultingBoard);
-		mat = evaluateMaterial(r, current->whosTurn, 0);
-		mob = evaluateMobility(r, current->whosTurn);
-		ini = evaluateInitiative(r, current->whosTurn);
+		int mat, mob, ini;				
+		mat = evaluateMaterial(&(bestAnalysis->moves[i].mv.resultingBoard), current->whosTurn, 0);
+		mob = evaluateMobility(&(bestAnalysis->moves[i].mv.resultingBoard), current->whosTurn);
+		ini = evaluateInitiative(&(bestAnalysis->moves[i].mv.resultingBoard), current->whosTurn);
 		logg("Depth %d, material %d, mobility %d, initiative %d\n", i + 1, mat, mob, ini);
-		printBoardToLog(r);
-		if (detectCheckmate(r)) {
+		printBoardToLog(&(bestAnalysis->moves[i].mv.resultingBoard));
+		if (detectCheckmate(&(bestAnalysis->moves[i].mv.resultingBoard))) {
 			logg("CHECKMATE/STALEMATE\n");
 			break;
 		}
@@ -451,9 +457,9 @@ void printReasoning(analysisList* bestAnalysis, board* current, int aiStrength) 
 //
 // Ask an AI agent to make a move.
 //
-void aiMove(board* current, board* next, int turnNumber) {
+void aiMove(const board* const current, board* const next, const int turnNumber) {
 
-	time_t startTime = time(NULL);
+	const time_t startTime = time(NULL);
 
 	// I'm just sick of the queen based games.
 	if (turnNumber > 5) {
@@ -465,7 +471,7 @@ void aiMove(board* current, board* next, int turnNumber) {
 	
 	nodesCalculated = 0;
 	analysisMove bestmove;
-	int aiStrength = determineAiStrength(current);
+	const int aiStrength = determineAiStrength(current);
 			
 	print("Choosing aiStrength %d\n", aiStrength);
 	
@@ -481,8 +487,8 @@ void aiMove(board* current, board* next, int turnNumber) {
 	print("\n");
 	makeMove(current, next, bestmove.mv);
 
-	time_t finishTime = time(NULL);
-	double timetaken = difftime(finishTime, startTime);
+	const time_t finishTime = time(NULL);
+	const double timetaken = difftime(finishTime, startTime);
 	
 	print("===== ai move for ");printTeam(current->whosTurn);
 	print(" at ai strength %d =====\n", aiStrength);
