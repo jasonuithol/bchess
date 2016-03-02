@@ -117,6 +117,42 @@ void initBoard(board* b) {
 
 }
 
+void profilingBoard(board *b) {
+
+	clearBoard(b);
+
+	b->squares[0][0] = WHITE + ROOK;
+	b->squares[1][0] = WHITE + KNIGHT;
+	b->squares[2][0] = WHITE + BISHOP;
+	b->squares[3][0] = WHITE + QUEEN;
+	b->squares[4][0] = WHITE + KING;
+	b->squares[2][3] = WHITE + BISHOP; // moved to c4
+	b->squares[5][2] = WHITE + KNIGHT; // moved to f3
+	b->squares[7][0] = WHITE + ROOK;
+
+	b->squares[0][7] = BLACK + ROOK;
+	b->squares[2][5] = BLACK + KNIGHT; // moved to c6
+	b->squares[2][7] = BLACK + BISHOP;
+	b->squares[5][5] = BLACK + QUEEN;  // moved to f6
+	b->squares[4][7] = BLACK + KING;
+	b->squares[1][3] = BLACK + BISHOP; // moved to b4
+	b->squares[6][7] = BLACK + KNIGHT;
+	b->squares[7][7] = BLACK + ROOK;
+
+	int n;
+	for (n=0;n<8;n++) {
+		b->squares[n][1] = WHITE + PAWN;
+		b->squares[n][6] = BLACK + PAWN;
+	}
+
+	b->squares[1][2] = WHITE + PAWN; b->squares[1][1] = 0; // b3
+	b->squares[4][3] = WHITE + PAWN; b->squares[4][1] = 0; // e4
+	b->squares[4][4] = BLACK + PAWN; b->squares[4][6] = 0; // e5
+
+	b->whosTurn = WHITE;
+	b->piecesMoved = 0;
+}
+
 void spawnBoard(const board* const old, board* const new, const square from, const square to) {
 
 	// To create a new board from a current board, first copy the current board's content to the new one.

@@ -395,7 +395,7 @@ analysisList* getBestMove(analysisMove* const bestMove, const board* const b, co
 		// We have hit the limit of our depth search - time to score the board.
 		bestMove->score =   (2 * evaluateMobility(  b, scoringTeam))
 						  + (4 * evaluateMaterial(  b, scoringTeam, 0));	
-						  + (1 * evaluateInitiative(b, scoringTeam));
+//						  + (1 * evaluateInitiative(b, scoringTeam));
 						  
 		// Since this end result might be the one true path, be presumptious and allocate a new
 		// move history for it.

@@ -44,9 +44,13 @@ int main() {
 	b1ptr = &b1;
 	b2ptr = &b2;
 
+#ifdef PROFILING_BUILD	
+	profilingBoard(b1ptr);
+#else
 	initBoard(b1ptr);
 //	crashTest(b1ptr);
 //	pawnPromotionTest(b1ptr);
+#endif
 
 	printAllowedMoves(b1ptr);
 	printBoardUnicode(b1ptr);
@@ -55,7 +59,11 @@ int main() {
 	print("\n-------------- ai test ----------------\n");
 
 	int turn;
-	for (turn = 0; turn <= 10; turn++) { // for this demo, limit to 50 moves.
+#ifdef PROFILING_BUILD	
+	for (turn = 0; turn < 2; turn++) { // for this demo, limit to 50 moves.
+#else		
+	for (turn = 0; turn <= 200; turn++) { // for this demo, limit to 50 moves.
+#endif		
 		print("==== TURN %d =====\n\n",turn);
 
 		// For this demo, the AI plays black.

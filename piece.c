@@ -34,7 +34,7 @@ byte opponentOf(const byte t) {
 			return WHITE;
 		default:
 			error("\nBad team value passed to opponentOf(): %d\n", (int)t);
-			return -1;
+			return 0; // shut the compiler up
 	}
 }
 
