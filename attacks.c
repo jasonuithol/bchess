@@ -366,8 +366,8 @@ bitboard generatePawnMoves(bitboard piece, bitboard softBlockers, bitboard hardB
 }
 
 
-bitboard generateTestCheckingMap(board* b) {
-	bitboard softBlockers = getFrenemies(b->quad);
+bitboard generateTestCheckingMap(quadboard qb) {
+	bitboard softBlockers = getFrenemies(qb);
 	return multiPieceAttacks(1ULL << 35, softBlockers, 0ULL, nw|n|ne|w, ATTACKMODE_SLIDING);
 }
 

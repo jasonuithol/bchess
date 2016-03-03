@@ -39,13 +39,13 @@ int main() {
 	printf("Showing the whole board\n\n");
 	printQB(b.quad);
 
-	bitboard whiteAttacks = generateCheckingMap(&b, WHITE);
+	bitboard whiteAttacks = generateCheckingMap(b.quad, WHITE);
 	printf("Print checking matrix for white\n\n");
 	printBB(whiteAttacks);
 	
 	
 //	printf("Print checking matrix for TEST\n\n");
-//	bitboard testAttacks = generateTestCheckingMap(&b);
+//	bitboard testAttacks = generateTestCheckingMap(b.quad);
 //	printBB(testAttacks);
 	
 	

@@ -1,6 +1,3 @@
-#define WHITE ((byte)0)
-#define BLACK ((byte)1)
-
 #define WHITE_QUEENSIDE_CASTLE_MOVED	128
 #define WHITE_KING_MOVED				64
 #define WHITE_KINGSIDE_CASTLE_MOVED		32
@@ -17,9 +14,9 @@
 
 typedef struct {
 	quadboard quad;
-	bitboard enemyCheckingmap; // Used to check castling rights.
-	byte piecesMoved;  		// KINGS and CASTLES tracked here.
-	byte whosTurn;     		// 0 = WHITE, 1 = BLACK.
+	bitboard castlingCheckingMap; 	// Used to check castling ability.
+	byte piecesMoved;  				// KINGS and CASTLES tracked here.
+	byte whosTurn;     				// 0 = WHITE, 1 = BLACK.
 } board;
 
 void clearBoard(board* const b) {
@@ -29,7 +26,7 @@ void clearBoard(board* const b) {
 //
 // Returns a map of all squares in check.
 //
-bitboard generateCheckingMap(quadboard qb, int team) {
+bitboard generateCheckingMap(quadboard qb, byte team) {
 
 	bitboard softBlockers = getFrenemies(qb);
 	
@@ -71,79 +68,114 @@ void initBoard(board* b) {
 
 	b->piecesMoved = 0;
 	b->whosTurn = WHITE;
-	b->enemyCheckingmap = generateCheckingMap(qb, b->whosTurn);
+	b->castlingCheckingMap = generateCheckingMap(b->quad, 1- b->whosTurn);
 }
 
-int spawnBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const int promoteTo) {
+//
+// All moves MUST be performed by this method to ensure that:
+//
+// * Castling is managed properly.
+// * Pawns get promoted.
+// * Illegal board positions (involving check) are thrown out.
+//
+byte spawnLeafBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const byte promoteTo) {
+
+	quadboard* qb = &(new->quad);
 
 	// To create a new board from a current board, first copy the current board's content to the new one.
 	memcpy((void*)new, (void*)old, sizeof(board));
 
 	// Now apply the change to the new board (i.e. move the piece from square "from" to square "to").
-	moveSquare(new->quad, from, to);
-	
+	moveSquare(qb, from, to);
+
+	// Change the turn on the new board.  To get the team that just moved, use old->whosTurn.
+	new->whosTurn = 1 - new->whosTurn;
+
+
+	// Now we can perform the legality check
+	// The checking map is useful exactly once, so we don't cache it.
 	//
-	// To see if it's still possible to castle, we track whether the relevant pieces have moved.
-	//
-	switch(from) {
-		case 0: 			new->piecesMoved |= WHITE_QUEENSIDE_CASTLE_MOVED; break;
-		case 4: 			new->piecesMoved |= WHITE_KING_MOVED; break;
-		case 7: 			new->piecesMoved |= WHITE_KINGSIDE_CASTLE_MOVED; break;
-		case 7 * 256 + 0: 	new->piecesMoved |= BLACK_QUEENSIDE_CASTLE_MOVED; break;
-		case 7 * 256 + 4: 	new->piecesMoved |= BLACK_KING_MOVED; break;
-		case 7 * 256 + 7: 	new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED; break;
+	if (!(getKings(new->quad, old->whosTurn) & generateCheckingMap(new->quad, new->whosTurn))) {
+		return BOARD_NOT_LEGAL;
 	}
 
+	
 	//
-	// Pawn promotion logic pt2 (takes the chosen promotion and applies it)
+	// Pawn promotion followup (takes the chosen promotion and applies it)
 	//
 	if (promoteTo > 0) {
-		resetSquares(new->quad, to);
+		resetSquares(qb, to);
 		switch(promoteTo) {
-			case QUEEN:  addQueens(new->quad, to);	break;
-			case ROOK:   addRooks(new->quad, to);	break;
-			case BISHOP: addBishops(new->quad, to);	break;
-			case KNIGHT: addKnights(new->quad, to);	break;
+			case QUEEN:  addQueens(qb, to, old->whosTurn);	break;
+			case ROOK:   addRooks(qb, to, old->whosTurn);	break;
+			case BISHOP: addBishops(qb, to, old->whosTurn);	break;
+			case KNIGHT: addKnights(qb, to, old->whosTurn);	break;
 		}
 	}
 
 	//
-	// Castling Logic pt2 (moves the castle over the king).
+	// Castling followup (moves the castle over the king).
 	//
-	if (getKings(b->whosTurn) & from) {
+	if (getKings(old->quad, old->whosTurn) & from) {
 		if (getFile(from) - getFile(to) == 2) {
 			// Kingside castle detected
-			moveSquare(new->quad, 1ULL, 4ULL);
+			moveSquare(qb, 1ULL, 4ULL);
 		}
 		else if (getFile(from) - getFile(to) == -2) {
 			// Queenside castle detected
-			moveSquare(new->quad, 128ULL, 16ULL);
+			moveSquare(qb, 128ULL, 16ULL);
 		}
 	}
 
-	//
-	// ============================================ CHANGE OF TURN ==================================================
-	//
-	b->whosTurn = 1 - whosTurn;
-	//
-	//
-	//
 
-	// We need this for checking to see if
-	//
-	// a) the move is even legal
-	// b) whether, in the next move, a castling move is allowed
-	//
-	new->enemyCheckingmap = generateCheckingMap(new->quad, 1 - b->whosTurn);
-
-	// Now we can perform the legality check
-	if (getKings(b->quad, b->whosTurn) & new->enemyCheckingmap) {
-		return BOARD_LEGAL;
-	}
-	else {
-		return BOARD_NOT_LEGAL;
-	}
-	
+	// Board passed the illegal check state test earlier, so board is legal.
+	return BOARD_LEGAL;
 }
 
+byte spawnFullBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const byte promoteTo) {
 
+	// First, spawn a leaf board, it will have all the tidying up and illegal position checks.
+	if (spawnLeafBoard(old, new, from, to, promoteTo) == BOARD_NOT_LEGAL) {
+		
+		// Board was found to be illegal, abort and notify caller.
+		return BOARD_NOT_LEGAL;
+	}
+
+	
+	// ------------------------------------------------------------------------------------
+	//
+	// Since this board is going to have future moves made against it, maintain a bit more
+	// state.  It's more expensive, but required for boards that actually get played on.
+	//
+	// The vast, vast majority of leaf boards never get spawnXXXBoard called on them,
+	// only the Chosen Ones do.
+	//
+	// ------------------------------------------------------------------------------------
+
+	
+	//
+	// To see if it's still possible to castle in the future, 
+	// we track whether the relevant pieces have moved.
+	//
+	switch(from) {
+		case 0: 			new->piecesMoved |= WHITE_QUEENSIDE_CASTLE_MOVED; 	break;
+		case 4: 			new->piecesMoved |= WHITE_KING_MOVED; 				break;
+		case 7: 			new->piecesMoved |= WHITE_KINGSIDE_CASTLE_MOVED; 	break;
+		case 7 * 256 + 0: 	new->piecesMoved |= BLACK_QUEENSIDE_CASTLE_MOVED; 	break;
+		case 7 * 256 + 4: 	new->piecesMoved |= BLACK_KING_MOVED; 				break;
+		case 7 * 256 + 7: 	new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED; 	break;
+	}
+
+
+	//
+	// We need this for checking to see if in the next move, a castling move is allowed
+	//
+	// NOTE: FOR LEAF BOARDS, THIS IS A NEEDLESS COST !!!!!
+	//
+	new->castlingCheckingMap = generateCheckingMap(new->quad, old->whosTurn);
+
+
+	// Board passed the illegal check state test earlier, so board is legal.
+	return BOARD_LEGAL;
+
+}

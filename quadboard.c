@@ -1,3 +1,6 @@
+#define WHITE ((byte)0)
+#define BLACK ((byte)1)
+
 #define PAWN 	((byte)1)	// 001
 #define ROOK 	((byte)2)	// 010
 #define KNIGHT 	((byte)3)	// 011
