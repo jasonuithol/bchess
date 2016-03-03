@@ -59,7 +59,7 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 		// However, if the attack wrapped around one of the vertical sides,
 		// then the modulo distance will be 7.
 		//
-		int moduloDistance = abs((trailingBit_Bitboard(attack) % 8) - (trailingBit_Bitboard(cursor) % 8));
+		int moduloDistance = abs(getFile(attack) - getFile(cursor));
 
 		// Are we still on the board ?
 		if (!attack || moduloDistance > 2) { // Anything larger than 2 is out.
@@ -132,7 +132,7 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 	// However, if the attack wrapped around one of the vertical sides,
 	// then the modulo distance will be 6-7.
 	//
-	int moduloDistance = abs((trailingBit_Bitboard(attack) % 8) - (trailingBit_Bitboard(cursor) % 8));
+	int moduloDistance = abs(getFile(attack) - getFile(cursor));
 
 	// Are we still on the board ?
 	if (!attack || moduloDistance > 2) { // Anything larger than 2 is out.

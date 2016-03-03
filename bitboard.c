@@ -38,3 +38,6 @@ int populationCount(const bitboard b) {
 	return __builtin_popcountll((unsigned long long)b);
 }
 
+offset getFile(const bitboard b) {
+	return trailingBit_Bitboard(b) & 7;
+}

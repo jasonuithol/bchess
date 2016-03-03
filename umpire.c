@@ -15,9 +15,6 @@
 #define BOARD_CHECKMATE (1)
 #define BOARD_STALEMATE (2)
 
-//#define boardAt(b,x,y) (b)->squares[(x)][(y)]
-//#define boardAtSq(b,sq) (b)->squares[(sq).x][(sq).y]
-
 typedef struct {
 	quadboard quad;
 	bitboard enemyCheckingmap; // Used to check castling rights.
@@ -48,10 +45,6 @@ bitboard generateCheckingMap(quadboard qb, int team) {
  		| multiPieceAttacks(getKnights(qb, team), softBlockers, 0ULL, nww | nnw |nne | nee, ATTACKMODE_SINGLE);
 }
 
-int isBoardLegal(board* b, int team) {
-	return & generateCheckingMap(b->quad, 1 - team);
-}
-
 void initBoard(board* b) {
 	
 	quadboard* qb = &(b->quad);
@@ -78,6 +71,7 @@ void initBoard(board* b) {
 
 	b->piecesMoved = 0;
 	b->whosTurn = WHITE;
+	b->enemyCheckingmap = generateCheckingMap(qb, b->whosTurn);
 }
 
 int spawnBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const int promoteTo) {
@@ -117,11 +111,11 @@ int spawnBoard(const board* const old, board* const new, const bitboard from, co
 	// Castling Logic pt2 (moves the castle over the king).
 	//
 	if (getKings(b->whosTurn) & from) {
-		if ((from % 8) - (to % 8) == 2) {
+		if (getFile(from) - getFile(to) == 2) {
 			// Kingside castle detected
 			moveSquare(new->quad, 1ULL, 4ULL);
 		}
-		else if ((from % 8) - (to % 8) == -2) {
+		else if (getFile(from) - getFile(to) == -2) {
 			// Queenside castle detected
 			moveSquare(new->quad, 128ULL, 16ULL);
 		}
@@ -153,41 +147,3 @@ int spawnBoard(const board* const old, board* const new, const bitboard from, co
 }
 
 
-
-int isSquareRangeChecked(const board* const b, const int xleft, const int xright, const int y, const byte team) {
-
-	moveList attacks;
-
-	// Get a list of opponent moves for nextBoard.
-	buildMoveList(&attacks, b, opponentOf(team), MODE_ATTACK_LIST);
-	
-	int j,x;
-	for (j = 0; j < attacks.ix; j++) {
-		for (x = xleft; x <= xright; x++) {
-			if (attacks.moves[j].to.x == x && attacks.moves[j].to.y == y) {
-				return 1;
-			}
-		}
-	}
-	return 0;
-	
-}
-
-int isCastlingMove(const board* const new, const move mv) {
-	
-	if (typeOf(boardAtSq(new,mv.to)) == KING && mv.from.x == 4) {  
-	
-		logg("Detected potential castling move\n");
-	
-		// Kingside Castle cleanup - i.e. move the kingside castle to it's new spot.
-		if (mv.to.x == 6) {
-			return KINGSIDE_CASTLE_MOVE;
-		}
-		
-		// Queenside Castle cleanup - i.e. move the queenside castle to it's new spot.
-		if (mv.to.x == 2) {
-			return QUEENSIDE_CASTLE_MOVE;
-		}
-	}
-	return NOT_A_CASTLE_MOVE;
-}
