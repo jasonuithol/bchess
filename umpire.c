@@ -80,14 +80,14 @@ void initBoard(board* b) {
 	b->whosTurn = WHITE;
 }
 
-int spawnBoard(const board* const old, board* const new, const bitboard from, const bitboard to) {
+int spawnBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const int promoteTo) {
 
 	// To create a new board from a current board, first copy the current board's content to the new one.
 	memcpy((void*)new, (void*)old, sizeof(board));
 
 	// Now apply the change to the new board (i.e. move the piece from square "from" to square "to").
 	moveSquare(new->quad, from, to);
-
+	
 	//
 	// To see if it's still possible to castle, we track whether the relevant pieces have moved.
 	//
@@ -103,38 +103,44 @@ int spawnBoard(const board* const old, board* const new, const bitboard from, co
 	//
 	// Pawn promotion logic pt2 (takes the chosen promotion and applies it)
 	//
-	if (mv.promoteTo > 0) {
-		boardAtSq(new,mv.to) = teamOf(boardAtSq(new,mv.to)) + mv.promoteTo;
+	if (promoteTo > 0) {
+		resetSquares(new->quad, to);
+		switch(promoteTo) {
+			case QUEEN:  addQueens(new->quad, to);	break;
+			case ROOK:   addRooks(new->quad, to);	break;
+			case BISHOP: addBishops(new->quad, to);	break;
+			case KNIGHT: addKnights(new->quad, to);	break;
+		}
 	}
 
-/*
 	//
 	// Castling Logic pt2 (moves the castle over the king).
 	//
-	switch(isCastlingMove(new, mv)) {
-		case NOT_A_CASTLE_MOVE: break;
-		case KINGSIDE_CASTLE_MOVE: 
-			logg("Detected KINGSIDE castle.  Fixing up position of castle\n");
-			// Castle moves from square [7, y] to [5, y].
-			boardAt(new,5,mv.to.y) = boardAt(new,7,mv.to.y); 
-			boardAt(new,7,mv.to.y) = 0;
-			break;
-		case QUEENSIDE_CASTLE_MOVE:
-			logg("Detected QUEENSIDE castle.  Fixing up position of castle\n");
-			// Castle moves from square [0, y] to [3, y].	
-			boardAt(new,3,mv.to.y) = boardAt(new,0,mv.to.y); 
-			boardAt(new,0,mv.to.y) = 0;
-			break;
-		default: break;
+	if (getKings(b->whosTurn) & from) {
+		if ((from % 8) - (to % 8) == 2) {
+			// Kingside castle detected
+			moveSquare(new->quad, 1ULL, 4ULL);
+		}
+		else if ((from % 8) - (to % 8) == -2) {
+			// Queenside castle detected
+			moveSquare(new->quad, 128ULL, 16ULL);
+		}
 	}
-*/
+
+	//
+	// ============================================ CHANGE OF TURN ==================================================
+	//
+	b->whosTurn = 1 - whosTurn;
+	//
+	//
+	//
 
 	// We need this for checking to see if
 	//
 	// a) the move is even legal
 	// b) whether, in the next move, a castling move is allowed
 	//
-	new->enemyCheckingmap = generateCheckingMap(new->quad, 1 - team);
+	new->enemyCheckingmap = generateCheckingMap(new->quad, 1 - b->whosTurn);
 
 	// Now we can perform the legality check
 	if (getKings(b->quad, b->whosTurn) & new->enemyCheckingmap) {
