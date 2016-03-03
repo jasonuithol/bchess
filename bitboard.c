@@ -105,26 +105,14 @@ coord leadingBit_Byte(const byte rankData) {
 	return (coord)__builtin_clz((unsigned int)rankData);
 }
 */
-
-offset leadingBit_Bitboard(const bitboard b) {
-	return (offset)__builtin_clzll((unsigned long long)rankData);
-}
-
-int populationCount(const bitboard b) {
-	return __builtin_popcountll((unsigned long long)b);
-}
-
-bitboard getNextPiece(const bitboard b) {
-	return 1 << leadingBit_Bitboard(b);
-}
-
-
 void printBB(const bitboard b) {
-	int i;
-	byte bit;
+
 	bitboard flipped = flipBoardVert(b);
-	for (i = 0; i < 64; i++) {
+
+	for (int i = 0; i < 64; i++) {
 		
+		byte bit;
+
 		// Mask, then shift down to equal 1 (or 0).
 		bit = (flipped & (1ULL << i)) >> i;
 		
@@ -137,29 +125,61 @@ void printBB(const bitboard b) {
 	}
 }
 
-void printQB(const quadboard* qb) {
-	int i;
-	byte team,type0,type1,type2;
-	for (i = 0; i < 64; i++) {
+offset trailingBit_Bitboard(const bitboard b) {
+/*	
+	unsigned long long nativeInputValue = (unsigned long long)b;
+	int nativeReturnValue = __builtin_ctzll(nativeInputValue);
+	offset actualReturnValue = (offset)nativeReturnValue;
+	printf("Trailing bit calculation[actualin 0x%" PRIx64 ", nativein 0x%llx, nativeout %d, actualout %u\n"
+	,b, nativeInputValue, nativeReturnValue, actualReturnValue); 
+	printf("Printing bitboard for native input\n");
+	printBB(b);
+	return actualReturnValue;
+*/
+	return (offset)__builtin_ctzll((unsigned long long)b);
+}
+
+int populationCount(const bitboard b) {
+	return __builtin_popcountll((unsigned long long)b);
+}
+
+bitboard getNextPiece(const bitboard b) {
+	return b ? 1ULL << trailingBit_Bitboard(b) : 0ULL;
+}
+
+
+
+
+void printQB(const quadboard qb) {
+	
+	for (int i = 0; i < 64; i++) {
+		
+		byte team,type0,type1,type2;
 		
 		// Mask, then shift down to equal 1 (or 0).
 		team = (qb.team & (1ULL << i)) >> i;
 		type0 = (qb.type0 & (1ULL << i)) >> i;
 		type1 = (qb.type1 & (1ULL << i)) >> i;
 		type2 = (qb.type2 & (1ULL << i)) >> i;
+
+		// We are int's because debugging.
+		int type = (type0 << 2) | (type1 << 1) | type2;
 		
-		byte type = (type0 << 2) | (type1 << 1) | type0;
-		char c = ' ';
+		char c = '?';
+
 		switch(type) {
-			case 0x001: c = 'P';
-			case 0x010: c = 'R';
-			case 0x011: c = 'N';
-			case 0x100: c = 'B';
-			case 0x101: c = 'Q';
-			case 0x100: c = 'K';
+			case 1: c = 'P'; break;		// 001
+			case 2: c = 'R'; break;		// 010
+			case 3: c = 'N'; break;		// 011
+			case 4: c = 'B'; break;		// 100
+			case 5: c = 'Q'; break;		// 101
+			case 6: c = 'K'; break;		// 110
+			default: c = ' '; break;	// 000, (and in theory, >= 111)
 		}
 
-		if (team) {
+		if (team && c != '?') {
+			// If BLACK, then decapitalise in order to tell the difference
+			// between the two teams.
 			c += 'a' - 'A';
 		}
 		
@@ -188,7 +208,7 @@ void addPawns(quadboard* qb, bitboard pieces, int team) {
 }
 
 bitboard getRooks(quadboard qb, int team) { // 010
-	return  (team ? ~qbteam : qbteam)
+	return  (team ? ~qb.team : qb.team)
 			& ~qb.type0 
 			&  qb.type1 
 			& ~qb.type2;
@@ -295,9 +315,6 @@ bitboard moveBitXY(bitboard val, int x, int y) {
 }
 */
 
-void clearBoard(board* const b) {
-	memset((void*)b, 0, sizeof(board));
-}
 
 /*
 bitboard unionTeamBoard(const teamboard tb) {
@@ -328,16 +345,41 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 		// Create attack bitboard by shifting the piece
 		// by the approprate vector offset.
 		//
-		bitboard attack = dir ? cursor << leadingBit_Bitboard(vector)
-							  : cursor >> leadingBit_Bitboard(vector);
+		printf("Applying sliding attack vector to cursor in direction %s, printing cursor and vector bitboards\n", direction ? "DOWN" : "UP");
+		printBB(cursor);
+		printf("\n");
+		printBB(vector);
+		
+		bitboard attack = direction ? cursor >> trailingBit_Bitboard(vector)  // DOWN
+							        : cursor << trailingBit_Bitboard(vector); // UP
 						  
+
+		printf("Showing calculated attack destination\n");
+		printBB(attack);
+		
+		// DEBUG ONLY
+		if (attack == 0) {
+			printf("Obtained zero from 0x%" PRIx64 " << %u\n", cursor, trailingBit_Bitboard(vector));
+		}
 									
+		// This is the difference in the fileIx of the attack and cursor positions.
+		// Normally it's 1 for sliding pieces.
+		// However, if the attack wrapped around one of the vertical sides,
+		// then the modulo distance will be 7.
+		//
+		int moduloDistance = abs((trailingBit_Bitboard(attack) % 8) - (trailingBit_Bitboard(cursor) % 8));
+
 		// Are we still on the board ?
-		if (!attack || (dir ? attack % 8 == 0 : attack % 8 == 7)) { 
+		if (!attack || moduloDistance > 2) { // Anything larger than 2 is out.
+											 // We say 2 to keep in line with
+											 // single attack calculation.
+
+			printf("We ran off the edge of the board, not adding attack to list.  Modulo distance %d.  Exiting sliding vector\n", moduloDistance);
 
 			// We ran off the edge of the board, kill the vector.
 			return attacks;
 			
+		}	
 		else {
 
 			// Add to the attack "list" (actually a bitboard)
@@ -346,6 +388,8 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 			// We are in attack list mode, so use the frenemies map
 			// to see if our vector is dead
 			if (frenemies & attack) {
+
+				printf("We ran into a frenemy, still adding attack to list.  Exiting sliding vector\n");
 				
 				// We hit someone, end the vector
 				return attacks;
@@ -361,23 +405,37 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 	
 }
 
-bitboard applySingleAttackVector(	const bitboard piece
+bitboard applySingleAttackVector(	const bitboard cursor,
 									const bitboard vector, 
 									const int direction) {
 
 	// Create attack bitboard by shifting the piece
 	// by the approprate vector offset.
 	//
-	bitboard attack = dir ? cursor << leadingBit_Bitboard(vector)
-						  : cursor >> leadingBit_Bitboard(vector);
-					  
-								
-	// Are we still on the board ?
-	if (!attack || (dir ? attack % 8 == 0 : attack % 8 == 7)) { 
+	printf("Applying single attack vector to cursor in direction %d (0=UP,1=DOWN), printing piece bitboard\n", direction);
+	printBB(cursor);
+	
+	bitboard attack = direction ? cursor >> trailingBit_Bitboard(vector)  // DOWN
+						        : cursor << trailingBit_Bitboard(vector); // UP
 
+					  
+	printf("Showing calculated attack destination\n");
+	printBB(attack);
+
+	// This is the difference in the fileIx of the attack and cursor positions.
+	// Normally it's 1 for kings, 1-2 for knights.
+	// However, if the attack wrapped around one of the vertical sides,
+	// then the modulo distance will be 6-7.
+	//
+	int moduloDistance = abs((trailingBit_Bitboard(attack) % 8) - (trailingBit_Bitboard(cursor) % 8));
+
+	// Are we still on the board ?
+	if (!attack || moduloDistance > 2) { // Anything larger than 2 is out.
+	
 		// We ran off the edge of the board, nothing to add.
 		return 0ULL;
 		
+	}	
 	else {
 
 		// Since we are in attack mode, just return this single attack
@@ -388,8 +446,11 @@ bitboard applySingleAttackVector(	const bitboard piece
 	
 }
 
+#define ATTACKMODE_SINGLE 	(0)
+#define ATTACKMODE_SLIDING 	(1)
+#define ATTACKMODE_PAWN 	(2)
 
-bitboard generateAttacks(bitboard pieces, bitboard frenemies, bitboard positiveVectors, int slidingAttacks) {
+bitboard pieceAttacks(bitboard pieces, bitboard frenemies, bitboard positiveVectors, int attackMode) {
 
 	// This is the bitboard we build up and then return.
 	bitboard attacks = 0ULL;
@@ -401,12 +462,18 @@ bitboard generateAttacks(bitboard pieces, bitboard frenemies, bitboard positiveV
 	bitboard piece = getNextPiece(pieces);
 
 	// There might be zero pieces, so check up front.
-	while (piece) { 
+	while (pieces) { 
+
+		printf("Entering new piece loop iteration, showing piece bitboard\n");
+		
+		printBB(piece);
 
 		// Since we only have positive vectors, do everything twice,
 		// but the second time, do it all backwards.
-		int dir;
-		for (dir = 0; dir < 2; dir ++) {
+		//
+		// 0=UP, 1=DOWN
+		//
+		for (int dir = 0; dir < 2; dir ++) {
 
 			// Create a new vector scratchlist.
 			bitboard vectorList = positiveVectors;
@@ -414,17 +481,31 @@ bitboard generateAttacks(bitboard pieces, bitboard frenemies, bitboard positiveV
 			// This actually gets the next single bit mask, not the next piece.  
 			// Rename the method to be generic
 			bitboard vector = getNextPiece(vectorList);
+			
+			printf("Pulled new vector off vectorList, showing vector bitboard\n");
+			printBB(vector);
 
 			// Iterating over the vectors.
 			do { 
 
 				// Grab all the attacks along this vector/dir combo.
-				if (slidingAttacks) {
+				if (attackMode == ATTACKMODE_SLIDING) {
+					printf("Applying sliding attack vector...");
 					attacks |= applySlidingAttackVector(piece, vector, frenemies, dir);
+					printf("DONE\n");
 				}
 				else {
+					// This applies to SINGLE and PAWN attack modes.
+					printf("Applying single attack vector...");
 					attacks |= applySingleAttackVector(piece, vector, dir);
+					printf("DONE\n");
 				}
+				
+				printf("Showing accumulated attacks bitboard\n");
+				printBB(attacks);
+				
+				// Remove vector from vectorList
+				vectorList &= ~vector;
 				
 				// Fetch the next vector (if any left).
 				vector = getNextPiece(vectorList);
@@ -432,15 +513,18 @@ bitboard generateAttacks(bitboard pieces, bitboard frenemies, bitboard positiveV
 			// Have we run out of vectors?
 			} while (vectorList);
 
+			// Don't do the backwards direction for pawns.
+			if (attackMode == ATTACKMODE_PAWN) {
+				break;
+			}
 
 		} // The forwards/backwards direction loop ends here
-		
 		
 		// Remove the piece from the pieces "list"
 		pieces &= ~piece;
 		
 		// Get the next piece, if any.
-		piece = getNextPiece(pieces)
+		piece = getNextPiece(pieces);
 		
 	} // exits when pieces "list" is empty
 
@@ -454,18 +538,49 @@ bitboard generateAttacks(board* b, int team) {
 
 	bitboard frenemies = getFrenemies(b->quad);
 	
-	bitboard queens  = getQueens(b->quad, team);
-	bitboard rooks   = getRooks(b->quad, team);
-	bitboard bishops = getBishops(b->quad, team);
-	bitboard knights = getKnights(b->quad, team);
-	bitboard kings   = getKings(b->quad, team);
+	printf("FRENEMIES bitboard\n");
+	printBB(frenemies);
+	
+	const bitboard queens  = getQueens(b->quad, team);
+	const bitboard rooks   = getRooks(b->quad, team);
+	const bitboard bishops = getBishops(b->quad, team);
+	const bitboard knights = getKnights(b->quad, team);
+	const bitboard kings   = getKings(b->quad, team);
+	const bitboard pawns   = getPawns(b->quad, team);
 
-	return 
-		  generateAttacks(queens,  frenemies, (1 << 7) | (1 << 8)  | (1 << 9)  | 1        , 1)
-		| generateAttacks(kings,   frenemies, (1 << 7) | (1 << 8)  | (1 << 9)  | 1        , 0)
-		| generateAttacks(rooks,   frenemies,            (1 << 8)              | 1        , 1)
-		| generateAttacks(bishops, frenemies, (1 << 7)             | (1 << 9)             , 1)
-		| generateAttacks(bishops, frenemies, (1 << 6) | (1 << 15) | (1 << 17) | (1 << 10), 0);
+	bitboard testpieces = 1ULL << 35;
+	printf("TEST PIECES bitboard\n");
+	printBB(testpieces);
+
+	// These are positive-only attack vectors for all pieces except KNIGHT.
+	const bitboard nw = 1ULL << 9;
+	const bitboard n  = 1ULL << 8;
+	const bitboard ne = 1ULL << 7;
+	const bitboard w  = 1ULL << 1;
+
+	// These are positive-only attack vectors for KNIGHT.
+	const bitboard nww = 1ULL << 6;
+	const bitboard nnw = 1ULL << 15;
+	const bitboard nne = 1ULL << 17;
+	const bitboard nee = 1ULL << 10;
+		
+	printf("TEST attack vectors\n");
+	printBB(nw|ne);
+	
+//	return pieceAttacks(pawns,   frenemies, nw     | ne    , 0);
+//	return pieceAttacks(kings,   frenemies, nw | n | ne | w, 0);
+//	return pieceAttacks(queens,  frenemies, nw | n | ne | w, 1);	
+//	return pieceAttacks(knights, frenemies, nww | nnw |nne | nee, 0);
+//	return pieceAttacks(pawns, frenemies, nw | ne, ATTACKMODE_PAWN);
+	
+
+	return
+		  pieceAttacks(queens,  frenemies, nw | n | ne | w, ATTACKMODE_SLIDING)
+		| pieceAttacks(rooks,   frenemies,      n      | w, ATTACKMODE_SLIDING)
+		| pieceAttacks(bishops, frenemies, nw     | ne    , ATTACKMODE_SLIDING)
+		| pieceAttacks(kings,   frenemies, nw | n | ne | w, ATTACKMODE_SINGLE)
+		| pieceAttacks(pawns,   frenemies, nw     | ne    , ATTACKMODE_PAWN)
+ 		| pieceAttacks(knights, frenemies, nww | nnw |nne | nee, ATTACKMODE_SINGLE);
 																
 																	
 }
@@ -484,35 +599,38 @@ int populationCount(const bitboard* const object, const int sizeInBitBoards) {
 
 */
 
-void clearQuadboard(quadboard* qb) {
-	qb->teams = 0ULL;
-	qb->type0 = 0ULL;
-	qb->type1 = 0ULL;
-	qb->type2 = 0ULL;
+
+void clearBoard(board* const b) {
+	memset((void*)b, 0, sizeof(board));
 }
 
 void initBoard(board* b) {
 	
-	setPawns(qb, 255 << (8 * 1), 0); // white
-	setPawns(qb, 255 << (8 * 6), 1); // black
-
-	setRooks(qb, 128 + 1,            0);
-	setRooks(qb, 128 + 1 << (8 * 7), 1);
-
-	setKnights(qb, 64 + 2, 0);
-	setKnights(qb, 64 + 2 << (8 * 7), 1);
-
-	setBishops(qb, 32 + 4, 0);
-	setBishops(qb, 32 + 4 << (8 * 7), 1);
-
-	setQueens(qb, 16, 0);
-	setQueens(qb, 16 << (8 * 7), 1);
+	quadboard* qb = &(b->quad);
 	
-	setKings(qb, 8, 0);
-	setKings(qb, 8 << (8 * 7), 0);
+	clearBoard(b);
+	
+	addPawns(qb, 255ULL << (8 * 1), 0); // white
+	addPawns(qb, 255ULL << (8 * 6), 1); // black
 
-	qb->piecesMoved = 0;
-	qb->whosTurn = 0; // WHITE
+	addRooks(qb, (128ULL + 1),            0);
+	addRooks(qb, (128ULL + 1) << (8 * 7), 1);
+
+	addKnights(qb, (64ULL + 2), 0);
+	addKnights(qb, (64ULL + 2) << (8 * 7), 1);
+
+	addBishops(qb, (32ULL + 4), 0);
+	addBishops(qb, (32ULL + 4) << (8 * 7), 1);
+
+	addKings(qb, 16ULL, 0);
+	addKings(qb, 16ULL << (8 * 7), 1);
+
+	addQueens(qb, 8ULL, 0);
+	addQueens(qb, 8ULL << (8 * 7), 1);
+	
+
+	b->piecesMoved = 0;
+	b->whosTurn = 0; // WHITE
 }
 
 
@@ -520,23 +638,35 @@ int main() {
 	board b;
 	initBoard(&b);
 	
-	printf("setBitXY 0,0 and 7,7: %" PRIx64 " %" PRIx64 "\n", setBitXY(0,0), setBitXY(7,7));
+//	printf("setBitXY 0,0 and 7,7: %" PRIx64 " %" PRIx64 "\n", setBitXY(0,0), setBitXY(7,7));
 	
-	int bbSize = sizeof(bitboard);
-	int ullSize = sizeof(unsigned long long);
-	int uiSize = sizeof(unsigned int);
+//	int bbSize = sizeof(bitboard);
+//	int ullSize = sizeof(unsigned long long);
+//	int uiSize = sizeof(unsigned int);	
+//	printf("Sizeof bitboard %d, sizeof unsigned long long %d, sizeof unsigned int %d\n", 
+//	       bbSize, ullSize, uiSize);
 	
-	printf("Sizeof bitboard %d, sizeof unsigned long long %d, sizeof unsigned int %d\n", 
-	       bbSize, ullSize, uiSize);
+//	printf("Number of pieces on the white teamboard %d\n", populationCount((bitboard*)&(b.white), sizeof(teamboard) / sizeof(bitboard) ));
 	
-	printf("Number of pieces on the white teamboard %d\n", populationCount((bitboard*)&(b.white), sizeof(teamboard) / sizeof(bitboard) ));
+//	printf("Value of white.bishops: %" PRIx64 "\n", b.white.bishops);
 	
-	printf("Value of white.bishops: %" PRIx64 "\n", b.white.bishops);
+	printf("8ULL << 7 = %lld\n", 8ULL << 7);
+	bitboard testb = 8;
+	offset testo = 7;
+	bitboard result = testb << testo;
+	printf("testb << test0 = %" PRId64 "\n", result);
+	printBB(result);
 	
-	printf("Showing the board with only the white king on it.\n\n");
-	printBB(b.white.king);
+	
+	printf("Showing the whole board\n\n");
+	printQB(b.quad);
 
-	printf("Showing the board with all the white pieces on it.\n\n");
-	printBB(unionTeamBoard(&(b.white)));
+	bitboard whiteAttacks = generateAttacks(&b, 0);
+	
+	printf("Print attack matrix for white\n\n");
+	printBB(whiteAttacks);
+	
+//	printf("Showing the board with all the white pieces on it.\n\n");
+//	printBB(unionTeamBoard(&(b.white)));
 	
 }
