@@ -329,7 +329,7 @@ bitboard getFrenemies(quadboard qb) {
 
 bitboard applySlidingAttackVector(	const bitboard piece, 
 									const bitboard vector, 
-									const bitboard frenemies, 
+									const bitboard softBlockers, 
 									const int direction) {
 
 	bitboard attacks = 0ULL;
@@ -385,11 +385,11 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 			// Add to the attack "list" (actually a bitboard)
 			attacks |= attack;
 			
-			// We are in attack list mode, so use the frenemies map
-			// to see if our vector is dead
-			if (frenemies & attack) {
+			// Hitting a soft block means we still add the attack to the list,
+			// but then kill the vector immediately after that.
+			if (softBlockers & attack) {
 
-				printf("We ran into a frenemy, still adding attack to list.  Exiting sliding vector\n");
+				printf("We ran into a soft blocker, still adding attack to list.  Exiting sliding vector\n");
 				
 				// We hit someone, end the vector
 				return attacks;
@@ -450,7 +450,7 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 #define ATTACKMODE_SLIDING 	(1)
 #define ATTACKMODE_PAWN 	(2)
 
-bitboard pieceAttacks(bitboard pieces, bitboard frenemies, bitboard positiveVectors, int attackMode) {
+bitboard pieceAttacks(bitboard pieces, bitboard softBlockers, bitboard positiveVectors, int attackMode) {
 
 	// This is the bitboard we build up and then return.
 	bitboard attacks = 0ULL;
@@ -491,7 +491,7 @@ bitboard pieceAttacks(bitboard pieces, bitboard frenemies, bitboard positiveVect
 				// Grab all the attacks along this vector/dir combo.
 				if (attackMode == ATTACKMODE_SLIDING) {
 					printf("Applying sliding attack vector...");
-					attacks |= applySlidingAttackVector(piece, vector, frenemies, dir);
+					attacks |= applySlidingAttackVector(piece, vector, softBlockers, dir);
 					printf("DONE\n");
 				}
 				else {
@@ -534,55 +534,36 @@ bitboard pieceAttacks(bitboard pieces, bitboard frenemies, bitboard positiveVect
 		
 }
 
+// These are positive-only attack vectors for all pieces except KNIGHT.
+const bitboard nw = 1ULL << 9;
+const bitboard n  = 1ULL << 8;
+const bitboard ne = 1ULL << 7;
+const bitboard w  = 1ULL << 1;
+
+// These are positive-only attack vectors for KNIGHT.
+const bitboard nww = 1ULL << 6;
+const bitboard nnw = 1ULL << 15;
+const bitboard nne = 1ULL << 17;
+const bitboard nee = 1ULL << 10;
+
 bitboard generateAttacks(board* b, int team) {
 
-	bitboard frenemies = getFrenemies(b->quad);
+	bitboard softBlockers = getFrenemies(b->quad);
 	
-	printf("FRENEMIES bitboard\n");
-	printBB(frenemies);
-	
-	const bitboard queens  = getQueens(b->quad, team);
-	const bitboard rooks   = getRooks(b->quad, team);
-	const bitboard bishops = getBishops(b->quad, team);
-	const bitboard knights = getKnights(b->quad, team);
-	const bitboard kings   = getKings(b->quad, team);
-	const bitboard pawns   = getPawns(b->quad, team);
-
-	bitboard testpieces = 1ULL << 35;
-	printf("TEST PIECES bitboard\n");
-	printBB(testpieces);
-
-	// These are positive-only attack vectors for all pieces except KNIGHT.
-	const bitboard nw = 1ULL << 9;
-	const bitboard n  = 1ULL << 8;
-	const bitboard ne = 1ULL << 7;
-	const bitboard w  = 1ULL << 1;
-
-	// These are positive-only attack vectors for KNIGHT.
-	const bitboard nww = 1ULL << 6;
-	const bitboard nnw = 1ULL << 15;
-	const bitboard nne = 1ULL << 17;
-	const bitboard nee = 1ULL << 10;
-		
-	printf("TEST attack vectors\n");
-	printBB(nw|ne);
-	
-//	return pieceAttacks(pawns,   frenemies, nw     | ne    , 0);
-//	return pieceAttacks(kings,   frenemies, nw | n | ne | w, 0);
-//	return pieceAttacks(queens,  frenemies, nw | n | ne | w, 1);	
-//	return pieceAttacks(knights, frenemies, nww | nnw |nne | nee, 0);
-//	return pieceAttacks(pawns, frenemies, nw | ne, ATTACKMODE_PAWN);
-	
-
 	return
-		  pieceAttacks(queens,  frenemies, nw | n | ne | w, ATTACKMODE_SLIDING)
-		| pieceAttacks(rooks,   frenemies,      n      | w, ATTACKMODE_SLIDING)
-		| pieceAttacks(bishops, frenemies, nw     | ne    , ATTACKMODE_SLIDING)
-		| pieceAttacks(kings,   frenemies, nw | n | ne | w, ATTACKMODE_SINGLE)
-		| pieceAttacks(pawns,   frenemies, nw     | ne    , ATTACKMODE_PAWN)
- 		| pieceAttacks(knights, frenemies, nww | nnw |nne | nee, ATTACKMODE_SINGLE);
-																
-																	
+		// SLIDING PIECES
+		  pieceAttacks(getQueens(b->quad, team),  softBlockers, nw | n | ne | w, ATTACKMODE_SLIDING)
+		| pieceAttacks(getRooks(b->quad, team),   softBlockers,      n      | w, ATTACKMODE_SLIDING)
+		| pieceAttacks(getBishops(b->quad, team), softBlockers, nw     | ne    , ATTACKMODE_SLIDING)
+		
+		// SINGLE AND PAWN PIECES
+		| pieceAttacks(getKings(b->quad, team),   softBlockers, nw | n | ne | w, ATTACKMODE_SINGLE)
+		| pieceAttacks(getPawns(b->quad, team),   softBlockers, nw     | ne    , ATTACKMODE_PAWN)
+ 		| pieceAttacks(getKnights(b->quad, team), softBlockers, nww | nnw |nne | nee, ATTACKMODE_SINGLE);
+}
+
+bitboard generateMoves(board* b, int team) {
+	
 }
 
 /*
