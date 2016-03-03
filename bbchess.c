@@ -9,10 +9,7 @@
 #include "quadboard.c"
 #include "board.c"
 #include "attacks.c"
-
-bitboard generateMoves(board* b, int team) {
-	
-}
+#include "umpire.c"
 
 
 int main() {
@@ -42,13 +39,13 @@ int main() {
 	printf("Showing the whole board\n\n");
 	printQB(b.quad);
 
-	bitboard whiteAttacks = generateAttacks(&b, WHITE);
-	printf("Print attack matrix for white\n\n");
+	bitboard whiteAttacks = generateCheckingMap(&b, WHITE);
+	printf("Print checking matrix for white\n\n");
 	printBB(whiteAttacks);
 	
 	
-//	printf("Print attack matrix for TEST\n\n");
-//	bitboard testAttacks = generateTestAttacks(&b);
+//	printf("Print checking matrix for TEST\n\n");
+//	bitboard testAttacks = generateTestCheckingMap(&b);
 //	printBB(testAttacks);
 	
 	

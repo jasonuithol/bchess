@@ -6,57 +6,7 @@
 // Move history located here too.
 //
 
-#define WHITE ((byte)0)
-#define BLACK ((byte)1)
 
-#define WHITE_QUEENSIDE_CASTLE_MOVED	128
-#define WHITE_KING_MOVED				64
-#define WHITE_KINGSIDE_CASTLE_MOVED		32
-#define BLACK_QUEENSIDE_CASTLE_MOVED	16
-#define BLACK_KING_MOVED				8
-#define BLACK_KINGSIDE_CASTLE_MOVED		4
-
-//#define boardAt(b,x,y) (b)->squares[(x)][(y)]
-//#define boardAtSq(b,sq) (b)->squares[(sq).x][(sq).y]
-
-typedef struct {
-	quadboard quad;
-	byte piecesMoved;  // KINGS and CASTLES tracked here.
-	byte whosTurn;     // 0 = WHITE, 1 = BLACK.
-} board;
-
-void clearBoard(board* const b) {
-	memset((void*)b, 0, sizeof(board));
-}
-
-void initBoard(board* b) {
-	
-	quadboard* qb = &(b->quad);
-	
-	clearBoard(b);
-	
-	addPawns(qb, 255ULL << (8 * 1), WHITE);
-	addPawns(qb, 255ULL << (8 * 6), BLACK);
-
-	addRooks(qb, (128ULL + 1),            WHITE);
-	addRooks(qb, (128ULL + 1) << (8 * 7), BLACK);
-
-	addKnights(qb, (64ULL + 2), WHITE);
-	addKnights(qb, (64ULL + 2) << (8 * 7), BLACK);
-
-	addBishops(qb, (32ULL + 4), WHITE);
-	addBishops(qb, (32ULL + 4) << (8 * 7), BLACK);
-
-	addKings(qb, 16ULL, WHITE);
-	addKings(qb, 16ULL << (8 * 7), BLACK);
-
-	addQueens(qb, 8ULL, WHITE);
-	addQueens(qb, 8ULL << (8 * 7), BLACK);
-	
-
-	b->piecesMoved = 0;
-	b->whosTurn = WHITE;
-}
 
 /*
 void pawnPromotionTest(board* b) {

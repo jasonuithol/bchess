@@ -16,12 +16,6 @@
 #define MODE_ATTACK_LIST (1)
 #define MODE_MOBILITY_LIST (2)
 
-#define BOARD_LEGAL (1)
-#define BOARD_NOT_LEGAL (0)
-
-#define BOARD_NORMAL (0)
-#define BOARD_CHECKMATE (1)
-#define BOARD_STALEMATE (2)
 
 
 
