@@ -6,12 +6,8 @@
 // Move history located here too.
 //
 
-typedef struct {
-	byte x;
-	byte y;
-} square;
-
-#define copySquare(copy,orig) (copy).x = (orig).x;(copy).y = (orig).y
+#define WHITE ((byte)0)
+#define BLACK ((byte)1)
 
 #define WHITE_QUEENSIDE_CASTLE_MOVED	128
 #define WHITE_KING_MOVED				64
@@ -20,42 +16,49 @@ typedef struct {
 #define BLACK_KING_MOVED				8
 #define BLACK_KINGSIDE_CASTLE_MOVED		4
 
+//#define boardAt(b,x,y) (b)->squares[(x)][(y)]
+//#define boardAtSq(b,sq) (b)->squares[(sq).x][(sq).y]
+
 typedef struct {
-	byte squares[8][8];
-	byte whosTurn;
-	byte piecesMoved;
+	quadboard quad;
+	byte piecesMoved;  // KINGS and CASTLES tracked here.
+	byte whosTurn;     // 0 = WHITE, 1 = BLACK.
 } board;
 
-#define boardAt(b,x,y) (b)->squares[(x)][(y)]
-#define boardAtSq(b,sq) (b)->squares[(sq).x][(sq).y]
+void clearBoard(board* const b) {
+	memset((void*)b, 0, sizeof(board));
+}
 
-void clearBoard(board* b) {
-	int x,y;
-	for (x = 0; x < 8; x++) {
-		for (y = 0; y < 8; y++) {
-			b->squares[x][y] = 0;
-		}
-	}
+void initBoard(board* b) {
+	
+	quadboard* qb = &(b->quad);
+	
+	clearBoard(b);
+	
+	addPawns(qb, 255ULL << (8 * 1), WHITE);
+	addPawns(qb, 255ULL << (8 * 6), BLACK);
+
+	addRooks(qb, (128ULL + 1),            WHITE);
+	addRooks(qb, (128ULL + 1) << (8 * 7), BLACK);
+
+	addKnights(qb, (64ULL + 2), WHITE);
+	addKnights(qb, (64ULL + 2) << (8 * 7), BLACK);
+
+	addBishops(qb, (32ULL + 4), WHITE);
+	addBishops(qb, (32ULL + 4) << (8 * 7), BLACK);
+
+	addKings(qb, 16ULL, WHITE);
+	addKings(qb, 16ULL << (8 * 7), BLACK);
+
+	addQueens(qb, 8ULL, WHITE);
+	addQueens(qb, 8ULL << (8 * 7), BLACK);
+	
+
 	b->piecesMoved = 0;
 	b->whosTurn = WHITE;
 }
 
-void crashTest(board* b) {
-	
-	clearBoard(b);
-	
-	boardAt(b,1,1) = WHITE + KING;
-	
-	boardAt(b,1,4) = BLACK + KING;
-	boardAt(b,2,3) = BLACK + PAWN;
-	boardAt(b,3,5) = BLACK + PAWN;
-	boardAt(b,4,2) = BLACK + QUEEN;
-	boardAt(b,5,4) = BLACK + BISHOP;
-	
-	b->whosTurn = BLACK;
-	b->piecesMoved = BLACK_KING_MOVED + WHITE_KING_MOVED;
-}
-
+/*
 void pawnPromotionTest(board* b) {
 	//
 	// Pawn Promotion Test
@@ -80,41 +83,6 @@ void pawnPromotionTest(board* b) {
 
 	b->whosTurn = WHITE;
 	b->piecesMoved = BLACK_KING_MOVED + WHITE_KING_MOVED;
-}
-
-void initBoard(board* b) {
-
-	b->squares[0][0] = WHITE + ROOK;
-	b->squares[1][0] = WHITE + KNIGHT;
-	b->squares[2][0] = WHITE + BISHOP;
-	b->squares[3][0] = WHITE + QUEEN;
-	b->squares[4][0] = WHITE + KING;
-	b->squares[5][0] = WHITE + BISHOP;
-	b->squares[6][0] = WHITE + KNIGHT;
-	b->squares[7][0] = WHITE + ROOK;
-
-	b->squares[0][7] = BLACK + ROOK;
-	b->squares[1][7] = BLACK + KNIGHT;
-	b->squares[2][7] = BLACK + BISHOP;
-	b->squares[3][7] = BLACK + QUEEN;
-	b->squares[4][7] = BLACK + KING;
-	b->squares[5][7] = BLACK + BISHOP;
-	b->squares[6][7] = BLACK + KNIGHT;
-	b->squares[7][7] = BLACK + ROOK;
-
-	int n;
-	for (n=0;n<8;n++) {
-		b->squares[n][1] = WHITE + PAWN;
-		b->squares[n][2] = 0;
-		b->squares[n][3] = 0;
-		b->squares[n][4] = 0;
-		b->squares[n][5] = 0;
-		b->squares[n][6] = BLACK + PAWN;
-	}
-
-	b->whosTurn = WHITE;
-	b->piecesMoved = 0;
-
 }
 
 void profilingBoard(board *b) {
@@ -178,29 +146,6 @@ void spawnBoard(const board* const old, board* const new, const square from, con
 
 }
 
-void printSquare(square s) {
-	print("[%d,%d]",s.x,s.y);
-}
-
-void printBoardToLog(const board* const b) {
-	int x,y;
-	byte p;
-	for(y=7;y>=0;y--) {
-		logg("-----------------------------------\n");
-		for (x=0;x<8;x++) {
-			p = b->squares[x][y];
-			logg("| ");
-			printPieceToLog(p);
-			logg(" ");
-		}
-		logg("|\n");
-	}
-	logg("-----------------------------------\n\n");
-	logg("Historical move flags: %d\n",b->piecesMoved);
-	logg("Who's turn ? %d\n", b->whosTurn);
-
-}
-
 void printBoardUnicode(board* b) {
 	int x,y;
 	byte p;
@@ -233,5 +178,5 @@ void printBoardUnicode(board* b) {
 	
 }
 
-
+*/
 

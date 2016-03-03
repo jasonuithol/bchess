@@ -6,18 +6,8 @@
 // here.  Also here are piece printing functions.
 //
 
-
 #define byte unsigned char
 
-#define WHITE ((byte)128)
-#define BLACK ((byte)64)
-
-#define KING 	((byte)63)
-#define QUEEN 	((byte)9)
-#define ROOK 	((byte)7)
-#define BISHOP 	((byte)5)
-#define KNIGHT 	((byte)3)
-#define PAWN 	((byte)1)
 
 
 byte teamOf(const byte p) {
@@ -112,7 +102,7 @@ void printPieceToLog(const byte p) {
 	logg("%c",typeChar);
 }
 
-// This routine now means that gcc must be invoked thus
+// This unicode printing routine now means that gcc must be invoked thus
 //
 // gcc -std=c99 bchess.c
 //
