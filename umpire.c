@@ -17,6 +17,11 @@ void clearBoard(board* const b) {
 	memset((void*)b, 0, sizeof(board));
 }
 
+// After one generates pawn moves, one must call this method to see if extra information
+// needs to be passed to spawnXXXBoard()
+byte isPawnPromotable(bitboard piece) {
+	return (piece < (1ULL << 8) || piece > (1ULL << 55));
+}
 
 //
 // All moves MUST be performed by this method to ensure that:

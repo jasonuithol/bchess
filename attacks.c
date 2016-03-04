@@ -284,10 +284,16 @@ bitboard generateRookMoves(bitboard piece, bitboard enemies, bitboard friends, i
 bitboard generateKnightMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
 	return singlePieceAttacks(piece, enemies, friends, knightAttacks, ATTACKMODE_SINGLE);
 }
+
+//
+// Generate a map of psuedolegal moves one piece can make - KING
+//
 bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, bitboard castlingCheckingMap, byte piecesMoved, int team) {
 
+	//
 	// Yes, nested functions.  I'm hoping the optimizer will respect
 	// that they're private and hence optimizable to heck and beyond.
+	//
 	byte castlingSquaresClear(bitboard castlingSquares) {
 		return !((enemies|friends|castlingCheckingMap) & castlingSquares);
 	}
@@ -296,9 +302,21 @@ bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, b
 		return !(piecesMoved & (WHITE_KING_MOVED | castleMoveFlag));
 	}
 
+	byte blackCanCastle(byte castleMoveFlag) {
+		return !(piecesMoved & (BLACK_KING_MOVED | castleMoveFlag));
+	}
+
+	// -----------------------------------------------------------------
+	//
+	// Outer method BEGINS HERE
+	//
+
 	// First of all, do the boring, ordinary 1 square moves.
 	bitboard kingMoves = singlePieceAttacks(piece, enemies, friends, kingAttacks, ATTACKMODE_SINGLE);
 
+	//
+	// Now check if there's any castling options available. 
+	//
 	if (team == WHITE) {
 		
 		// KINGSIDE CASTLING - WHITE
@@ -329,10 +347,11 @@ bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, b
 	return kingMoves;
 }
 
+
 //
 // Generate a map of psuedolegal moves one piece can make - PAWN
 //
-bitboard generatePawnMoves(bitboard piece, bitboard softBlockers, bitboard hardBlockers, int team) {
+bitboard generatePawnMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
 
 	// Diagonal moves. We skip the wrapper methods which do zero checking
 	// and optimise by directly calling the target method.
@@ -340,30 +359,37 @@ bitboard generatePawnMoves(bitboard piece, bitboard softBlockers, bitboard hardB
 	// It is recommended to do all pawn moves last so that CPU branch prediction
 	// has an easier time of things.
 	//
-	bitboard takingMoves = applySingleAttackVector(piece, ne, hardBlockers, DIRECTION_UP)
+	bitboard takingMoves = applySingleAttackVector(piece, ne, friends, DIRECTION_UP)
 						   |
-						   applySingleAttackVector(piece, nw, hardBlockers, DIRECTION_UP);
+						   applySingleAttackVector(piece, nw, friends, DIRECTION_UP);
 
 	// Only squares with enemy pieces on them can be moved into diagonally.
 	takingMoves &= softBlockers;
 
 	// 1 square move
-	bitboard nonTakingMoves = applySingleAttackVector(piece, n, hardBlockers, DIRECTION_UP);
+	bitboard nonTakingMoves = applySingleAttackVector(piece, n, friends, DIRECTION_UP);
 
 	// Pawns cannot "take" enemies when going straight forward.
-	nonTakingMoves &= ~softBlockers;
+	nonTakingMoves &= ~enemies;
 
 	// Check to see if our pawn is on it's original rank.
-	if (nonTakingMoves && (team == WHITE && piece < (1ULL << 16)) || (team == BLACK && piece > (1ULL << 55))) {
+	if (nonTakingMoves && (team == WHITE && piece < (1ULL << 16)) || (team == BLACK && piece > (1ULL << 47))) {
 
 		// First move, and nothing hardBlocked OR softBlocked the 1 square move
 		// - therefore can try to move two squares.	
-		nonTakingMoves |= applySingleAttackVector(piece, n, hardBlockers, DIRECTION_UP);
+		nonTakingMoves |= applySingleAttackVector(piece, n, friends, DIRECTION_UP);
 		
 		// Pawns cannot "take" enemies when going straight forward.
-		nonTakingMoves &= ~softBlockers;
+		nonTakingMoves &= ~enemies;
 		
 	}
+	
+	//
+	// NOTE: Unlike the old version, the pawn move generator cares nothing for pawn promotion.
+	//       As far as it knows, the pawn hits the back rank and that's the end of it.
+	//
+	//       The AI and human ask the umpire if a pawn promotion is needed.
+	//
 	
 	return takingMoves | nonTakingMoves;
 }
@@ -373,18 +399,19 @@ bitboard generatePawnMoves(bitboard piece, bitboard softBlockers, bitboard hardB
 //
 bitboard generateCheckingMap(quadboard qb, byte team) {
 
-	bitboard softBlockers = getFrenemies(qb);
+	// Everyone is a Soft Blocker when generating a checking map.
+	const bitboard frenemies = getFrenemies(qb);
 	
 	return
 		// SLIDING PIECES
-		  multiPieceAttacks(getQueens(qb, team),  softBlockers, 0ULL, queenAttacks, ATTACKMODE_SLIDING)
-		| multiPieceAttacks(getRooks(qb, team),   softBlockers, 0ULL, rookAttacks, ATTACKMODE_SLIDING)
-		| multiPieceAttacks(getBishops(qb, team), softBlockers, 0ULL, bishopAttacks, ATTACKMODE_SLIDING)
+		  multiPieceAttacks(getQueens(qb, team),  frenemies, 0ULL, queenAttacks, ATTACKMODE_SLIDING)
+		| multiPieceAttacks(getRooks(qb, team),   frenemies, 0ULL, rookAttacks, ATTACKMODE_SLIDING)
+		| multiPieceAttacks(getBishops(qb, team), frenemies, 0ULL, bishopAttacks, ATTACKMODE_SLIDING)
 		
 		// SINGLE AND PAWN PIECES
-		| multiPieceAttacks(getKings(qb, team),   softBlockers, 0ULL, kingAttacks, ATTACKMODE_SINGLE)
-		| multiPieceAttacks(getPawns(qb, team),   softBlockers, 0ULL, nw | ne, ATTACKMODE_PAWN)
- 		| multiPieceAttacks(getKnights(qb, team), softBlockers, 0ULL, knightAttacks, ATTACKMODE_SINGLE);
+		| multiPieceAttacks(getKings(qb, team),   frenemies, 0ULL, kingAttacks, ATTACKMODE_SINGLE)
+		| multiPieceAttacks(getPawns(qb, team),   frenemies, 0ULL, nw | ne, ATTACKMODE_PAWN)
+ 		| multiPieceAttacks(getKnights(qb, team), frenemies, 0ULL, knightAttacks, ATTACKMODE_SINGLE);
 }
 
 bitboard generateTestCheckingMap(quadboard qb) {
