@@ -39,7 +39,7 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 									const bitboard vector, 
 									const bitboard softBlockers, 
 									const bitboard hardBlockers, 
-									const int direction) {
+									const byte direction) {
 
 	bitboard attacks = 0ULL;
 
@@ -77,7 +77,7 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 		// However, if the attack wrapped around one of the vertical sides,
 		// then the modulo distance will be 7.
 		//
-		int moduloDistance = abs(getFile(attack) - getFile(cursor));
+		offset moduloDistance = abs(getFile(attack) - getFile(cursor));
 
 		// Are we still on the board ?
 		if (!attack || moduloDistance > 2) { // Anything larger than 2 is out.
@@ -130,7 +130,7 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 bitboard applySingleAttackVector(	const bitboard cursor,
 									const bitboard vector, 
 									const bitboard hardBlockers, 
-									const int direction) {
+									const byte direction) {
 
 	// Create attack bitboard by shifting the piece
 	// by the approprate vector offset.
@@ -150,7 +150,7 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 	// However, if the attack wrapped around one of the vertical sides,
 	// then the modulo distance will be 6-7.
 	//
-	int moduloDistance = abs(getFile(attack) - getFile(cursor));
+	offset moduloDistance = abs(getFile(attack) - getFile(cursor));
 
 	// Are we still on the board ?
 	if (!attack || moduloDistance > 2) { // Anything larger than 2 is out.
@@ -179,7 +179,7 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 	
 }
 
-bitboard singlePieceAttacks(bitboard piece, bitboard softBlockers, bitboard hardBlockers, bitboard positiveVectors, int attackMode) {
+bitboard singlePieceAttacks(bitboard piece, bitboard softBlockers, bitboard hardBlockers, bitboard positiveVectors, byte attackMode) {
 
 	// This is the bitboard we build up and then return.
 	bitboard attacks = 0ULL;
@@ -189,7 +189,7 @@ bitboard singlePieceAttacks(bitboard piece, bitboard softBlockers, bitboard hard
 	//
 	// 0=UP, 1=DOWN
 	//
-	for (int dir = 0; dir < 2; dir ++) {
+	for (byte dir = 0; dir < 2; dir ++) {
 
 		// Create a new vector scratchlist.
 		iterator vector = { 0ULL, positiveVectors };
@@ -235,7 +235,7 @@ bitboard singlePieceAttacks(bitboard piece, bitboard softBlockers, bitboard hard
 	return attacks;
 }
 
-bitboard multiPieceAttacks(bitboard pieces, bitboard softBlockers, bitboard hardBlockers, bitboard positiveVectors, int attackMode) {
+bitboard multiPieceAttacks(bitboard pieces, bitboard softBlockers, bitboard hardBlockers, bitboard positiveVectors, byte attackMode) {
 
 	// This is the bitboard we build up and then return.
 	bitboard attacks = 0ULL;
@@ -272,23 +272,23 @@ bitboard multiPieceAttacks(bitboard pieces, bitboard softBlockers, bitboard hard
 //
 // Generate a map of psuedolegal moves one piece can make - EVERYTHING EXCEPT PAWNS
 //
-bitboard generateQueenMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
+bitboard generateQueenMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
 	return singlePieceAttacks(piece, enemies, friends, queenAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateBishopMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
+bitboard generateBishopMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
 	return singlePieceAttacks(piece, enemies, friends, bishopAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateRookMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
+bitboard generateRookMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
 	return singlePieceAttacks(piece, enemies, friends, rookAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateKnightMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
+bitboard generateKnightMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
 	return singlePieceAttacks(piece, enemies, friends, knightAttacks, ATTACKMODE_SINGLE);
 }
 
 //
 // Generate a map of psuedolegal moves one piece can make - KING
 //
-bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, bitboard castlingCheckingMap, byte piecesMoved, int team) {
+bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, bitboard castlingCheckingMap, byte piecesMoved, byte team) {
 
 	//
 	// Yes, nested functions.  I'm hoping the optimizer will respect
@@ -351,7 +351,7 @@ bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, b
 //
 // Generate a map of psuedolegal moves one piece can make - PAWN
 //
-bitboard generatePawnMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
+bitboard generatePawnMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
 
 	// Diagonal moves. We skip the wrapper methods which do zero checking
 	// and optimise by directly calling the target method.
@@ -364,7 +364,7 @@ bitboard generatePawnMoves(bitboard piece, bitboard enemies, bitboard friends, i
 						   applySingleAttackVector(piece, nw, friends, DIRECTION_UP);
 
 	// Only squares with enemy pieces on them can be moved into diagonally.
-	takingMoves &= softBlockers;
+	takingMoves &= enemies;
 
 	// 1 square move
 	bitboard nonTakingMoves = applySingleAttackVector(piece, n, friends, DIRECTION_UP);
