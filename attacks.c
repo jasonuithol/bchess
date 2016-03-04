@@ -1,3 +1,10 @@
+#define WHITE_QUEENSIDE_CASTLE_MOVED	128
+#define WHITE_KING_MOVED				64
+#define WHITE_KINGSIDE_CASTLE_MOVED		32
+#define BLACK_QUEENSIDE_CASTLE_MOVED	16
+#define BLACK_KING_MOVED				8
+#define BLACK_KINGSIDE_CASTLE_MOVED		4
+
 #define ATTACKMODE_SINGLE 	(0)
 #define ATTACKMODE_SLIDING 	(1)
 #define ATTACKMODE_PAWN 	(2)
@@ -6,16 +13,27 @@
 #define DIRECTION_DOWN	(1)
 
 // These are positive-only attack vectors for all pieces except KNIGHT.
-const bitboard nw = 1ULL << 9;
-const bitboard n  = 1ULL << 8;
-const bitboard ne = 1ULL << 7;
-const bitboard w  = 1ULL << 1;
+#define nw (1ULL << 9)
+#define n  (1ULL << 8)
+#define ne (1ULL << 7)
+#define w  (1ULL << 1)
 
 // These are positive-only attack vectors for KNIGHT.
-const bitboard nww = 1ULL << 6;
-const bitboard nnw = 1ULL << 15;
-const bitboard nne = 1ULL << 17;
-const bitboard nee = 1ULL << 10;
+#define nww (1ULL << 6)
+#define nnw (1ULL << 15)
+#define nne (1ULL << 17)
+#define nee (1ULL << 10)
+
+const bitboard queenAttacks 	= nw | n | ne | w;
+const bitboard bishopAttacks 	= nw | ne;
+const bitboard rookAttacks 		= n  | w;    
+const bitboard kingAttacks 		= nw | n | ne | w;
+const bitboard knightAttacks	= nww | nnw |nne | nee;
+// Pawns are special.  Verrrry special.
+
+
+
+
 
 bitboard applySlidingAttackVector(	const bitboard piece, 
 									const bitboard vector, 
@@ -254,82 +272,61 @@ bitboard multiPieceAttacks(bitboard pieces, bitboard softBlockers, bitboard hard
 //
 // Generate a map of psuedolegal moves one piece can make - EVERYTHING EXCEPT PAWNS
 //
-bitboard generateQueenMoves(bitboard piece, bitboard softBlockers, bitboard hardBlockers, int team) {
-	return singlePieceAttacks(piece, softBlockers, hardBlockers, nw | n | ne | w, ATTACKMODE_SLIDING);
+bitboard generateQueenMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
+	return singlePieceAttacks(piece, enemies, friends, queenAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateBishopMoves(bitboard piece, bitboard softBlockers, bitboard hardBlockers, int team) {
-	return singlePieceAttacks(piece, softBlockers, hardBlockers,      n      | w, ATTACKMODE_SLIDING);
+bitboard generateBishopMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
+	return singlePieceAttacks(piece, enemies, friends, bishopAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateRookMoves(bitboard piece, bitboard softBlockers, bitboard hardBlockers, int team) {
-	return singlePieceAttacks(piece, softBlockers, hardBlockers, nw     | ne    , ATTACKMODE_SLIDING);
+bitboard generateRookMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
+	return singlePieceAttacks(piece, enemies, friends, rookAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateKnightMoves(bitboard piece, bitboard softBlockers, bitboard hardBlockers, int team) {
-	return singlePieceAttacks(piece, softBlockers, hardBlockers, nww | nnw |nne | nee, ATTACKMODE_SINGLE);
+bitboard generateKnightMoves(bitboard piece, bitboard enemies, bitboard friends, int team) {
+	return singlePieceAttacks(piece, enemies, friends, knightAttacks, ATTACKMODE_SINGLE);
 }
-bitboard generateKingMoves(bitboard piece, bitboard softBlockers, bitboard hardBlockers, bitboard enemyCheckmap, int team) {
-	return singlePieceAttacks(piece, softBlockers, hardBlockers, nww | nnw |nne | nee, ATTACKMODE_SINGLE);
-	
-	//
-	// TODO: Add castling moves here.
-	//
-	
-/*
- 
- 
-				//
-				// Make a list of all the castling options still available at this point.
-				//
-				int whiteQueenside = b->piecesMoved & (WHITE_QUEENSIDE_CASTLE_MOVED | WHITE_KING_MOVED);
-				int blackQueenside = b->piecesMoved & (BLACK_QUEENSIDE_CASTLE_MOVED | BLACK_KING_MOVED);
-				int whiteKingside = b->piecesMoved & (WHITE_KINGSIDE_CASTLE_MOVED | WHITE_KING_MOVED);
-				int blackKingside = b->piecesMoved & (BLACK_KINGSIDE_CASTLE_MOVED | BLACK_KING_MOVED);
+bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, bitboard castlingCheckingMap, byte piecesMoved, int team) {
 
-						
-				if ((team == WHITE && whiteQueenside == 0) || (team == BLACK && blackQueenside == 0)) {
+	// Yes, nested functions.  I'm hoping the optimizer will respect
+	// that they're private and hence optimizable to heck and beyond.
+	byte castlingSquaresClear(bitboard castlingSquares) {
+		return !((enemies|friends|castlingCheckingMap) & castlingSquares);
+	}
 
-					//
-					// Able to castle now, but first check for ugly stuff.
-					//
-					
-					// Check that the intervening squares are clear of pieces.
-					if (boardAt(b,1,y) == 0 && boardAt(b,2,y) == 0 && boardAt(b,3,y) == 0) {
-						
-						// Check that none of the squares from the castle to the king inclusive are checked.
-						if (!isSquareRangeChecked(b, 0, 4, y, b->whosTurn)) {
-							
-							// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
-							// The castle doesn't need to move when this move is being added to list of moves,
-							// but will need to move should the move actually be played on a board.
-							addAction(mvs,2,y);
-						}
-					}
-					
-				}
-				
-				if ((team == WHITE && whiteKingside == 0) || (team == BLACK && blackKingside == 0)) {
+	byte whiteCanCastle(byte castleMoveFlag) {
+		return !(piecesMoved & (WHITE_KING_MOVED | castleMoveFlag));
+	}
 
-					//
-					// Able to castle now, but first check for ugly stuff.
-					//
-										
-					// Check that the intervening squares are clear of pieces.
-					if (boardAt(b,5,y) == 0 && boardAt(b,6,y) == 0) {
-					
-						// Check that none of the squares from the king to the castle inclusive are checked.
-						if (!isSquareRangeChecked(b, 4, 7, y, b->whosTurn)) {
-							
-							// makeMove (but not addMove) will recognise a King moving two squares and will take care of moving the castle for us.
-							// The castle doesn't need to move when this move is being added to list of moves,
-							// but will need to move should the move actually be played on a board.
-							addAction(mvs,6,y);
-						}
-					}
-				}
-			}
- 
-  
- */	
+	// First of all, do the boring, ordinary 1 square moves.
+	bitboard kingMoves = singlePieceAttacks(piece, enemies, friends, kingAttacks, ATTACKMODE_SINGLE);
+
+	if (team == WHITE) {
+		
+		// KINGSIDE CASTLING - WHITE
+		if (castlingSquaresClear(15ULL) && whiteCanCastle(WHITE_KINGSIDE_CASTLE_MOVED)) {
+			kingMoves |= applySingleAttackVector(piece, 2ULL, friends, DIRECTION_DOWN);
+		}
+
+		// QUEENSIDE CASTLING - WHITE
+		if (castlingSquaresClear(31ULL << 3) && whiteCanCastle(WHITE_QUEENSIDE_CASTLE_MOVED)) {
+			kingMoves |= applySingleAttackVector(piece, 2ULL, friends, DIRECTION_UP);
+		}
+
+	}
+	else {
+
+		// KINGSIDE CASTLING - BLACK
+		if (castlingSquaresClear(15ULL) && blackCanCastle(BLACK_KINGSIDE_CASTLE_MOVED)) {
+			kingMoves |= applySingleAttackVector(piece, 2ULL, friends, DIRECTION_UP);
+		}
+
+		// QUEENSIDE CASTLING - BLACK
+		if (castlingSquaresClear(31ULL << 3) && whiteCanCastle(BLACK_QUEENSIDE_CASTLE_MOVED)) {
+			kingMoves |= applySingleAttackVector(piece, 2ULL, friends, DIRECTION_DOWN);
+		}
+		
+	}
 	
+	return kingMoves;
 }
 
 //
@@ -337,7 +334,12 @@ bitboard generateKingMoves(bitboard piece, bitboard softBlockers, bitboard hardB
 //
 bitboard generatePawnMoves(bitboard piece, bitboard softBlockers, bitboard hardBlockers, int team) {
 
-	// Diagonal moves
+	// Diagonal moves. We skip the wrapper methods which do zero checking
+	// and optimise by directly calling the target method.
+	//
+	// It is recommended to do all pawn moves last so that CPU branch prediction
+	// has an easier time of things.
+	//
 	bitboard takingMoves = applySingleAttackVector(piece, ne, hardBlockers, DIRECTION_UP)
 						   |
 						   applySingleAttackVector(piece, nw, hardBlockers, DIRECTION_UP);
@@ -351,6 +353,7 @@ bitboard generatePawnMoves(bitboard piece, bitboard softBlockers, bitboard hardB
 	// Pawns cannot "take" enemies when going straight forward.
 	nonTakingMoves &= ~softBlockers;
 
+	// Check to see if our pawn is on it's original rank.
 	if (nonTakingMoves && (team == WHITE && piece < (1ULL << 16)) || (team == BLACK && piece > (1ULL << 55))) {
 
 		// First move, and nothing hardBlocked OR softBlocked the 1 square move
@@ -365,6 +368,24 @@ bitboard generatePawnMoves(bitboard piece, bitboard softBlockers, bitboard hardB
 	return takingMoves | nonTakingMoves;
 }
 
+//
+// Returns a map of all squares in check.
+//
+bitboard generateCheckingMap(quadboard qb, byte team) {
+
+	bitboard softBlockers = getFrenemies(qb);
+	
+	return
+		// SLIDING PIECES
+		  multiPieceAttacks(getQueens(qb, team),  softBlockers, 0ULL, queenAttacks, ATTACKMODE_SLIDING)
+		| multiPieceAttacks(getRooks(qb, team),   softBlockers, 0ULL, rookAttacks, ATTACKMODE_SLIDING)
+		| multiPieceAttacks(getBishops(qb, team), softBlockers, 0ULL, bishopAttacks, ATTACKMODE_SLIDING)
+		
+		// SINGLE AND PAWN PIECES
+		| multiPieceAttacks(getKings(qb, team),   softBlockers, 0ULL, kingAttacks, ATTACKMODE_SINGLE)
+		| multiPieceAttacks(getPawns(qb, team),   softBlockers, 0ULL, nw | ne, ATTACKMODE_PAWN)
+ 		| multiPieceAttacks(getKnights(qb, team), softBlockers, 0ULL, knightAttacks, ATTACKMODE_SINGLE);
+}
 
 bitboard generateTestCheckingMap(quadboard qb) {
 	bitboard softBlockers = getFrenemies(qb);

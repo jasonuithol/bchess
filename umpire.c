@@ -1,9 +1,3 @@
-#define WHITE_QUEENSIDE_CASTLE_MOVED	128
-#define WHITE_KING_MOVED				64
-#define WHITE_KINGSIDE_CASTLE_MOVED		32
-#define BLACK_QUEENSIDE_CASTLE_MOVED	16
-#define BLACK_KING_MOVED				8
-#define BLACK_KINGSIDE_CASTLE_MOVED		4
 
 #define BOARD_LEGAL (1)
 #define BOARD_NOT_LEGAL (0)
@@ -23,53 +17,6 @@ void clearBoard(board* const b) {
 	memset((void*)b, 0, sizeof(board));
 }
 
-//
-// Returns a map of all squares in check.
-//
-bitboard generateCheckingMap(quadboard qb, byte team) {
-
-	bitboard softBlockers = getFrenemies(qb);
-	
-	return
-		// SLIDING PIECES
-		  multiPieceAttacks(getQueens(qb, team),  softBlockers, 0ULL, nw | n | ne | w, ATTACKMODE_SLIDING)
-		| multiPieceAttacks(getRooks(qb, team),   softBlockers, 0ULL,      n      | w, ATTACKMODE_SLIDING)
-		| multiPieceAttacks(getBishops(qb, team), softBlockers, 0ULL, nw     | ne    , ATTACKMODE_SLIDING)
-		
-		// SINGLE AND PAWN PIECES
-		| multiPieceAttacks(getKings(qb, team),   softBlockers, 0ULL, nw | n | ne | w, ATTACKMODE_SINGLE)
-		| multiPieceAttacks(getPawns(qb, team),   softBlockers, 0ULL, nw     | ne    , ATTACKMODE_PAWN)
- 		| multiPieceAttacks(getKnights(qb, team), softBlockers, 0ULL, nww | nnw |nne | nee, ATTACKMODE_SINGLE);
-}
-
-void initBoard(board* b) {
-	
-	quadboard* qb = &(b->quad);
-	
-	clearBoard(b);
-	
-	addPawns(qb, 255ULL << (8 * 1), WHITE);
-	addPawns(qb, 255ULL << (8 * 6), BLACK);
-
-	addRooks(qb, (128ULL + 1),            WHITE);
-	addRooks(qb, (128ULL + 1) << (8 * 7), BLACK);
-
-	addKnights(qb, (64ULL + 2), WHITE);
-	addKnights(qb, (64ULL + 2) << (8 * 7), BLACK);
-
-	addBishops(qb, (32ULL + 4), WHITE);
-	addBishops(qb, (32ULL + 4) << (8 * 7), BLACK);
-
-	addKings(qb, 16ULL, WHITE);
-	addKings(qb, 16ULL << (8 * 7), BLACK);
-
-	addQueens(qb, 8ULL, WHITE);
-	addQueens(qb, 8ULL << (8 * 7), BLACK);
-
-	b->piecesMoved = 0;
-	b->whosTurn = WHITE;
-	b->castlingCheckingMap = generateCheckingMap(b->quad, 1- b->whosTurn);
-}
 
 //
 // All moves MUST be performed by this method to ensure that:
@@ -132,6 +79,17 @@ byte spawnLeafBoard(const board* const old, board* const new, const bitboard fro
 	return BOARD_LEGAL;
 }
 
+
+//
+// When an AI or human chooses a move to play, use this method.
+// If an AI is pondering a move higher than leaf level, also use this method.
+//
+// Since this board is going to have future moves made against it, maintain a bit more
+// state.  It's more expensive, but required for boards that actually get played on.
+//
+// The vast, vast majority of leaf boards never get spawnXXXBoard called on them,
+// only the Chosen Ones do. Use spawnLeafBoard for leaf boards.
+//
 byte spawnFullBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const byte promoteTo) {
 
 	// First, spawn a leaf board, it will have all the tidying up and illegal position checks.
@@ -140,18 +98,6 @@ byte spawnFullBoard(const board* const old, board* const new, const bitboard fro
 		// Board was found to be illegal, abort and notify caller.
 		return BOARD_NOT_LEGAL;
 	}
-
-	
-	// ------------------------------------------------------------------------------------
-	//
-	// Since this board is going to have future moves made against it, maintain a bit more
-	// state.  It's more expensive, but required for boards that actually get played on.
-	//
-	// The vast, vast majority of leaf boards never get spawnXXXBoard called on them,
-	// only the Chosen Ones do.
-	//
-	// ------------------------------------------------------------------------------------
-
 	
 	//
 	// To see if it's still possible to castle in the future, 
@@ -179,3 +125,33 @@ byte spawnFullBoard(const board* const old, board* const new, const bitboard fro
 	return BOARD_LEGAL;
 
 }
+
+void initBoard(board* b) {
+	
+	quadboard* qb = &(b->quad);
+	
+	clearBoard(b);
+	
+	addPawns(qb, 255ULL << (8 * 1), WHITE);
+	addPawns(qb, 255ULL << (8 * 6), BLACK);
+
+	addRooks(qb, (128ULL + 1),            WHITE);
+	addRooks(qb, (128ULL + 1) << (8 * 7), BLACK);
+
+	addKnights(qb, (64ULL + 2), WHITE);
+	addKnights(qb, (64ULL + 2) << (8 * 7), BLACK);
+
+	addBishops(qb, (32ULL + 4), WHITE);
+	addBishops(qb, (32ULL + 4) << (8 * 7), BLACK);
+
+	addKings(qb, 16ULL, WHITE);
+	addKings(qb, 16ULL << (8 * 7), BLACK);
+
+	addQueens(qb, 8ULL, WHITE);
+	addQueens(qb, 8ULL << (8 * 7), BLACK);
+
+	b->piecesMoved = 0;
+	b->whosTurn = WHITE;
+	b->castlingCheckingMap = generateCheckingMap(b->quad, 1 - b->whosTurn);
+}
+
