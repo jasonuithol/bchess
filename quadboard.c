@@ -15,6 +15,13 @@ typedef struct {
 	bitboard type2;
 } quadboard;
 
+
+//
+// For generic getXXXX methods, where XXX is a pieceType.
+//
+typedef offset (*getterFuncPtr)(quadboard qb, byte team);
+
+
 void printQB(const quadboard qb) {
 	
 	for (int i = 0; i < 64; i++) {

@@ -32,6 +32,12 @@ const bitboard knightAttacks	= nww | nnw |nne | nee;
 // Pawns are special.  Verrrry special.
 
 
+//
+// For generic generateXXXMoves() calls.  
+//
+// NOTE: generateKingMoves does not comply, because it takes the parameter castlingCheckingMap
+//
+typedef bitboard (*generatorFuncPtr)(bitboard piece, bitboard enemies, bitboard friends, byte team);
 
 
 
@@ -272,6 +278,8 @@ bitboard multiPieceAttacks(bitboard pieces, bitboard softBlockers, bitboard hard
 //
 // Generate a map of psuedolegal moves one piece can make - EVERYTHING EXCEPT PAWNS
 //
+
+
 bitboard generateQueenMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
 	return singlePieceAttacks(piece, enemies, friends, queenAttacks, ATTACKMODE_SLIDING);
 }
@@ -418,6 +426,10 @@ bitboard generateTestCheckingMap(quadboard qb) {
 	bitboard softBlockers = getFrenemies(qb);
 	return multiPieceAttacks(1ULL << 35, softBlockers, 0ULL, nw|n|ne|w, ATTACKMODE_SLIDING);
 }
+
+
+
+
 
 
 
