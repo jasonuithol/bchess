@@ -4,12 +4,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "logging.c"
 #include "bitboard.c"
 #include "iterator.c"
 #include "quadboard.c"
-#include "board.c"
+//#include "board.c"
 #include "attacks.c"
 #include "umpire.c"
+
+#include "aileaf.c"
+#include "ai2.c"
+#include "airoot.c"
 
 
 int main() {

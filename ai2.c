@@ -10,11 +10,8 @@
 //
 
 
-typedef uint8_t depthType;
 
 byte queenCanMove;
-
-
 
 //#define lastAddedAnalysis(list) ((list)->moves[(list)->ix - 1])
 
@@ -22,26 +19,6 @@ byte queenCanMove;
 //
 // Add an analysis move to the analysis movelist, with bounds checking.
 //
-void addAnalysisMove(analysisList* list, analysisMove move, depthType depth) {
-
-	if (depth < ANALYSIS_SIZE) {
-		
-		analysisMove* next = &(list->moves[depth]);
-		
-		next->from      = move.from;
-		next->to        = move.to;
-		next->score     = move.score;
-		next->promoteTo = move.promoteTo;	   
-		
-//		memcpy((void*)&(amv->mv.resultingBoard), (void*)&(amv2.mv.resultingBoard), sizeof(board));
-		
-	}
-	else {
-		error("\nMaximum analysis moves size exceeded.\n");
-	}
-
-}
-
 
 scoreType analyseNonLeafMove(const analysisMove move, const board* const b, const byte scoringTeam, const depthType numMoves, const depthType aiStrength) {
 
@@ -49,94 +26,8 @@ scoreType analyseNonLeafMove(const analysisMove move, const board* const b, cons
 
 }
 
-typedef void (*moveIteratorCallbackFuncPtr)(bitboard piece, bitboard move, byte promoteTo);
+typedef void (moveIteratorCallbackFuncPtr)(bitboard piece, bitboard move, byte promoteTo);
 
-void moveIterator(board* b, moveIteratorCallbackFuncPtr callback) {
-
-	void iteratePieceTypeMoves(getterFuncPtr getter, generatorFuncPtr generator) {
-
-		bitboard pieces = getter(b->quad, b->whosTurn);
-		iterator piece = { 0ULL, pieces };
-		piece = getNextItem(piece);
-			
-		while (piece.item) {
-			
-			bitboard moves = generator(piece.item, enemies, friends, b->whosTurn);
-			iterator move = { 0ULL, moves };
-			move = getNextItem(move);
-
-			while (move.item) {
-				callback(piece.item, move.item, 0);
-				move = getNextItem(move);
-			}
-			
-			piece = getNextItem(piece);
-		}
-	}
-
-	// -------------------------------------------------------------------
-	//
-	// Outer Method Starts Here.
-	//
-	
-	bitboard friends = getFriends(b->quad, b->whosTurn);
-	bitboard enemies = getEnemies(b->quad, b->whosTurn);
-	
-	iteratePieceTypeMoves(getRooks, generatePawnMoves);
-	iteratePieceTypeMoves(getKnights, generatePawnMoves);
-	iteratePieceTypeMoves(getBishops, generatePawnMoves);
-	iteratePieceTypeMoves(getQueens, generatePawnMoves);
-
-	//
-	// King is a special case
-	//
-	{
-		bitboard king = getKings(b->quad, b->whosTurn);
-
-		bitboard moves = generateKingMoves(king, enemies, friends, b->castlingCheckingMap, b->piecesMoved, b->whosTurn);
-		iterator move = { 0ULL, moves };
-		move = getNextItem(move);
-
-		while (move.item) {
-			callback(piece, move, 0);
-		}
-	}
-	
-	// ================= { I am trying to isolate the scope of variables } ===============
-	
-	
-	//
-	// Pawns are a special case
-	//
-	{
-		bitboard pieces = getter(b->quad, b->whosTurn);
-		iterator piece = { 0ULL, pieces };
-		piece = getNextItem(piece);
-			
-		while (piece.item) {
-			
-			bitboard moves = generator(piece.item, enemies, friends, b->whosTurn);
-			iterator move = { 0ULL, moves };
-			move = getNextItem(move);
-
-			while (move.item) {
-				
-				if (isPawnPromotable(move)) {
-					callback(piece.item, move.item, QUEEN);
-					callback(piece.item, move.item, KNIGHT);
-					callback(piece.item, move.item, BISHOP);
-					callback(piece.item, move.item, ROOK);
-				}
-				else {
-					callback(piece.item, move.item, 0);
-				}
-				move = getNextItem(move);
-			}
-			piece = getNextItem(piece);
-		}
-	}
-		
-}
 
 
 //
@@ -149,32 +40,42 @@ analysisMove getBestMove(const board* const b, const byte scoringTeam, const dep
 		return analyseLeafNonTerminal(b->quad, scoringTeam);
 	}
 	else {
-
-		byte legalMoveCount = 0;
 		
 		// Start by assuming the worst for us (or the best for the opponent), and see if we can do better than that.
 		scoreType bestScore = (b->whosTurn == scoringTeam ? -9999 : 9999);
-		analysisMove bestNextMove;
+		analysisList moveList;
 		
-		// move iterator start
+		if (depth < aiStrength) {
 			
-			board new;
-			if (depth < aiStrength) {
-				
-				spawnFullBoard(b, &new, piece, move, 0);
+			//
+			// Do non-leaf analysis
+			//
+			generateLegalMoveList(b, moveList, 0);			
+		
+		}
+		else {
 			
-				//
-				// Do non-leaf analysis
-				//
+			//
+			// Do leaf analysis
+			//
+			generateLegalMoveList(b, moveList, 1);			
 			
-			}
+		}
+
+		// Checkmate/stalemate detection for AI.  Game over decision made elsewhere.
+		if (moveList.ix == 0) {
+			
+			if (depth == 0) {
+				error("OOOPSSSS !!!! I've been asked to move when the game has finished !!!\n");
+			} 
 			else {
-				
-				//
-				// Do leaf analysis
-				//
-				
+				return analyseLeafTerminal(b, scoringTeam, depth);
 			}
+		}
+
+		
+		for (byte ix = 0; ix < moveList.ix; ix++) {
+			
 			//
 			// Assess the move [from]->[to] on board b to depth numMoves-1.
 			//
@@ -248,18 +149,6 @@ analysisMove getBestMove(const board* const b, const byte scoringTeam, const dep
 		} // for z
 
 
-		// Checkmate/stalemate detection for AI.  Game over decision made elsewhere.
-		if (legalMoveCount == 0) {
-			
-			if (depth == 0) {
-				error("OOOPSSSS !!!! I've been asked to move when the game has finished !!!\n");
-				__builtin_unreachable();
-			} 
-			else {
-				return analyseLeafTerminal(b, scoringTeam, depth);
-			}
-			__builtin_unreachable();
-		}
 
 
 		// Return pointer to current best analysis history

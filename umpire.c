@@ -1,4 +1,3 @@
-
 #define BOARD_LEGAL (1)
 #define BOARD_NOT_LEGAL (0)
 
@@ -6,12 +5,36 @@
 #define BOARD_CHECKMATE (1)
 #define BOARD_STALEMATE (2)
 
-typedef struct {
+
+typedef struct { // 42 bytes
 	quadboard quad;
 	bitboard castlingCheckingMap; 	// Used to check castling ability.
 	byte piecesMoved;  				// KINGS and CASTLES tracked here.
 	byte whosTurn;     				// 0 = WHITE, 1 = BLACK.
 } board;
+
+typedef int16_t scoreType;
+
+typedef struct {
+
+	bitboard from;
+	bitboard to;
+	scoreType score;
+	byte promoteTo;
+	board resultingBoard;
+	
+} analysisMove;
+
+
+#define ANALYSIS_SIZE (255)
+
+typedef struct {
+	
+	analysisMove moves[ANALYSIS_SIZE];
+	byte ix;
+	
+} analysisList; 
+
 
 void clearBoard(board* const b) {
 	memset((void*)b, 0, sizeof(board));
@@ -130,6 +153,111 @@ byte spawnFullBoard(const board* const old, board* const new, const bitboard fro
 	return BOARD_LEGAL;
 
 }
+
+void addMoveIfLegal(analysisList* list, board* old, bitboard from, bitboard to, byte promoteTo, byte leafMode) {
+
+	if (list->ix < ANALYSIS_SIZE) {
+		
+		analysisMove* next = &(list->moves[list-ix]);
+		
+		next->from      = from;
+		next->to        = to;
+		next->score     = 0;
+		next->promoteTo = promoteTo;	   
+		
+		byte legality = leafMode 
+							? spawnLeafBoard(old, &(next->resultingBoard), from, to, promoteTo)
+							: spawnFullBoard(old, &(next->resultingBoard), from, to, promoteTo);
+
+		if (legality == BOARD_LEGAL) {
+			// Keep this board.
+			list->ix++;
+		}
+		
+		return legality;
+	}
+	else {
+		error("\nMaximum analysis moves size exceeded.\n");
+	}
+
+}
+
+void iteratePieceTypeMoves(	analysisList* moveList, 
+							board* b, 
+							getterFuncPtr getter, 
+							generatorFuncPtr generator, 
+							bitboard friends, 
+							bitboard enemies, 
+							byte isPawn, 
+							byte leafMode) {
+
+	moveCountType moveCount = 0;
+	bitboard pieces = getter(b->quad, b->whosTurn);
+	iterator piece = { 0ULL, pieces };
+	piece = getNextItem(piece);
+		
+	while (piece.item) {
+		
+		bitboard moves = generator(piece.item, enemies, friends, b->whosTurn);
+		iterator move = { 0ULL, moves };
+		move = getNextItem(move);
+
+		while (move.item) {
+
+			if (isPawn && isPawnPromotable(move)) {
+				addMoveIfLegal(moveList, b, piece.item, move.item, QUEEN, leafMode);
+				addMoveIfLegal(moveList, b, piece.item, move.item, KNIGHT, leafMode);
+				addMoveIfLegal(moveList, b, piece.item, move.item, BISHOP, leafMode);
+				addMoveIfLegal(moveList, b, piece.item, move.item, ROOK, leafMode);
+			}
+			else {
+				addMoveIfLegal(piece.item, b, move.item, 0, leafMode);
+			}
+
+			move = getNextItem(move);
+		}
+		
+		piece = getNextItem(piece);
+	}
+	
+}
+
+
+void generateLegalMoveList(board* b, analysisList* moveList, byte leafMode) {
+
+	// -------------------------------------------------------------------
+	//
+	// Outer Method Starts Here.
+	//
+	
+	bitboard friends = getFriends(b->quad, b->whosTurn);
+	bitboard enemies = getEnemies(b->quad, b->whosTurn);
+	
+	iteratePieceTypeMoves(moveList, b, getRooks, generatePawnMoves,	friends, enemies, 0, leafMode);
+	iteratePieceTypeMoves(moveList, b, getKnights, generatePawnMoves,friends, enemies, 0, leafMode);
+	iteratePieceTypeMoves(moveList, b, getBishops, generatePawnMoves,friends, enemies, 0, leafMode);
+	iteratePieceTypeMoves(moveList, b, getQueens, generatePawnMoves,	friends, enemies, 0, leafMode);
+
+	iteratePieceTypePawns(moveList, b, getQueens, generatePawnMoves,	friends, enemies, 1, leafMode); // isPawn = 1
+
+	//
+	// King is a special case
+	//
+	{
+		bitboard king = getKings(b->quad, b->whosTurn);
+
+		bitboard moves = generateKingMoves(moveList, king, enemies, friends, b->castlingCheckingMap, b->piecesMoved, b->whosTurn);
+		iterator move = { 0ULL, moves };
+		move = getNextItem(move);
+
+		while (move.item) {
+			addMoveIfLegal(moveList, b, king, move.item, 0, leafMode);
+		}
+	}
+		
+	return moveCount;	
+}
+
 
 void initBoard(board* b) {
 	

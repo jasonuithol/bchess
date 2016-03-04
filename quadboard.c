@@ -19,12 +19,12 @@ typedef struct {
 //
 // For generic getXXXX methods, where XXX is a pieceType.
 //
-typedef offset (*getterFuncPtr)(quadboard qb, byte team);
+typedef bitboard (getterFuncPtr)(quadboard qb, byte team);
 
 
 void printQB(const quadboard qb) {
 	
-	for (int i = 0; i < 64; i++) {
+	for (byte i = 0; i < 64; i++) {
 		
 		byte team,type0,type1,type2;
 		
@@ -65,84 +65,84 @@ void printQB(const quadboard qb) {
 	}
 }
 
-bitboard getPawns(quadboard qb, int team) { // 001
+bitboard getPawns(quadboard qb, byte team) { // 001
 	return  (team ? ~qb.team : qb.team) // 0 = white, 1 = black
 			& ~qb.type0 
 			& ~qb.type1 
 			&  qb.type2;
 }  
 
-void addPawns(quadboard* qb, bitboard pieces, int team) {
+void addPawns(quadboard* qb, bitboard pieces, byte team) {
 	qb->team |= (team ? 0 : pieces); // 0 = white, 1 = black
 	qb->type0 &= ~pieces; // 0
 	qb->type1 &= ~pieces; // 0
 	qb->type2 |= pieces;  // 1
 }
 
-bitboard getRooks(quadboard qb, int team) { // 010
+bitboard getRooks(quadboard qb, byte team) { // 010
 	return  (team ? ~qb.team : qb.team)
 			& ~qb.type0 
 			&  qb.type1 
 			& ~qb.type2;
 }  
 
-void addRooks(quadboard* qb, bitboard pieces, int team) {
+void addRooks(quadboard* qb, bitboard pieces, byte team) {
 	qb->team |= (team ? 0 : pieces);
 	qb->type0 &= ~pieces; // 0
 	qb->type1 |= pieces;  // 1
 	qb->type2 &= ~pieces; // 0
 }
 
-bitboard getKnights(quadboard qb, int team) { // 011
+bitboard getKnights(quadboard qb, byte team) { // 011
 	return  (team ? ~qb.team : qb.team)
 			& ~qb.type0 
 			&  qb.type1 
 			&  qb.type2;
 }  
 
-void addKnights(quadboard* qb, bitboard pieces, int team) {
+void addKnights(quadboard* qb, bitboard pieces, byte team) {
 	qb->team |= (team ? 0 : pieces);
 	qb->type0 &= ~pieces; // 0
 	qb->type1 |= pieces;  // 1
 	qb->type2 |= pieces;  // 1
 }
 
-bitboard getBishops(quadboard qb, int team) { // 100
+bitboard getBishops(quadboard qb, byte team) { // 100
 	return  (team ? ~qb.team : qb.team)
 			&  qb.type0 
 			& ~qb.type1 
 			& ~qb.type2;
 }  
 
-void addBishops(quadboard* qb, bitboard pieces, int team) {
+void addBishops(quadboard* qb, bitboard pieces, byte team) {
 	qb->team |= (team ? 0 : pieces);
 	qb->type0 |= pieces;  // 1
 	qb->type1 &= ~pieces; // 0
 	qb->type2 &= ~pieces; // 0
 }
 
-bitboard getQueens(quadboard qb, int team) { // 101
+bitboard getQueens(quadboard qb, byte team) { // 101
 	return  (team ? ~qb.team : qb.team)
 			&  qb.type0 
 			& ~qb.type1 
 			&  qb.type2;
 }  
 
-void addQueens(quadboard* qb, bitboard pieces, int team) {
+void addQueens(quadboard* qb, bitboard pieces, byte team) {
 	qb->team |= (team ? 0 : pieces);
 	qb->type0 |= pieces;  // 1
 	qb->type1 &= ~pieces; // 0
 	qb->type2 |= pieces;  // 1
 }
 
-bitboard getKings(quadboard qb, int team) { // 110
+bitboard getKings(quadboard qb, byte team) { // 110
 	return  (team ? ~qb.team : qb.team)
 			&  qb.type0 
 			&  qb.type1 
 			& ~qb.type2;
 }  
 
-void addKings(quadboard* qb, bitboard pieces, int team) {
+void addKings(quadboard* qb, bitboard pieces, byte team) {
 	qb->team |= (team ? 0 : pieces);
 	qb->type0 |= pieces;  // 1
 	qb->type1 |= pieces;  // 1
@@ -172,11 +172,11 @@ void moveSquare(quadboard* qb, bitboard from, bitboard to) {
 }
 
 
-bitboard getFriends(quadboard qb, int team) {
+bitboard getFriends(quadboard qb, byte team) {
 	return (team ? ~team : team) & (qb.type0 | qb.type1 | qb.type2);
 }
 
-bitboard getEnemies(quadboard qb, int team) {
+bitboard getEnemies(quadboard qb, byte team) {
 	return (team ? team : ~team) & (qb.type0 | qb.type1 | qb.type2);
 }
 
