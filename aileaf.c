@@ -54,7 +54,9 @@ void displaySpinningPulse() {
 
 
 //
-// A strategy for deciding the best move based on how much material the player has at the end of each possible move.
+// MATERIAL: A cheap and cheerful strategy for deciding the best move
+//           based on how much material the player has at the end of 
+//           each possible move.
 //
 
 scoreType evaluateMaterial(const quadboard qb, const byte team) {
@@ -75,10 +77,11 @@ scoreType evaluateMaterial(const quadboard qb, const byte team) {
 
 
 //
-// MOBILITY: A strategy for deciding the best move based on how many 
-//           more possible moves the player has than it's opponent.
+// MOBILITY: A hideously expensive strategy for deciding the best move 
+// 			 based on how many more possible PSUEDOLEGAL moves the player
+//           has than it's opponent.
 //
-scoreType scorePieceType(getterFuncPtr getter, generatorFuncPtr generator, bitboard friends, bitboard enemies, byte team) {
+scoreType countMoves(getterFuncPtr getter, generatorFuncPtr generator, bitboard friends, bitboard enemies, byte team) {
 	
 	scoreType subscore = 0;
 	
@@ -88,6 +91,9 @@ scoreType scorePieceType(getterFuncPtr getter, generatorFuncPtr generator, bitbo
 	while (piece.item) { 	
 		
 		// Add the number of moves this piece can make to the tally.
+		//
+		// NOTE: The call to generator probably blows our cache 
+		//       right out of the water.
 		subscore += (scoreType)populationCount(generator(piece.item, enemies, friends, team));
 		
 		piece = getNextItem(piece);
@@ -101,18 +107,18 @@ scoreType evaluateMobility(const quadboard qb, const byte team) {
 	bitboard friends = getFriends(qb, team);
 	bitboard enemies = getEnemies(qb, team);
 		
-	return    scorePieceType(getPawns,   generatePawnMoves,   friends, enemies, team)
-			+ scorePieceType(getKnights, generateKnightMoves, friends, enemies, team)
-			+ scorePieceType(getBishops, generateBishopMoves, friends, enemies, team)
-			+ scorePieceType(getRooks,   generateRookMoves,   friends, enemies, team)
-			+ scorePieceType(getQueens,  generateQueenMoves,  friends, enemies, team)
+	return    countMoves(getPawns,   generatePawnMoves,   friends, enemies, team)
+			+ countMoves(getKnights, generateKnightMoves, friends, enemies, team)
+			+ countMoves(getBishops, generateBishopMoves, friends, enemies, team)
+			+ countMoves(getRooks,   generateRookMoves,   friends, enemies, team)
+			+ countMoves(getQueens,  generateQueenMoves,  friends, enemies, team)
 			// For the very moment, skipping kings.
 			
-			- scorePieceType(getPawns,   generatePawnMoves,   friends, enemies, 1 - team)
-			- scorePieceType(getKnights, generateKnightMoves, friends, enemies, 1 - team)
-			- scorePieceType(getBishops, generateBishopMoves, friends, enemies, 1 - team)
-			- scorePieceType(getRooks,   generateRookMoves,   friends, enemies, 1 - team)
-			- scorePieceType(getQueens,  generateQueenMoves,  friends, enemies, 1 - team);
+			- countMoves(getPawns,   generatePawnMoves,   friends, enemies, 1 - team)
+			- countMoves(getKnights, generateKnightMoves, friends, enemies, 1 - team)
+			- countMoves(getBishops, generateBishopMoves, friends, enemies, 1 - team)
+			- countMoves(getRooks,   generateRookMoves,   friends, enemies, 1 - team)
+			- countMoves(getQueens,  generateQueenMoves,  friends, enemies, 1 - team);
 			// For the very moment, skipping kings.
 }
 
