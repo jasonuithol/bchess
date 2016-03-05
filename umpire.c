@@ -154,17 +154,54 @@ byte spawnFullBoard(const board* const old, board* const new, const bitboard fro
 
 }
 
-void addMoveIfLegal(analysisList* list, board* old, bitboard from, bitboard to, byte promoteTo, byte leafMode) {
+byte addMoveIfLegal(analysisList* list, board* old, bitboard from, bitboard to, byte promoteTo, byte leafMode) {
 
 	if (list->ix < ANALYSIS_SIZE) {
 		
-		analysisMove* next = &(list->moves[list-ix]);
+		analysisMove* next = &(list->moves[list->ix]);
 		
 		next->from      = from;
 		next->to        = to;
 		next->score     = 0;
 		next->promoteTo = promoteTo;	   
 		
+		//
+		// There's only one way to check if a move is legal and that's to
+		// spawn the board, generate a checking map and look at the results.  
+		// So, if we are going to all that trouble, then we may as well cache
+		// the board.
+		//
+		// Especially if spawnFullBoard is called - because the very next
+		// thing that will happen (once this loop is done) is that the 
+		// board will get moves generated against it.
+		//
+		// The trade-off is space.  Board is currently 42 bytes.
+		// A move can be compressed to 1 byte.  But now it weighs in
+		// at a hefty 61 bytes (analysisMove) !!!!
+		//
+		// All this caching of state might get thrown out the window.
+		// It's gotten way out of hand.
+		//
+		// The prefetcher won't be able to stream the resulting array
+		// because the operations on it are quite complex:
+		//
+		// bestMove pt1 -> generateMoveList -> getPiece -> generateAttacks 
+		// -> all that vector stuff -> YOU ARE HERE -> spawnXXXBoard
+		// -> generateCheckingMap -> getpiece -> generateAttacks 
+		// -> all that vector stuff
+		// 
+		// If FULL board: generateCheckingMap (again, but for the other side)
+		// -> getPiece -> generateAttacks -> all that vector stuff
+		//
+		// IF leaf level: -> leafAnalysis -> material -> mobility 
+		// -> generateMoveList ???? -> getPiece -> generateAttacks
+		// -> all that vector stuff -> RETURN 
+		//
+		// ELSE bestMove pt1 recursion
+		//
+		// AFTER RECURSION (inside bestmove) -> min max -> RETURN
+		//
+		//
 		byte legality = leafMode 
 							? spawnLeafBoard(old, &(next->resultingBoard), from, to, promoteTo)
 							: spawnFullBoard(old, &(next->resultingBoard), from, to, promoteTo);
@@ -174,6 +211,10 @@ void addMoveIfLegal(analysisList* list, board* old, bitboard from, bitboard to, 
 			list->ix++;
 		}
 		
+		//
+		// Tell caller what happened re legality 
+		// (illegal implies that move was thrown out)
+		//
 		return legality;
 	}
 	else {
@@ -182,6 +223,7 @@ void addMoveIfLegal(analysisList* list, board* old, bitboard from, bitboard to, 
 
 }
 
+// This method makes baby jesus cry.
 void iteratePieceTypeMoves(	analysisList* moveList, 
 							board* b, 
 							getterFuncPtr getter, 
@@ -191,7 +233,6 @@ void iteratePieceTypeMoves(	analysisList* moveList,
 							byte isPawn, 
 							byte leafMode) {
 
-	moveCountType moveCount = 0;
 	bitboard pieces = getter(b->quad, b->whosTurn);
 	iterator piece = { 0ULL, pieces };
 	piece = getNextItem(piece);
@@ -204,14 +245,14 @@ void iteratePieceTypeMoves(	analysisList* moveList,
 
 		while (move.item) {
 
-			if (isPawn && isPawnPromotable(move)) {
+			if (isPawn && isPawnPromotable(move.item)) {
 				addMoveIfLegal(moveList, b, piece.item, move.item, QUEEN, leafMode);
 				addMoveIfLegal(moveList, b, piece.item, move.item, KNIGHT, leafMode);
 				addMoveIfLegal(moveList, b, piece.item, move.item, BISHOP, leafMode);
 				addMoveIfLegal(moveList, b, piece.item, move.item, ROOK, leafMode);
 			}
 			else {
-				addMoveIfLegal(piece.item, b, move.item, 0, leafMode);
+				addMoveIfLegal(moveList, b, piece.item, move.item, 0, leafMode);
 			}
 
 			move = getNextItem(move);
@@ -233,12 +274,13 @@ void generateLegalMoveList(board* b, analysisList* moveList, byte leafMode) {
 	bitboard friends = getFriends(b->quad, b->whosTurn);
 	bitboard enemies = getEnemies(b->quad, b->whosTurn);
 	
-	iteratePieceTypeMoves(moveList, b, getRooks, generatePawnMoves,	friends, enemies, 0, leafMode);
-	iteratePieceTypeMoves(moveList, b, getKnights, generatePawnMoves,friends, enemies, 0, leafMode);
-	iteratePieceTypeMoves(moveList, b, getBishops, generatePawnMoves,friends, enemies, 0, leafMode);
-	iteratePieceTypeMoves(moveList, b, getQueens, generatePawnMoves,	friends, enemies, 0, leafMode);
-
-	iteratePieceTypePawns(moveList, b, getQueens, generatePawnMoves,	friends, enemies, 1, leafMode); // isPawn = 1
+	iteratePieceTypeMoves(moveList, b, getRooks,   generateRookMoves,	friends, enemies, 0, leafMode);
+	iteratePieceTypeMoves(moveList, b, getKnights, generateKnightMoves, friends, enemies, 0, leafMode);
+	iteratePieceTypeMoves(moveList, b, getBishops, generateBishopMoves, friends, enemies, 0, leafMode);
+	iteratePieceTypeMoves(moveList, b, getQueens,  generateQueenMoves,	friends, enemies, 0, leafMode);
+	
+	// NOTE: isPawn = 1
+	iteratePieceTypeMoves(moveList, b, getPawns, generatePawnMoves,	friends, enemies, 1, leafMode); 
 
 	//
 	// King is a special case
@@ -246,7 +288,7 @@ void generateLegalMoveList(board* b, analysisList* moveList, byte leafMode) {
 	{
 		bitboard king = getKings(b->quad, b->whosTurn);
 
-		bitboard moves = generateKingMoves(moveList, king, enemies, friends, b->castlingCheckingMap, b->piecesMoved, b->whosTurn);
+		bitboard moves = generateKingMoves(king, enemies, friends, b->castlingCheckingMap, b->piecesMoved, b->whosTurn);
 		iterator move = { 0ULL, moves };
 		move = getNextItem(move);
 
@@ -255,7 +297,6 @@ void generateLegalMoveList(board* b, analysisList* moveList, byte leafMode) {
 		}
 	}
 		
-	return moveCount;	
 }
 
 

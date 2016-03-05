@@ -101,7 +101,7 @@ bitboard getPieces(quadboard qb, byte pieceType) {
 //
 // PRECONDITION: Target squares MUST BE KNOWN TO BE 0000 !!!!
 //
-void addPieces(quadboard qb, bitboard pieces, byte pieceType) {
+void addPieces(quadboard* qb, bitboard pieces, byte pieceType) {
 	qb->team  |= pieceType & 8 ? pieces : 0;	
 	qb->type2 |= pieceType & 4 ? pieces : 0;	
 	qb->type1 |= pieceType & 2 ? pieces : 0;	
