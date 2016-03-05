@@ -43,6 +43,11 @@ int main() {
 	printf("testb << test0 = %" PRId64 "\n", result);
 	printBB(result);
 	
+
+	print("WHITE King, Friends and Enemies\n");
+	printBB(getKings(b.quad,WHITE));   printf("\n");
+	printBB(getFriends(b.quad,WHITE)); printf("\n");
+	printBB(getEnemies(b.quad,WHITE)); printf("\n");
 	
 	printf("Showing the whole board\n\n");
 	printQB(b.quad);

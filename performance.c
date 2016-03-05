@@ -47,7 +47,7 @@ double perftest_getBestMove_Initial() {
 	board b;	
 	initBoard(&b);
 	time_t startTime = time(NULL);
-	getBestMove(&bestMove, &b, 0, 2, 0);
+	getBestMove(&bestMove, &b, 0, 4, 0);
 	time_t finishTime = time(NULL);
 	return difftime(finishTime, startTime);
 }

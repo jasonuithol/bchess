@@ -12,21 +12,32 @@
 //
 scoreType getBestMove(analysisMove* const bestMove, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth) {
 		
+	print("Entering getBestMove at depth %u\n", depth);	
+	
+//	printQB(b->quad);
+		
 	// Start by assuming the worst for us (or the best for the opponent), and see if we can do better than that.
 	scoreType bestScore = (b->whosTurn == scoringTeam ? -9999 : 9999);
 	
 	analysisList moveList;
+	moveList.ix = 0; // MANDATORY
 	
 	if (depth < aiStrength) {
+	
+//		print("Generating Non-Leaf movelist\n");
 		
 		// Do non-leaf analysis
 		generateLegalMoveList(b, &moveList, 0);			
 	} 
 	else {
 		
+//		print("Generating Leaf movelist\n");
+
 		// Do leaf analysis
 		generateLegalMoveList(b, &moveList, 1);			
 	}
+
+//	print("Generated %u moves\n", moveList.ix);
 
 	// Checkmate/stalemate detection for AI.  Game over decision made elsewhere.
 	if (moveList.ix == 0) {
@@ -40,7 +51,12 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const b, const 
 	}
 
 	
+	
 	for (byte ix = 0; ix < moveList.ix; ix++) {
+		
+		
+//		print("About to analyse resulting board from move %u\n", ix);
+//		printQB(moveList.items[ix].resultingBoard.quad);
 		
 		//
 		// Assess the move [from]->[to] on board b to depth numMoves-1.
@@ -50,7 +66,7 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const b, const 
 		// and see if any of those leaf level boards has a higher best score
 		// than what we have now.
 		//
-		analysisMove* move = &(moveList.items[moveList.ix]);
+		analysisMove* move = &(moveList.items[ix]);
 		analysisMove dummyMove;
 		
 		scoreType score = depth < aiStrength
@@ -64,7 +80,7 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const b, const 
 			// We analysed one of our moves, so pick the highest scoring move.
 			if (score > bestScore) {
 				
-				logg("New best score found at depth %d for my move: %d\n", depth, score);
+//				logg("New best score found at depth %d for my move: %d\n", depth, score);
 				
 				bestScore = score;
 				memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
@@ -72,9 +88,9 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const b, const 
 			else {
 				
 				// For now, only log possible alternative moves.
-				if (score > bestScore - 4 && depth == 0) {
-					logg("Found competing alternative to best scoring move so far for score: %d\n", score);
-				}
+//				if (score > bestScore - 4 && depth == 0) {
+//					logg("Found competing alternative to best scoring move so far for score: %d\n", score);
+//				}
 				
 			}
 		}
@@ -84,16 +100,19 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const b, const 
 			// Note that the score is OUR score, not the moving team's score.
 			if (score < bestScore) {
 				
-				logg("New best score found at depth %d for their move: %d\n", depth, score);
+//				logg("New best score found at depth %d for their move: %d\n", depth, score);
 				
 				bestScore = score;
 				memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
 
 			}
 		}
-
+		
+		break;
 		
 	} // for ix
+
+//	print("Returning best score %d\n", bestScore);
 
 	// Return our rating of the move now living in bestMove.
 	return bestScore;
