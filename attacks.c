@@ -361,21 +361,36 @@ bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, b
 //
 bitboard generatePawnMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
 
+	//
+	// WARNING: FRAGILE CODE
+	//
+	// UP   is the direction WHITE pawns move.
+	// DOWN is the direction BLACK pawns move.
+	//
+	// Therefore direction = team, because:
+	//
+	// WHITE == UP   == 0
+	// BLACK == DOWN == 1
+	//
+	const byte direction = team;
+
+
+
 	// Diagonal moves. We skip the wrapper methods which do zero checking
 	// and optimise by directly calling the target method.
 	//
 	// It is recommended to do all pawn moves last so that CPU branch prediction
 	// has an easier time of things.
 	//
-	bitboard takingMoves = applySingleAttackVector(piece, ne, friends, DIRECTION_UP)
+	bitboard takingMoves = applySingleAttackVector(piece, ne, friends, direction)
 						   |
-						   applySingleAttackVector(piece, nw, friends, DIRECTION_UP);
+						   applySingleAttackVector(piece, nw, friends, direction);
 
 	// Only squares with enemy pieces on them can be moved into diagonally.
 	takingMoves &= enemies;
 
 	// 1 square move
-	bitboard nonTakingMoves = applySingleAttackVector(piece, n, friends, DIRECTION_UP);
+	bitboard nonTakingMoves = applySingleAttackVector(piece, n, friends, direction);
 
 	// Pawns cannot "take" enemies when going straight forward.
 	nonTakingMoves &= ~enemies;
@@ -385,7 +400,7 @@ bitboard generatePawnMoves(bitboard piece, bitboard enemies, bitboard friends, b
 
 		// First move, and nothing hardBlocked OR softBlocked the 1 square move
 		// - therefore can try to move two squares.	
-		nonTakingMoves |= applySingleAttackVector(piece, n, friends, DIRECTION_UP);
+		nonTakingMoves |= applySingleAttackVector(piece, n, friends, direction);
 		
 		// Pawns cannot "take" enemies when going straight forward.
 		nonTakingMoves &= ~enemies;
