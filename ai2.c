@@ -12,7 +12,7 @@
 //
 scoreType getBestMove(analysisMove* const bestMove, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth) {
 		
-	print("Entering getBestMove at depth %u\n", depth);	
+//	print("Entering getBestMove at depth %u\n", depth);	
 	
 //	printQB(b->quad);
 		
@@ -107,9 +107,7 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const b, const 
 
 			}
 		}
-		
-		break;
-		
+				
 	} // for ix
 
 //	print("Returning best score %d\n", bestScore);
