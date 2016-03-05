@@ -43,9 +43,10 @@ const bitboard knightAttacks	= nww | nnw |nne | nee;
 //
 // NOTE: generateKingMoves does not comply, because it takes the parameter castlingCheckingMap
 //
-typedef bitboard (*generatorFuncPtr)(bitboard piece, bitboard enemies, bitboard friends, byte team);
-
-
+typedef bitboard (generatorFuncPtr)(	const bitboard piece, 
+										const bitboard enemies, 
+										const bitboard friends, 
+										const byte team);
 
 bitboard applySlidingAttackVector(	const bitboard piece, 
 									const bitboard vector, 
@@ -164,7 +165,7 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 	
 }
 
-bitboard singlePieceAttacks(bitboard piece, bitboard softBlockers, bitboard hardBlockers, bitboard positiveVectors, byte attackMode) {
+bitboard singlePieceAttacks(const bitboard piece, const bitboard softBlockers, const bitboard hardBlockers, const bitboard positiveVectors, const byte attackMode) {
 
 	// This is the bitboard we build up and then return.
 	bitboard attacks = 0ULL;
@@ -209,7 +210,7 @@ bitboard singlePieceAttacks(bitboard piece, bitboard softBlockers, bitboard hard
 	return attacks;
 }
 
-bitboard multiPieceAttacks(bitboard pieces, bitboard softBlockers, bitboard hardBlockers, bitboard positiveVectors, byte attackMode) {
+bitboard multiPieceAttacks(const bitboard pieces, const bitboard softBlockers, const bitboard hardBlockers, const bitboard positiveVectors, const byte attackMode) {
 
 	// This is the bitboard we build up and then return.
 	bitboard attacks = 0ULL;
@@ -245,37 +246,37 @@ bitboard multiPieceAttacks(bitboard pieces, bitboard softBlockers, bitboard hard
 //
 
 
-bitboard generateQueenMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
+bitboard generateQueenMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
 	return singlePieceAttacks(piece, enemies, friends, queenAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateBishopMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
+bitboard generateBishopMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
 	return singlePieceAttacks(piece, enemies, friends, bishopAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateRookMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
+bitboard generateRookMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
 	return singlePieceAttacks(piece, enemies, friends, rookAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateKnightMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
+bitboard generateKnightMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
 	return singlePieceAttacks(piece, enemies, friends, knightAttacks, ATTACKMODE_SINGLE);
 }
 
 //
 // Generate a map of psuedolegal moves one piece can make - KING
 //
-bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, bitboard castlingCheckingMap, byte piecesMoved, byte team) {
+bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const bitboard castlingCheckingMap, const byte piecesMoved, const byte team) {
 
 	//
 	// Yes, nested functions.  I'm hoping the optimizer will respect
 	// that they're private and hence optimizable to heck and beyond.
 	//
-	byte castlingSquaresClear(bitboard castlingSquares) {
+	byte castlingSquaresClear(const bitboard castlingSquares) {
 		return !((enemies|friends|castlingCheckingMap) & castlingSquares);
 	}
 
-	byte whiteCanCastle(byte castleMoveFlag) {
+	byte whiteCanCastle(const byte castleMoveFlag) {
 		return !(piecesMoved & (WHITE_KING_MOVED | castleMoveFlag));
 	}
 
-	byte blackCanCastle(byte castleMoveFlag) {
+	byte blackCanCastle(const byte castleMoveFlag) {
 		return !(piecesMoved & (BLACK_KING_MOVED | castleMoveFlag));
 	}
 
@@ -324,7 +325,7 @@ bitboard generateKingMoves(bitboard piece, bitboard enemies, bitboard friends, b
 //
 // Generate a map of psuedolegal moves one piece can make - PAWN
 //
-bitboard generatePawnMoves(bitboard piece, bitboard enemies, bitboard friends, byte team) {
+bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
 
 	//
 	// WARNING: FRAGILE CODE
@@ -385,7 +386,7 @@ bitboard generatePawnMoves(bitboard piece, bitboard enemies, bitboard friends, b
 //
 // Returns a map of all squares in check.
 //
-bitboard generateCheckingMap(quadboard qb, byte team) {
+bitboard generateCheckingMap(const quadboard qb, const byte team) {
 
 	// Everyone is a Soft Blocker when generating a checking map.
 	const bitboard frenemies = getFrenemies(qb);
@@ -402,7 +403,7 @@ bitboard generateCheckingMap(quadboard qb, byte team) {
  		| multiPieceAttacks(getKnights(qb, team), frenemies, 0ULL, knightAttacks, ATTACKMODE_SINGLE);
 }
 
-bitboard generateTestCheckingMap(quadboard qb) {
+bitboard generateTestCheckingMap(const quadboard qb) {
 	bitboard softBlockers = getFrenemies(qb);
 	return multiPieceAttacks(1ULL << 35, softBlockers, 0ULL, nw|n|ne|w, ATTACKMODE_SLIDING);
 }

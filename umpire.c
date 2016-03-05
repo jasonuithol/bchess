@@ -30,7 +30,7 @@ typedef struct {
 
 typedef struct {
 	
-	analysisMove moves[ANALYSIS_SIZE];
+	analysisMove items[ANALYSIS_SIZE];
 	byte ix;
 	
 } analysisList; 
@@ -42,14 +42,14 @@ void clearBoard(board* const b) {
 
 // After one generates pawn moves, one must call this method to see if extra information
 // needs to be passed to spawnXXXBoard()
-byte isPawnPromotable(bitboard piece) {
+byte isPawnPromotable(const bitboard piece) {
 	return (piece < (1ULL << 8) || piece > (1ULL << 55));
 }
 
 //
 // PRECONDITION: Only call this if there were no legal moves to make.
 //
-byte determineEndOfGameState(board* b) {
+byte determineEndOfGameState(const board* const b) {
 	return getKings(b->quad, b->whosTurn) & b->castlingCheckingMap
 		   ? BOARD_CHECKMATE
 		   : BOARD_STALEMATE;
@@ -62,9 +62,13 @@ byte determineEndOfGameState(board* b) {
 // * Pawns get promoted.
 // * Illegal board positions (involving check) are thrown out.
 //
-byte spawnLeafBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const byte promoteTo) {
+byte spawnLeafBoard(const board* const old, 
+					board* const new, 
+					const bitboard from, 
+					const bitboard to, 
+					const byte promoteTo) {
 
-	quadboard* qb = &(new->quad);
+	quadboard* const qb = &(new->quad);
 
 	// To create a new board from a current board, first copy the current board's content to the new one.
 	memcpy((void*)new, (void*)old, sizeof(board));
@@ -127,7 +131,11 @@ byte spawnLeafBoard(const board* const old, board* const new, const bitboard fro
 // The vast, vast majority of leaf boards never get spawnXXXBoard called on them,
 // only the Chosen Ones do. Use spawnLeafBoard for leaf boards.
 //
-byte spawnFullBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const byte promoteTo) {
+byte spawnFullBoard(const board* const old, 
+					board* const new, 
+					const bitboard from, 
+					const bitboard to, 
+					const byte promoteTo) {
 
 	// First, spawn a leaf board, it will have all the tidying up and illegal position checks.
 	if (spawnLeafBoard(old, new, from, to, promoteTo) == BOARD_NOT_LEGAL) {
@@ -163,11 +171,16 @@ byte spawnFullBoard(const board* const old, board* const new, const bitboard fro
 
 }
 
-byte addMoveIfLegal(analysisList* list, board* old, bitboard from, bitboard to, byte promoteTo, byte leafMode) {
+byte addMoveIfLegal(	analysisList* const list, 
+						const board* const old, 
+						const bitboard from, 
+						const bitboard to, 
+						const byte promoteTo, 
+						const byte leafMode) {
 
 	if (list->ix < ANALYSIS_SIZE) {
 		
-		analysisMove* next = &(list->moves[list->ix]);
+		analysisMove* const next = &(list->items[list->ix]);
 		
 		next->from      = from;
 		next->to        = to;
@@ -211,7 +224,7 @@ byte addMoveIfLegal(analysisList* list, board* old, bitboard from, bitboard to, 
 		// AFTER RECURSION (inside bestmove) -> min max -> RETURN
 		//
 		//
-		byte legality = leafMode 
+		const byte legality = leafMode 
 							? spawnLeafBoard(old, &(next->resultingBoard), from, to, promoteTo)
 							: spawnFullBoard(old, &(next->resultingBoard), from, to, promoteTo);
 
@@ -233,22 +246,22 @@ byte addMoveIfLegal(analysisList* list, board* old, bitboard from, bitboard to, 
 }
 
 // This method makes baby jesus cry.
-void iteratePieceTypeMoves(	analysisList* moveList, 
-							board* b, 
+void iteratePieceTypeMoves(	analysisList* const moveList, 
+							const board* const b, 
 							getterFuncPtr getter, 
 							generatorFuncPtr generator, 
-							bitboard friends, 
-							bitboard enemies, 
-							byte isPawn, 
-							byte leafMode) {
+							const bitboard friends, 
+							const bitboard enemies, 
+							const byte isPawn, 
+							const byte leafMode) {
 
-	bitboard pieces = getter(b->quad, b->whosTurn);
+	const bitboard pieces = getter(b->quad, b->whosTurn);
 	iterator piece = { 0ULL, pieces };
 	piece = getNextItem(piece);
 		
 	while (piece.item) {
 		
-		bitboard moves = generator(piece.item, enemies, friends, b->whosTurn);
+		const bitboard moves = generator(piece.item, enemies, friends, b->whosTurn);
 		iterator move = { 0ULL, moves };
 		move = getNextItem(move);
 
@@ -273,15 +286,15 @@ void iteratePieceTypeMoves(	analysisList* moveList,
 }
 
 
-void generateLegalMoveList(board* b, analysisList* moveList, byte leafMode) {
+void generateLegalMoveList(const board* const b, analysisList* const moveList, const byte leafMode) {
 
 	// -------------------------------------------------------------------
 	//
 	// Outer Method Starts Here.
 	//
 	
-	bitboard friends = getFriends(b->quad, b->whosTurn);
-	bitboard enemies = getEnemies(b->quad, b->whosTurn);
+	const bitboard friends = getFriends(b->quad, b->whosTurn);
+	const bitboard enemies = getEnemies(b->quad, b->whosTurn);
 	
 	iteratePieceTypeMoves(moveList, b, getRooks,   generateRookMoves,	friends, enemies, 0, leafMode);
 	iteratePieceTypeMoves(moveList, b, getKnights, generateKnightMoves, friends, enemies, 0, leafMode);
@@ -295,9 +308,9 @@ void generateLegalMoveList(board* b, analysisList* moveList, byte leafMode) {
 	// King is a special case
 	//
 	{
-		bitboard king = getKings(b->quad, b->whosTurn);
+		const bitboard king = getKings(b->quad, b->whosTurn);
+		const bitboard moves = generateKingMoves(king, enemies, friends, b->castlingCheckingMap, b->piecesMoved, b->whosTurn);
 
-		bitboard moves = generateKingMoves(king, enemies, friends, b->castlingCheckingMap, b->piecesMoved, b->whosTurn);
 		iterator move = { 0ULL, moves };
 		move = getNextItem(move);
 
@@ -309,9 +322,9 @@ void generateLegalMoveList(board* b, analysisList* moveList, byte leafMode) {
 }
 
 
-void initBoard(board* b) {
+void initBoard(board* const b) {
 	
-	quadboard* qb = &(b->quad);
+	quadboard* const qb = &(b->quad);
 	
 	clearBoard(b);
 	

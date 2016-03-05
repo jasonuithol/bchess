@@ -13,9 +13,9 @@
 #include "attacks.c"
 #include "umpire.c"
 #include "aileaf.c"
+#include "ai2.c"
 
 /*
-#include "ai2.c"
 #include "airoot.c"
 */
 #include "performance.c"

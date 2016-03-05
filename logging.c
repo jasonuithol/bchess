@@ -75,6 +75,8 @@ void print(char* format, ...) {
 //
 // Cannot call quit() from here because it lives in bchess.c and I ain't moving it.
 //
+void error(char*, ...) __attribute__((noreturn));
+
 void error(char* format, ...) {
 
 	// Obtain the variable arguments

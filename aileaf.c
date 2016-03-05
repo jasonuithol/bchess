@@ -81,7 +81,12 @@ scoreType evaluateMaterial(const quadboard qb, const byte team) {
 // 			 based on how many more possible PSUEDOLEGAL moves the player
 //           has than it's opponent.
 //
-scoreType countMoves(quadboard qb, getterFuncPtr getter, generatorFuncPtr generator, bitboard friends, bitboard enemies, byte team) {
+scoreType countMoves(	const quadboard qb, 
+						getterFuncPtr getter, 
+						generatorFuncPtr generator, 
+						const bitboard friends, 
+						const bitboard enemies, 
+						const byte team) {
 	
 	scoreType subscore = 0;
 	
@@ -104,8 +109,8 @@ scoreType countMoves(quadboard qb, getterFuncPtr getter, generatorFuncPtr genera
 
 scoreType evaluateMobility(const quadboard qb, const byte team) {
 	
-	bitboard friends = getFriends(qb, team);
-	bitboard enemies = getEnemies(qb, team);
+	const bitboard friends = getFriends(qb, team);
+	const bitboard enemies = getEnemies(qb, team);
 		
 	return    countMoves(qb, getPawns,   generatePawnMoves,   friends, enemies, team)
 			+ countMoves(qb, getKnights, generateKnightMoves, friends, enemies, team)
@@ -123,7 +128,7 @@ scoreType evaluateMobility(const quadboard qb, const byte team) {
 }
 
 
-scoreType analyseLeafNonTerminal(quadboard qb, byte team) {
+scoreType analyseLeafNonTerminal(const quadboard qb, const byte team) {
 	
 	// Tell the world we still live.
 	displaySpinningPulse();
@@ -134,9 +139,9 @@ scoreType analyseLeafNonTerminal(quadboard qb, byte team) {
 					  
 }
 
-scoreType analyseLeafTerminal(board* b, byte scoringTeam, depthType depth) {
+scoreType analyseLeafTerminal(const board* const b, const byte scoringTeam, const depthType depth) {
 
-	byte boardState = determineEndOfGameState(b);
+	const byte boardState = determineEndOfGameState(b);
 
 	if (b->whosTurn == scoringTeam) {
 		

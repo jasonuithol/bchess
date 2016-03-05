@@ -10,7 +10,7 @@
 // Recursively search for the best move and set "bestMove" to point to it.
 // Search depth set by "numMoves"
 //
-scoreType getBestMove(analysisMove* bestMove, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth) {
+scoreType getBestMove(analysisMove* const bestMove, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth) {
 		
 	// Start by assuming the worst for us (or the best for the opponent), and see if we can do better than that.
 	scoreType bestScore = (b->whosTurn == scoringTeam ? -9999 : 9999);
@@ -20,12 +20,12 @@ scoreType getBestMove(analysisMove* bestMove, const board* const b, const byte s
 	if (depth < aiStrength) {
 		
 		// Do non-leaf analysis
-		generateLegalMoveList(b, moveList, 0);			
-	
+		generateLegalMoveList(b, &moveList, 0);			
+	} 
 	else {
 		
 		// Do leaf analysis
-		generateLegalMoveList(b, moveList, 1);			
+		generateLegalMoveList(b, &moveList, 1);			
 	}
 
 	// Checkmate/stalemate detection for AI.  Game over decision made elsewhere.
@@ -50,11 +50,11 @@ scoreType getBestMove(analysisMove* bestMove, const board* const b, const byte s
 		// and see if any of those leaf level boards has a higher best score
 		// than what we have now.
 		//
-		analysisMove* move = &(moveList.list[moveList.ix]);
+		analysisMove* move = &(moveList.items[moveList.ix]);
 		analysisMove dummyMove;
 		
 		scoreType score = depth < aiStrength
-							? getBestMove(&bestMove, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1)
+							? getBestMove(&dummyMove, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1)
 							: analyseLeafNonTerminal(move->resultingBoard.quad, scoringTeam);
 		
 		//
@@ -67,7 +67,7 @@ scoreType getBestMove(analysisMove* bestMove, const board* const b, const byte s
 				logg("New best score found at depth %d for my move: %d\n", depth, score);
 				
 				bestScore = score;
-				memcpy((void*)bestMove, (void*)move);
+				memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
 			}
 			else {
 				
@@ -87,7 +87,7 @@ scoreType getBestMove(analysisMove* bestMove, const board* const b, const byte s
 				logg("New best score found at depth %d for their move: %d\n", depth, score);
 				
 				bestScore = score;
-				memcpy((void*)bestMove, (void*)move);
+				memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
 
 			}
 		}
