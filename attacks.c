@@ -1,16 +1,22 @@
-#define WHITE_QUEENSIDE_CASTLE_MOVED	128
-#define WHITE_KING_MOVED				64
-#define WHITE_KINGSIDE_CASTLE_MOVED		32
-#define BLACK_QUEENSIDE_CASTLE_MOVED	16
-#define BLACK_KING_MOVED				8
-#define BLACK_KINGSIDE_CASTLE_MOVED		4
+#define WHITE_QUEENSIDE_CASTLE_MOVED	(128)
+#define WHITE_KING_MOVED				(64)
+#define WHITE_KINGSIDE_CASTLE_MOVED		(32)
+#define BLACK_QUEENSIDE_CASTLE_MOVED	(16)
+#define BLACK_KING_MOVED				(8)
+#define BLACK_KINGSIDE_CASTLE_MOVED		(4)
 
 #define ATTACKMODE_SINGLE 	(0)
 #define ATTACKMODE_SLIDING 	(1)
 #define ATTACKMODE_PAWN 	(2)
 
-#define DIRECTION_UP 	(0)
-#define DIRECTION_DOWN	(1)
+//
+// Note: 
+//
+// WHITE == UP   == 0
+// BLACK == DOWN == 1
+//
+#define DIRECTION_UP 	(WHITE)
+#define DIRECTION_DOWN	(BLACK)
 
 // These are positive-only attack vectors for all pieces except KNIGHT.
 #define nw (1ULL << 9)
