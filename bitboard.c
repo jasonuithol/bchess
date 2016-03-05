@@ -1,3 +1,14 @@
+// ==================================================================
+//
+// bitboard.c
+//
+// Author: 		Jason Uithol
+// Copyright: 	2016
+//
+// State Use: N/A
+//
+// ==================================================================
+
 typedef uint8_t  byte;
 typedef uint8_t  offset;
 typedef int16_t  relativeOffset;
