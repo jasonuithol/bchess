@@ -83,7 +83,7 @@ byte spawnLeafBoard(const board* const old,
 	// Now we can perform the legality check
 	// The checking map is useful exactly once, so we don't cache it.
 	//
-	if (!(getKings(new->quad, old->whosTurn) & generateCheckingMap(new->quad, new->whosTurn))) {
+	if (getKings(new->quad, old->whosTurn) & generateCheckingMap(new->quad, new->whosTurn)) {				
 		return BOARD_NOT_LEGAL;
 	}
 
@@ -250,8 +250,8 @@ void iteratePieceTypeMoves(	analysisList* const moveList,
 							const board* const b, 
 							getterFuncPtr getter, 
 							generatorFuncPtr generator, 
-							const bitboard friends, 
 							const bitboard enemies, 
+							const bitboard friends, 
 							const byte isPawn, 
 							const byte leafMode) {
 
@@ -295,14 +295,14 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 	
 	const bitboard friends = getFriends(b->quad, b->whosTurn);
 	const bitboard enemies = getEnemies(b->quad, b->whosTurn);
-	
-	iteratePieceTypeMoves(moveList, b, getRooks,   generateRookMoves,	friends, enemies, 0, leafMode);
-	iteratePieceTypeMoves(moveList, b, getKnights, generateKnightMoves, friends, enemies, 0, leafMode);
-	iteratePieceTypeMoves(moveList, b, getBishops, generateBishopMoves, friends, enemies, 0, leafMode);
-	iteratePieceTypeMoves(moveList, b, getQueens,  generateQueenMoves,	friends, enemies, 0, leafMode);
+
+	iteratePieceTypeMoves(moveList, b, getRooks,   generateRookMoves,	enemies, friends, 0, leafMode);
+	iteratePieceTypeMoves(moveList, b, getKnights, generateKnightMoves, enemies, friends, 0, leafMode);
+	iteratePieceTypeMoves(moveList, b, getBishops, generateBishopMoves, enemies, friends, 0, leafMode);
+	iteratePieceTypeMoves(moveList, b, getQueens,  generateQueenMoves,	enemies, friends, 0, leafMode);
 	
 	// NOTE: isPawn = 1
-	iteratePieceTypeMoves(moveList, b, getPawns, generatePawnMoves,	friends, enemies, 1, leafMode); 
+	iteratePieceTypeMoves(moveList, b, getPawns, generatePawnMoves,	enemies, friends, 1, leafMode); 
 
 	//
 	// King is a special case
@@ -316,9 +316,10 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 
 		while (move.item) {
 			addMoveIfLegal(moveList, b, king, move.item, 0, leafMode);
+			move = getNextItem(move);
 		}
 	}
-		
+	
 }
 
 

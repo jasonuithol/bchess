@@ -41,15 +41,21 @@ typedef bitboard (getterFuncPtr)(const quadboard qb, const byte team);
 
 void printQB(const quadboard qb) {
 	
+	// Flip the board so that white is at the bottom.
+	bitboard teamBB   = flipBoardVert(qb.team);
+	bitboard type0BB  = flipBoardVert(qb.type0);
+	bitboard type1BB  = flipBoardVert(qb.type1);
+	bitboard type2BB  = flipBoardVert(qb.type2);
+	
 	for (byte i = 0; i < 64; i++) {
 		
 		byte team,type0,type1,type2;
 		
 		// Mask, then shift down to equal 1 (or 0).
-		team = (qb.team & (1ULL << i)) >> i;
-		type0 = (qb.type0 & (1ULL << i)) >> i;
-		type1 = (qb.type1 & (1ULL << i)) >> i;
-		type2 = (qb.type2 & (1ULL << i)) >> i;
+		team = (teamBB & (1ULL << i)) >> i;
+		type0 = (type0BB & (1ULL << i)) >> i;
+		type1 = (type1BB & (1ULL << i)) >> i;
+		type2 = (type2BB & (1ULL << i)) >> i;
 
 		// We are int's because debugging.
 		int type = (type0 << 2) | (type1 << 1) | type2;
@@ -216,11 +222,11 @@ void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
 
 
 bitboard getFriends(const quadboard qb, const byte team) {
-	return (team ? ~team : team) & (qb.type0 | qb.type1 | qb.type2);
+	return (team ? qb.team : ~qb.team) & (qb.type0 | qb.type1 | qb.type2);
 }
 
 bitboard getEnemies(const quadboard qb, const byte team) {
-	return (team ? team : ~team) & (qb.type0 | qb.type1 | qb.type2);
+	return (team ? ~qb.team : qb.team) & (qb.type0 | qb.type1 | qb.type2);
 }
 
 bitboard getFrenemies(const quadboard qb) {
