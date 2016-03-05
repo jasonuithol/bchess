@@ -1,3 +1,14 @@
+// ==================================================================
+//
+// iterator.c
+//
+// Author: 		Jason Uithol
+// Copyright: 	2016
+//
+// State Use: N/A
+//
+// ==================================================================
+
 typedef union {
 	// Allows for constructors in form { bitboard, bitboard }
 	union {
