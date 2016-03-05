@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "logging.c"
 #include "bitboard.c"
@@ -11,12 +12,13 @@
 //#include "board.c"
 #include "attacks.c"
 #include "umpire.c"
+#include "aileaf.c"
 
 /*
-#include "aileaf.c"
 #include "ai2.c"
 #include "airoot.c"
 */
+#include "performance.c"
 
 int main() {
 	board b;
@@ -49,6 +51,7 @@ int main() {
 	printf("Print checking matrix for white\n\n");
 	printBB(whiteAttacks);
 	
+	runPerformanceSuite();
 	
 //	printf("Print checking matrix for TEST\n\n");
 //	bitboard testAttacks = generateTestCheckingMap(b.quad);

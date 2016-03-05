@@ -67,22 +67,9 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 		// Create attack bitboard by shifting the piece
 		// by the approprate vector offset.
 		//
-		printf("Applying sliding attack vector to cursor in direction %s, printing cursor and vector bitboards\n", direction ? "DOWN" : "UP");
-		printBB(cursor);
-		printf("\n");
-		printBB(vector);
-		
 		bitboard attack = direction ? cursor >> trailingBit_Bitboard(vector)  // DOWN
 							        : cursor << trailingBit_Bitboard(vector); // UP
-						  
 
-		printf("Showing calculated attack destination\n");
-		printBB(attack);
-		
-		// DEBUG ONLY
-		if (attack == 0) {
-			printf("Obtained zero from 0x%" PRIx64 " << %u\n", cursor, trailingBit_Bitboard(vector));
-		}
 									
 		// This is the difference in the fileIx of the attack and cursor positions.
 		// Normally it's 1 for sliding pieces.
@@ -96,8 +83,6 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 											 // We say 2 to keep in line with
 											 // single attack calculation.
 
-			printf("We ran off the edge of the board, not adding attack to list.  Modulo distance %d.  Exiting sliding vector\n", moduloDistance);
-
 			// We ran off the edge of the board, kill the vector.
 			return attacks;
 			
@@ -105,8 +90,6 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 		else {
 
 			if (hardBlockers & attack) {
-
-				printf("We ran into a hard blocker, not adding attack to list.  Exiting sliding vector\n");
 				
 				// We hit someone, end the vector
 				return attacks;
@@ -118,8 +101,6 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 			// Hitting a soft block means we still add the attack to the list,
 			// but then kill the vector immediately after that.
 			if (softBlockers & attack) {
-
-				printf("We ran into a soft blocker, still adding attack to list.  Exiting sliding vector\n");
 				
 				// We hit someone, end the vector
 				return attacks;
@@ -147,15 +128,9 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 	// Create attack bitboard by shifting the piece
 	// by the approprate vector offset.
 	//
-	printf("Applying single attack vector to cursor in direction %d (0=UP,1=DOWN), printing piece bitboard\n", direction);
-	printBB(cursor);
-	
 	bitboard attack = direction ? cursor >> trailingBit_Bitboard(vector)  // DOWN
 						        : cursor << trailingBit_Bitboard(vector); // UP
 
-					  
-	printf("Showing calculated attack destination\n");
-	printBB(attack);
 
 	// This is the difference in the fileIx of the attack and cursor positions.
 	// Normally it's 1 for kings, 1-2 for knights.
@@ -175,8 +150,6 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 
 		if (hardBlockers & attack) {
 
-			printf("We ran into a hard blocker, not adding attack to list.  Exiting sliding vector\n");
-			
 			// We hit someone who prevents us adding this attack.
 			// Return nothing.
 			return 0ULL;
@@ -207,28 +180,17 @@ bitboard singlePieceAttacks(bitboard piece, bitboard softBlockers, bitboard hard
 		iterator vector = { 0ULL, positiveVectors };
 		vector = getNextItem(vector);
 		
-		printf("Pulled new vector off vectorList, showing vector bitboard\n");
-		printBB(vector.item);
-
 		// Iterating over the vectors.
 		do { 
 
 			// Grab all the attacks along this vector/dir combo.
 			if (attackMode == ATTACKMODE_SLIDING) {
-				printf("Applying sliding attack vector...");
 				attacks |= applySlidingAttackVector(piece, vector.item, softBlockers, hardBlockers, dir);
-				printf("DONE\n");
 			}
 			else {
 				// This applies to SINGLE and PAWN attack modes.
-				printf("Applying single attack vector...");
 				attacks |= applySingleAttackVector(piece, vector.item, hardBlockers, dir);
-				printf("DONE\n");
 			}
-			
-			printf("Showing accumulated attacks bitboard\n");
-			printBB(attacks);
-			
 			
 			// Fetch the next vector (if any left).
 			vector = getNextItem(vector);
@@ -261,9 +223,6 @@ bitboard multiPieceAttacks(bitboard pieces, bitboard softBlockers, bitboard hard
 
 	// There might be zero pieces, so check up front.
 	while (piece.item) { 
-
-		printf("Entering new piece loop iteration, showing piece bitboard\n");
-		printBB(piece.item);
 
 		// Add all the attacks by this piece.
 		attacks |= singlePieceAttacks(piece.item, softBlockers, hardBlockers, positiveVectors, attackMode);
