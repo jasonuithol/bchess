@@ -81,7 +81,7 @@ scoreType evaluateMaterial(const quadboard qb, const byte team) {
 // 			 based on how many more possible PSUEDOLEGAL moves the player
 //           has than it's opponent.
 //
-scoreType countMoves(getterFuncPtr getter, generatorFuncPtr generator, bitboard friends, bitboard enemies, byte team) {
+scoreType countMoves(quadboard qb, getterFuncPtr getter, generatorFuncPtr generator, bitboard friends, bitboard enemies, byte team) {
 	
 	scoreType subscore = 0;
 	
@@ -107,18 +107,18 @@ scoreType evaluateMobility(const quadboard qb, const byte team) {
 	bitboard friends = getFriends(qb, team);
 	bitboard enemies = getEnemies(qb, team);
 		
-	return    countMoves(getPawns,   generatePawnMoves,   friends, enemies, team)
-			+ countMoves(getKnights, generateKnightMoves, friends, enemies, team)
-			+ countMoves(getBishops, generateBishopMoves, friends, enemies, team)
-			+ countMoves(getRooks,   generateRookMoves,   friends, enemies, team)
-			+ countMoves(getQueens,  generateQueenMoves,  friends, enemies, team)
+	return    countMoves(qb, getPawns,   generatePawnMoves,   friends, enemies, team)
+			+ countMoves(qb, getKnights, generateKnightMoves, friends, enemies, team)
+			+ countMoves(qb, getBishops, generateBishopMoves, friends, enemies, team)
+			+ countMoves(qb, getRooks,   generateRookMoves,   friends, enemies, team)
+			+ countMoves(qb, getQueens,  generateQueenMoves,  friends, enemies, team)
 			// For the very moment, skipping kings.
 			
-			- countMoves(getPawns,   generatePawnMoves,   friends, enemies, 1 - team)
-			- countMoves(getKnights, generateKnightMoves, friends, enemies, 1 - team)
-			- countMoves(getBishops, generateBishopMoves, friends, enemies, 1 - team)
-			- countMoves(getRooks,   generateRookMoves,   friends, enemies, 1 - team)
-			- countMoves(getQueens,  generateQueenMoves,  friends, enemies, 1 - team);
+			- countMoves(qb, getPawns,   generatePawnMoves,   friends, enemies, 1 - team)
+			- countMoves(qb, getKnights, generateKnightMoves, friends, enemies, 1 - team)
+			- countMoves(qb, getBishops, generateBishopMoves, friends, enemies, 1 - team)
+			- countMoves(qb, getRooks,   generateRookMoves,   friends, enemies, 1 - team)
+			- countMoves(qb, getQueens,  generateQueenMoves,  friends, enemies, 1 - team);
 			// For the very moment, skipping kings.
 }
 
@@ -136,9 +136,9 @@ scoreType analyseLeafNonTerminal(quadboard qb, byte team) {
 
 scoreType analyseLeafTerminal(board* b, byte scoringTeam, depthType depth) {
 
+	byte boardState = determineEndOfGameState(b);
+
 	if (b->whosTurn == scoringTeam) {
-		
-		byte boardState = detectCheckmate(b);
 		
 		if (boardState == BOARD_CHECKMATE) {
 			logg("Detected possible checkmate defeat\n");
@@ -150,9 +150,7 @@ scoreType analyseLeafTerminal(board* b, byte scoringTeam, depthType depth) {
 		}
 	}
 	else {
-		
-		byte boardState = detectCheckmate(b);
-		
+				
 		if (boardState == BOARD_CHECKMATE) {
 			logg("Detected possible checkmate victory\n");
 			return 9998 - (depth);
