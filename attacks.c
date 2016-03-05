@@ -72,6 +72,12 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 							        : cursor << trailingBit_Bitboard(vector); // UP
 
 									
+		if (hardBlockers & attack) {
+			
+			// We hit a friend, ignore the move and end the vector
+			return attacks;
+		}
+
 		// This is the difference in the fileIx of the attack and cursor positions.
 		// Normally it's 1 for sliding pieces.
 		// However, if the attack wrapped around one of the vertical sides,
@@ -90,11 +96,6 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 		}	
 		else {
 
-			if (hardBlockers & attack) {
-				
-				// We hit someone, end the vector
-				return attacks;
-			}
 
 			// Add to the attack "list" (actually a bitboard)
 			attacks |= attack;
@@ -132,6 +133,14 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 	bitboard attack = direction ? cursor >> trailingBit_Bitboard(vector)  // DOWN
 						        : cursor << trailingBit_Bitboard(vector); // UP
 
+	// Get the easiest thing to check out of the way first.
+		
+	if (hardBlockers & attack) {
+		
+		// We hit someone who prevents us adding this attack.
+		// Return nothing.
+		return 0ULL;
+	}
 
 	// This is the difference in the fileIx of the attack and cursor positions.
 	// Normally it's 1 for kings, 1-2 for knights.
@@ -142,30 +151,22 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 
 	// Are we still on the board ?
 	if (!attack || moduloDistance > 2) { // Anything larger than 2 is out.
-	
+		
 		// We ran off the edge of the board, nothing to add.
 		return 0ULL;
 		
 	}	
 	else {
-
-		if (hardBlockers & attack) {
-
-			// We hit someone who prevents us adding this attack.
-			// Return nothing.
-			return 0ULL;
-		}
-		else {
-			
-			// Single attacks don't need the concept of softBlockers.
-			// Return the value, no need to signal end of vector because it's one shot only.
-			return attack;
-		}
+		
+		// Single attacks don't need the concept of softBlockers.
+		// Return the value, no need to signal end of vector because it's one shot only.
+		return attack;
 	}
 	
 }
 
 bitboard singlePieceAttacks(const bitboard piece, const bitboard softBlockers, const bitboard hardBlockers, const bitboard positiveVectors, const byte attackMode) {
+
 
 	// This is the bitboard we build up and then return.
 	bitboard attacks = 0ULL;
@@ -284,6 +285,7 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 	//
 	// Outer method BEGINS HERE
 	//
+	
 
 	// First of all, do the boring, ordinary 1 square moves.
 	bitboard kingMoves = singlePieceAttacks(piece, enemies, friends, kingAttacks, ATTACKMODE_SINGLE);
@@ -295,12 +297,12 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 		
 		// KINGSIDE CASTLING - WHITE
 		if (castlingSquaresClear(15ULL) && whiteCanCastle(WHITE_KINGSIDE_CASTLE_MOVED)) {
-			kingMoves |= applySingleAttackVector(piece, 2ULL, friends, DIRECTION_DOWN);
+			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_DOWN);
 		}
 
 		// QUEENSIDE CASTLING - WHITE
 		if (castlingSquaresClear(31ULL << 3) && whiteCanCastle(WHITE_QUEENSIDE_CASTLE_MOVED)) {
-			kingMoves |= applySingleAttackVector(piece, 2ULL, friends, DIRECTION_UP);
+			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_UP);
 		}
 
 	}
@@ -308,12 +310,12 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 
 		// KINGSIDE CASTLING - BLACK
 		if (castlingSquaresClear(15ULL) && blackCanCastle(BLACK_KINGSIDE_CASTLE_MOVED)) {
-			kingMoves |= applySingleAttackVector(piece, 2ULL, friends, DIRECTION_UP);
+			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_UP);
 		}
 
 		// QUEENSIDE CASTLING - BLACK
 		if (castlingSquaresClear(31ULL << 3) && whiteCanCastle(BLACK_QUEENSIDE_CASTLE_MOVED)) {
-			kingMoves |= applySingleAttackVector(piece, 2ULL, friends, DIRECTION_DOWN);
+			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_DOWN);
 		}
 		
 	}
