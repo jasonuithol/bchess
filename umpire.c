@@ -47,6 +47,15 @@ byte isPawnPromotable(bitboard piece) {
 }
 
 //
+// PRECONDITION: Only call this if there were no legal moves to make.
+//
+byte determineEndOfGameState(board* b) {
+	return getKings(b->quad, b->whosTurn) & b->castlingCheckingMap
+		   ? BOARD_CHECKMATE
+		   : BOARD_STALEMATE;
+}
+
+//
 // All moves MUST be performed by this method to ensure that:
 //
 // * Castling is managed properly.
