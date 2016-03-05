@@ -33,12 +33,6 @@ typedef struct {
 } quadboard;
 
 
-//
-// For generic getXXXX methods, where XXX is a pieceType.
-//
-typedef bitboard (getterFuncPtr)(const quadboard qb, const byte team);
-
-
 void printQB(const quadboard qb) {
 	
 	// Flip the board so that white is at the bottom.
@@ -88,21 +82,6 @@ void printQB(const quadboard qb) {
 	}
 }
 
-//
-// pieceType is a horizontal bitfield corresponding to the
-// vertical layout of the quadboard bits.
-//
-// bit 3: team		8		
-// bit 2: type0		4
-// bit 1: type1		2
-// bit 0: type2		1
-//
-bitboard getPieces(const quadboard qb, const byte pieceType) {
-	return (pieceType & 8 ? qb.team  : ~qb.team)
-		 & (pieceType & 4 ? qb.type2 : ~qb.type2) 
-		 & (pieceType & 2 ? qb.type1 : ~qb.type1) 
-		 & (pieceType & 1 ? qb.type0 : ~qb.type0); 
-}
 
 //
 // PRECONDITION: Target squares MUST BE KNOWN TO BE 0000 !!!!
@@ -196,6 +175,34 @@ void addKings(quadboard* const qb, const bitboard pieces, const byte team) {
 	qb->type0 |= pieces;  // 1
 	qb->type1 |= pieces;  // 1
 	qb->type2 &= ~pieces; // 0
+}
+
+//
+// pieceType is a horizontal bitfield corresponding to the
+// vertical layout of the quadboard bits.
+//
+// bit 3: team		8		
+// bit 2: type0		4
+// bit 1: type1		2
+// bit 0: type2		1
+//
+bitboard getPieces(const quadboard qb, const byte pieceType) {
+	return (pieceType & 8 ? qb.team  : ~qb.team)
+		 & (pieceType & 4 ? qb.type2 : ~qb.type2) 
+		 & (pieceType & 2 ? qb.type1 : ~qb.type1) 
+		 & (pieceType & 1 ? qb.type0 : ~qb.type0); 
+}
+
+bitboard getPiecesSwitched(const quadboard qb, const byte pieceType, const byte team) {
+	switch(pieceType) {
+		case PAWN:   return getPawns(qb,team);   
+		case ROOK:   return getRooks(qb,team);
+		case KNIGHT: return getKnights(qb,team);
+		case BISHOP: return getBishops(qb,team);
+		case QUEEN:  return getQueens(qb,team);
+		case KING:   return getKings(qb,team);
+		default: 	 return 0ULL;
+	}
 }
 
 void resetSquares(quadboard* const qb, const bitboard squares) {

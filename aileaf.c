@@ -81,6 +81,10 @@ scoreType evaluateMaterial(const quadboard qb, const byte team) {
 // 			 based on how many more possible PSUEDOLEGAL moves the player
 //           has than it's opponent.
 //
+
+typedef bitboard (getterFuncPtr)(const quadboard, const byte); 
+typedef bitboard (generatorFuncPtr)(const bitboard, const bitboard, const bitboard); 
+
 scoreType countMoves(	const quadboard qb, 
 						getterFuncPtr getter, 
 						generatorFuncPtr generator, 
@@ -99,7 +103,7 @@ scoreType countMoves(	const quadboard qb,
 		//
 		// NOTE: The call to generator probably blows our cache 
 		//       right out of the water.
-		subscore += (scoreType)populationCount(generator(piece.item, enemies, friends, team));
+		subscore += (scoreType)populationCount(generator(piece.item, enemies, friends));
 		
 		piece = getNextItem(piece);
 	}		
@@ -111,22 +115,27 @@ scoreType evaluateMobility(const quadboard qb, const byte team) {
 	
 	const bitboard friends = getFriends(qb, team);
 	const bitboard enemies = getEnemies(qb, team);
-		
-	return    countMoves(qb, getPawns,   generatePawnMoves,   friends, enemies, team)
-			+ countMoves(qb, getKnights, generateKnightMoves, friends, enemies, team)
+			
+	return    countMoves(qb, getKnights, generateKnightMoves, friends, enemies, team)
 			+ countMoves(qb, getBishops, generateBishopMoves, friends, enemies, team)
 			+ countMoves(qb, getRooks,   generateRookMoves,   friends, enemies, team)
 			+ countMoves(qb, getQueens,  generateQueenMoves,  friends, enemies, team)
-			// For the very moment, skipping kings.
+			// For the very moment, skipping kings and pawns.
 			
-			- countMoves(qb, getPawns,   generatePawnMoves,   friends, enemies, 1 - team)
 			- countMoves(qb, getKnights, generateKnightMoves, friends, enemies, 1 - team)
 			- countMoves(qb, getBishops, generateBishopMoves, friends, enemies, 1 - team)
 			- countMoves(qb, getRooks,   generateRookMoves,   friends, enemies, 1 - team)
 			- countMoves(qb, getQueens,  generateQueenMoves,  friends, enemies, 1 - team);
-			// For the very moment, skipping kings.
-}
+			// For the very moment, skipping kings and pawns.
 
+}
+// SOMEHOW this is slower than evaluateMobility ?!?!?!?
+scoreType evaluateCentre(const quadboard qb, const byte team) {
+	return isSquareAttacked(qb, 1ULL << 35, team)
+		+ isSquareAttacked(qb, 1ULL << 36, team)
+		+ isSquareAttacked(qb, 1ULL << 37, team)
+		+ isSquareAttacked(qb, 1ULL << 38, team);
+}
 
 scoreType analyseLeafNonTerminal(const quadboard qb, const byte team) {
 	

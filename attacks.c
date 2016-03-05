@@ -38,15 +38,6 @@ const bitboard knightAttacks	= nww | nnw |nne | nee;
 // Pawns are special.  Verrrry special.
 
 
-//
-// For generic generateXXXMoves() calls.  
-//
-// NOTE: generateKingMoves does not comply, because it takes the parameter castlingCheckingMap
-//
-typedef bitboard (generatorFuncPtr)(	const bitboard piece, 
-										const bitboard enemies, 
-										const bitboard friends, 
-										const byte team);
 
 bitboard applySlidingAttackVector(	const bitboard piece, 
 									const bitboard vector, 
@@ -78,15 +69,15 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 			return attacks;
 		}
 
+	
 		// This is the difference in the fileIx of the attack and cursor positions.
 		// Normally it's 1 for sliding pieces.
 		// However, if the attack wrapped around one of the vertical sides,
 		// then the modulo distance will be 7.
 		//
-		offset moduloDistance = abs(getFile(attack) - getFile(cursor));
-
 		// Are we still on the board ?
-		if (!attack || moduloDistance > 2) { // Anything larger than 2 is out.
+		if (!attack || getFile(attack) - getFile(cursor) > 2) { 
+											 // Anything larger than 2 is out.
 											 // We say 2 to keep in line with
 											 // single attack calculation.
 
@@ -147,10 +138,9 @@ bitboard applySingleAttackVector(	const bitboard cursor,
 	// However, if the attack wrapped around one of the vertical sides,
 	// then the modulo distance will be 6-7.
 	//
-	offset moduloDistance = abs(getFile(attack) - getFile(cursor));
 
 	// Are we still on the board ?
-	if (!attack || moduloDistance > 2) { // Anything larger than 2 is out.
+	if (!attack || abs(getFile(attack) - getFile(cursor)) > 2) { // Anything larger than 2 is out.
 		
 		// We ran off the edge of the board, nothing to add.
 		return 0ULL;
@@ -240,52 +230,65 @@ bitboard multiPieceAttacks(const bitboard pieces, const bitboard softBlockers, c
 		
 }
 
+byte isSquareAttacked(const quadboard qb, const bitboard square, const byte askingTeam) {
 
+	bitboard enemies = getEnemies(qb, askingTeam);
+	bitboard friends = getFriends(qb, askingTeam);
+
+	bitboard enemyQueens   = getQueens(qb, 1 - askingTeam);
+	bitboard enemyBishops  = getBishops(qb, 1 - askingTeam);
+	
+	if ((enemyQueens|enemyBishops) & singlePieceAttacks(square, enemies, friends, bishopAttacks, ATTACKMODE_SLIDING)) {
+		return 1;
+	}
+
+	bitboard enemyRooks    = getRooks(qb, 1 - askingTeam);
+
+	if ((enemyQueens|enemyRooks) & singlePieceAttacks(square, enemies, friends, rookAttacks, ATTACKMODE_SLIDING)) {	
+		return 1;
+	}
+	
+	bitboard enemyKnights  = getKnights(qb, 1 - askingTeam);
+	if (enemyKnights & singlePieceAttacks(square, enemies, friends, knightAttacks, ATTACKMODE_SINGLE)) {	
+		return 1;
+	}
+
+	bitboard enemyKings    = getKings(qb, 1 - askingTeam);
+	if (enemyKnights & singlePieceAttacks(square, enemies, friends, kingAttacks, ATTACKMODE_SINGLE)) {	
+		return 1;
+	}
+
+	bitboard enemyPawns	   = getPawns(qb, 1 - askingTeam);
+	// NOTE: Pawns always think they are WHITE - fix.
+	if (enemyPawns & singlePieceAttacks(square, enemies, friends, ne | nw, ATTACKMODE_PAWN)) {	
+		return 1;
+	}
+
+	return 0;
+}
 
 //
 // Generate a map of psuedolegal moves one piece can make - EVERYTHING EXCEPT PAWNS
 //
 
 
-bitboard generateQueenMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
+bitboard generateQueenMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
 	return singlePieceAttacks(piece, enemies, friends, queenAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateBishopMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
+bitboard generateBishopMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
 	return singlePieceAttacks(piece, enemies, friends, bishopAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateRookMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
+bitboard generateRookMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
 	return singlePieceAttacks(piece, enemies, friends, rookAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateKnightMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
+bitboard generateKnightMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
 	return singlePieceAttacks(piece, enemies, friends, knightAttacks, ATTACKMODE_SINGLE);
 }
 
 //
 // Generate a map of psuedolegal moves one piece can make - KING
 //
-bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const bitboard castlingCheckingMap, const byte piecesMoved, const byte team) {
-
-	//
-	// Yes, nested functions.  I'm hoping the optimizer will respect
-	// that they're private and hence optimizable to heck and beyond.
-	//
-	byte castlingSquaresClear(const bitboard castlingSquares) {
-		return !((enemies|friends|castlingCheckingMap) & castlingSquares);
-	}
-
-	byte whiteCanCastle(const byte castleMoveFlag) {
-		return !(piecesMoved & (WHITE_KING_MOVED | castleMoveFlag));
-	}
-
-	byte blackCanCastle(const byte castleMoveFlag) {
-		return !(piecesMoved & (BLACK_KING_MOVED | castleMoveFlag));
-	}
-
-	// -----------------------------------------------------------------
-	//
-	// Outer method BEGINS HERE
-	//
-	
+bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const bitboard castlingCheckingMap, const byte team) {
 
 	// First of all, do the boring, ordinary 1 square moves.
 	bitboard kingMoves = singlePieceAttacks(piece, enemies, friends, kingAttacks, ATTACKMODE_SINGLE);
@@ -296,12 +299,12 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 	if (team == WHITE) {
 		
 		// KINGSIDE CASTLING - WHITE
-		if (castlingSquaresClear(15ULL) && whiteCanCastle(WHITE_KINGSIDE_CASTLE_MOVED)) {
+		if (!(castlingCheckingMap & 15ULL)) {
 			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_DOWN);
 		}
 
 		// QUEENSIDE CASTLING - WHITE
-		if (castlingSquaresClear(31ULL << 3) && whiteCanCastle(WHITE_QUEENSIDE_CASTLE_MOVED)) {
+		if (!(castlingCheckingMap & (31ULL << 3))) {
 			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_UP);
 		}
 
@@ -309,12 +312,12 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 	else {
 
 		// KINGSIDE CASTLING - BLACK
-		if (castlingSquaresClear(15ULL) && blackCanCastle(BLACK_KINGSIDE_CASTLE_MOVED)) {
+		if (!(castlingCheckingMap & 15ULL)) {
 			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_UP);
 		}
 
 		// QUEENSIDE CASTLING - BLACK
-		if (castlingSquaresClear(31ULL << 3) && whiteCanCastle(BLACK_QUEENSIDE_CASTLE_MOVED)) {
+		if (!(castlingCheckingMap & (31ULL << 3))) {
 			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_DOWN);
 		}
 		
@@ -328,6 +331,7 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 // Generate a map of psuedolegal moves one piece can make - PAWN
 //
 bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
+
 
 	//
 	// WARNING: FRAGILE CODE
@@ -354,6 +358,7 @@ bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const b
 						   |
 						   applySingleAttackVector(piece, nw, friends, direction);
 
+
 	// Only squares with enemy pieces on them can be moved into diagonally.
 	takingMoves &= enemies;
 
@@ -364,7 +369,7 @@ bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const b
 	nonTakingMoves &= ~enemies;
 
 	// Check to see if our pawn is on it's original rank.
-	if (nonTakingMoves && (team == WHITE && piece < (1ULL << 16)) || (team == BLACK && piece > (1ULL << 47))) {
+	if (nonTakingMoves && ((team == WHITE && piece < (1ULL << 16)) || (team == BLACK && piece > (1ULL << 47)))) {
 
 		// First move, and nothing hardBlocked OR softBlocked the 1 square move
 		// - therefore can try to move two squares.	
@@ -381,6 +386,7 @@ bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const b
 	//
 	//       The AI and human ask the umpire if a pawn promotion is needed.
 	//
+
 	
 	return takingMoves | nonTakingMoves;
 }
