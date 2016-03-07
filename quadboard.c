@@ -18,38 +18,42 @@
 #define WHITE ((byte)0)
 #define BLACK ((byte)1)
 
-#define PAWN 	((byte)1)	// 001
-#define ROOK 	((byte)2)	// 010
-#define KNIGHT 	((byte)3)	// 011
-#define BISHOP 	((byte)4)	// 100
-#define QUEEN 	((byte)5)	// 101
-#define KING 	((byte)6)	// 110
+#define PAWN 	((byte)1)	// 0010
+#define ROOK 	((byte)2)	// 0100
+#define KNIGHT 	((byte)3)	// 0110
+#define BISHOP 	((byte)4)	// 1000
+#define QUEEN 	((byte)5)	// 1010
+#define KING 	((byte)6)	// 1100
+
+byte opponentOf(byte team) {
+	return team ^ 1;
+}
 
 typedef struct {
-	bitboard team;
 	bitboard type0;
 	bitboard type1;
 	bitboard type2;
+	bitboard team;
 } quadboard;
 
 
 void printQB(const quadboard qb) {
 	
 	// Flip the board so that white is at the bottom.
-	bitboard teamBB   = flipBoardVert(qb.team);
 	bitboard type0BB  = flipBoardVert(qb.type0);
 	bitboard type1BB  = flipBoardVert(qb.type1);
 	bitboard type2BB  = flipBoardVert(qb.type2);
+	bitboard teamBB   = flipBoardVert(qb.team);
 	
 	for (byte i = 0; i < 64; i++) {
 		
-		byte team,type0,type1,type2;
+		byte type0,type1,type2,team;
 		
 		// Mask, then shift down to equal 1 (or 0).
-		team = (teamBB & (1ULL << i)) >> i;
 		type0 = (type0BB & (1ULL << i)) >> i;
 		type1 = (type1BB & (1ULL << i)) >> i;
 		type2 = (type2BB & (1ULL << i)) >> i;
+		team  = (teamBB  & (1ULL << i)) >> i;
 
 		// We are int's because debugging.
 		int type = (type0 << 2) | (type1 << 1) | type2;
@@ -87,95 +91,12 @@ void printQB(const quadboard qb) {
 // PRECONDITION: Target squares MUST BE KNOWN TO BE 0000 !!!!
 //
 void addPieces(quadboard* const qb, const bitboard pieces, const byte pieceType) {
-	qb->team  |= pieceType & 8 ? pieces : 0;	
-	qb->type2 |= pieceType & 4 ? pieces : 0;	
-	qb->type1 |= pieceType & 2 ? pieces : 0;	
-	qb->type0 |= pieceType & 1 ? pieces : 0;	
+	qb->type2 |= pieceType & 8 ? pieces : 0;	
+	qb->type1 |= pieceType & 4 ? pieces : 0;	
+	qb->type0 |= pieceType & 2 ? pieces : 0;	
+	qb->team  |= pieceType & 1 ? pieces : 0;	
 }
 
-bitboard getPawns(const quadboard qb, const byte team) { // 001
-	return  (team ? qb.team : ~qb.team) // 0 = white, 1 = black
-			& ~qb.type0 
-			& ~qb.type1 
-			&  qb.type2;
-}  
-
-void addPawns(quadboard* const qb, const bitboard pieces, const byte team) {
-	qb->team |= (team ? pieces : 0); // 0 = white, 1 = black
-	qb->type0 &= ~pieces; // 0
-	qb->type1 &= ~pieces; // 0
-	qb->type2 |= pieces;  // 1
-}
-
-bitboard getRooks(const quadboard qb, const byte team) { // 010
-	return  (team ? qb.team : ~qb.team)
-			& ~qb.type0 
-			&  qb.type1 
-			& ~qb.type2;
-}  
-
-void addRooks(quadboard* const qb, const bitboard pieces, const byte team) {
-	qb->team |= (team ? pieces : 0);
-	qb->type0 &= ~pieces; // 0
-	qb->type1 |= pieces;  // 1
-	qb->type2 &= ~pieces; // 0
-}
-
-bitboard getKnights(const quadboard qb, const byte team) { // 011
-	return  (team ? qb.team : ~qb.team)
-			& ~qb.type0 
-			&  qb.type1 
-			&  qb.type2;
-}  
-
-void addKnights(quadboard* const qb, const bitboard pieces, const byte team) {
-	qb->team |= (team ? pieces : 0);
-	qb->type0 &= ~pieces; // 0
-	qb->type1 |= pieces;  // 1
-	qb->type2 |= pieces;  // 1
-}
-
-bitboard getBishops(const quadboard qb, const byte team) { // 100
-	return  (team ? qb.team : ~qb.team)
-			&  qb.type0 
-			& ~qb.type1 
-			& ~qb.type2;
-}  
-
-void addBishops(quadboard* const qb, const bitboard pieces, const byte team) {
-	qb->team |= (team ? pieces : 0);
-	qb->type0 |= pieces;  // 1
-	qb->type1 &= ~pieces; // 0
-	qb->type2 &= ~pieces; // 0
-}
-
-bitboard getQueens(const quadboard qb, const byte team) { // 101
-	return  (team ? qb.team : ~qb.team)
-			&  qb.type0 
-			& ~qb.type1 
-			&  qb.type2;
-}  
-
-void addQueens(quadboard* const qb, const bitboard pieces, const byte team) {
-	qb->team |= (team ? pieces : 0);
-	qb->type0 |= pieces;  // 1
-	qb->type1 &= ~pieces; // 0
-	qb->type2 |= pieces;  // 1
-}
-
-bitboard getKings(const quadboard qb, const byte team) { // 110
-	return  (team ? qb.team : ~qb.team)
-			&  qb.type0 
-			&  qb.type1 
-			& ~qb.type2;
-}  
-
-void addKings(quadboard* const qb, const bitboard pieces, const byte team) {
-	qb->team |= (team ? pieces : 0);
-	qb->type0 |= pieces;  // 1
-	qb->type1 |= pieces;  // 1
-	qb->type2 &= ~pieces; // 0
-}
 
 //
 // pieceType is a horizontal bitfield corresponding to the
@@ -187,29 +108,17 @@ void addKings(quadboard* const qb, const bitboard pieces, const byte team) {
 // bit 0: type2		1
 //
 bitboard getPieces(const quadboard qb, const byte pieceType) {
-	return (pieceType & 8 ? qb.team  : ~qb.team)
-		 & (pieceType & 4 ? qb.type2 : ~qb.type2) 
-		 & (pieceType & 2 ? qb.type1 : ~qb.type1) 
-		 & (pieceType & 1 ? qb.type0 : ~qb.type0); 
-}
-
-bitboard getPiecesSwitched(const quadboard qb, const byte pieceType, const byte team) {
-	switch(pieceType) {
-		case PAWN:   return getPawns(qb,team);   
-		case ROOK:   return getRooks(qb,team);
-		case KNIGHT: return getKnights(qb,team);
-		case BISHOP: return getBishops(qb,team);
-		case QUEEN:  return getQueens(qb,team);
-		case KING:   return getKings(qb,team);
-		default: 	 return 0ULL;
-	}
+	return (pieceType & 8 ? qb.type2 : ~qb.type2) 
+		 & (pieceType & 4 ? qb.type1 : ~qb.type1) 
+		 & (pieceType & 2 ? qb.type0 : ~qb.type0) 
+		 & (pieceType & 1 ? qb.team  : ~qb.team);
 }
 
 void resetSquares(quadboard* const qb, const bitboard squares) {
-	qb->team  &= ~squares;
 	qb->type0 &= ~squares;
 	qb->type1 &= ~squares;
 	qb->type2 &= ~squares;
+	qb->team  &= ~squares;
 }
 
 void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
@@ -227,16 +136,10 @@ void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
 	resetSquares(qb, from);
 }
 
-
-bitboard getFriends(const quadboard qb, const byte team) {
-	return (team ? qb.team : ~qb.team) & (qb.type0 | qb.type1 | qb.type2);
-}
-
-bitboard getEnemies(const quadboard qb, const byte team) {
-	return (team ? ~qb.team : qb.team) & (qb.type0 | qb.type1 | qb.type2);
-}
-
-bitboard getFrenemies(const quadboard qb) {
+bitboard getAllPieces(const quadboard qb) {
 	return qb.type0 | qb.type1 | qb.type2;
 }
 
+bitboard getTeamPieces(const quadboard qb, const byte team) {
+	return (team ? qb.team : ~qb.team) & getAllPieces(qb);
+}

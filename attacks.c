@@ -201,6 +201,7 @@ bitboard singlePieceAttacks(const bitboard piece, const bitboard softBlockers, c
 	return attacks;
 }
 
+/*
 bitboard multiPieceAttacks(const bitboard pieces, const bitboard softBlockers, const bitboard hardBlockers, const bitboard positiveVectors, const byte attackMode) {
 
 	// This is the bitboard we build up and then return.
@@ -229,36 +230,38 @@ bitboard multiPieceAttacks(const bitboard pieces, const bitboard softBlockers, c
 	return attacks;
 		
 }
-
+*/
 byte isSquareAttacked(const quadboard qb, const bitboard square, const byte askingTeam) {
 
-	bitboard enemies = getEnemies(qb, askingTeam);
-	bitboard friends = getFriends(qb, askingTeam);
+	const byte attackingTeam = askingTeam ^ 1;
 
-	bitboard enemyQueens   = getQueens(qb, 1 - askingTeam);
-	bitboard enemyBishops  = getBishops(qb, 1 - askingTeam);
+	const bitboard enemies = getTeamPieces(qb, attackingTeam);
+	const bitboard friends = getTeamPieces(qb, askingTeam);
+
+	const bitboard enemyQueens = getPieces(qb, QUEEN | attackingTeam );
+	const bitboard enemyBishops = getPieces(qb, BISHOP | attackingTeam);
 	
 	if ((enemyQueens|enemyBishops) & singlePieceAttacks(square, enemies, friends, bishopAttacks, ATTACKMODE_SLIDING)) {
 		return 1;
 	}
 
-	bitboard enemyRooks    = getRooks(qb, 1 - askingTeam);
+	const bitboard enemyRooks = getPieces(qb, ROOK | attackingTeam);
 
 	if ((enemyQueens|enemyRooks) & singlePieceAttacks(square, enemies, friends, rookAttacks, ATTACKMODE_SLIDING)) {	
 		return 1;
 	}
 	
-	bitboard enemyKnights  = getKnights(qb, 1 - askingTeam);
+	const bitboard enemyKnights = getPieces(qb, KNIGHT | attackingTeam);
 	if (enemyKnights & singlePieceAttacks(square, enemies, friends, knightAttacks, ATTACKMODE_SINGLE)) {	
 		return 1;
 	}
 
-	bitboard enemyKings    = getKings(qb, 1 - askingTeam);
+	const bitboard enemyKings = getPieces(qb, KING | attackingTeam);
 	if (enemyKnights & singlePieceAttacks(square, enemies, friends, kingAttacks, ATTACKMODE_SINGLE)) {	
 		return 1;
 	}
 
-	bitboard enemyPawns	   = getPawns(qb, 1 - askingTeam);
+	const bitboard enemyPawns	= getPieces(qb, PAWN | attackingTeam);
 	// NOTE: Pawns always think they are WHITE - fix.
 	if (enemyPawns & singlePieceAttacks(square, enemies, friends, ne | nw, ATTACKMODE_PAWN)) {	
 		return 1;
@@ -288,7 +291,7 @@ bitboard generateKnightMoves(const bitboard piece, const bitboard enemies, const
 //
 // Generate a map of psuedolegal moves one piece can make - KING
 //
-bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const bitboard castlingCheckingMap, const byte team) {
+bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const bitboard currentCastlingRights, const byte team) {
 
 	// First of all, do the boring, ordinary 1 square moves.
 	bitboard kingMoves = singlePieceAttacks(piece, enemies, friends, kingAttacks, ATTACKMODE_SINGLE);
@@ -299,12 +302,12 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 	if (team == WHITE) {
 		
 		// KINGSIDE CASTLING - WHITE
-		if (!(castlingCheckingMap & 15ULL)) {
+		if (!(currentCastlingRights & WHITE_KINGSIDE_CASTLE_MOVED)) {
 			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_DOWN);
 		}
 
 		// QUEENSIDE CASTLING - WHITE
-		if (!(castlingCheckingMap & (31ULL << 3))) {
+		if (!(currentCastlingRights & WHITE_QUEENSIDE_CASTLE_MOVED)) {
 			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_UP);
 		}
 
@@ -312,12 +315,12 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 	else {
 
 		// KINGSIDE CASTLING - BLACK
-		if (!(castlingCheckingMap & 15ULL)) {
+		if (!(currentCastlingRights & BLACK_KINGSIDE_CASTLE_MOVED)) {
 			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_UP);
 		}
 
 		// QUEENSIDE CASTLING - BLACK
-		if (!(castlingCheckingMap & (31ULL << 3))) {
+		if (!(currentCastlingRights & BLACK_QUEENSIDE_CASTLE_MOVED)) {
 			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_DOWN);
 		}
 		
@@ -390,7 +393,7 @@ bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const b
 	
 	return takingMoves | nonTakingMoves;
 }
-
+/*
 //
 // Returns a map of all squares in check.
 //
@@ -415,7 +418,7 @@ bitboard generateTestCheckingMap(const quadboard qb) {
 	bitboard softBlockers = getFrenemies(qb);
 	return multiPieceAttacks(1ULL << 35, softBlockers, 0ULL, nw|n|ne|w, ATTACKMODE_SLIDING);
 }
-
+*/
 
 
 

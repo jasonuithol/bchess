@@ -45,16 +45,12 @@ int main() {
 	
 
 	print("WHITE King, Friends and Enemies\n");
-	printBB(getKings(b.quad,WHITE));   printf("\n");
-	printBB(getFriends(b.quad,WHITE)); printf("\n");
-	printBB(getEnemies(b.quad,WHITE)); printf("\n");
+	printBB(getPieces(b.quad , WHITE) | KING);   printf("\n");
+	printBB(getTeamPieces(b.quad, WHITE)); printf("\n");
+	printBB(getTeamPieces(b.quad, BLACK)); printf("\n");
 	
 	printf("Showing the whole board\n\n");
 	printQB(b.quad);
-
-	bitboard whiteAttacks = generateCheckingMap(b.quad, WHITE);
-	printf("Print checking matrix for white\n\n");
-	printBB(whiteAttacks);
 	
 	runPerformanceSuite();
 	

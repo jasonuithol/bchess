@@ -78,14 +78,12 @@ double perftest_generateLegalMoveList_LeafMode() {
 	return difftime(finishTime, startTime);
 }
 
-double perftest_generateCheckingMap() {
+double perftest_isSquareAttacked() {
 	board b;	
 	initBoard(&b);
 	time_t startTime = time(NULL);
-	for (int i = 0; i < (PERF_ITERATIONS); i++) {
-		analysisList moveList;
-		moveList.ix = 0;
-		if (generateCheckingMap(b.quad, WHITE) == 99) {
+	for (int i = 0; i < 64; i++) {
+		if (isSquareAttacked(b.quad, 1ULL<< i, WHITE) == 99) {
 			print("99 !!!!!\n");
 		}
 	}
@@ -95,13 +93,21 @@ double perftest_generateCheckingMap() {
 
 
 void runPerformanceSuite() {
+	printf("bill oddie\n"); fflush(stdout);
 	double a1 = perftest_displaySpinningPulse();
+	printf("bill oddie\n"); fflush(stdout);
 	double a2 = perftest_evaluateMaterial();
+	printf("bill oddie\n"); fflush(stdout);
 	double a3 = perftest_evaluateMobility_Empty();
+	printf("bill oddie\n"); fflush(stdout);
 	double a4 = perftest_evaluateMobility_Initial();
+	printf("bill oddie\n"); fflush(stdout);
 	double a5 = perftest_generateLegalMoveList_LeafMode();
-	double a6 = perftest_generateCheckingMap();
+	printf("bill oddie\n"); fflush(stdout);
+	double a6 = perftest_isSquareAttacked();
+	printf("bill oddie\n"); fflush(stdout);
 	double a7 = perftest_getBestMove_Initial();
+	printf("bill oddie\n"); fflush(stdout);
 	
 	print("Performance results: %f %f %f %f %f %f %f\n", a1, a2, a3, a4, a5, a6, a7);
 }

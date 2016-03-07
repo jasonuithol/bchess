@@ -61,17 +61,17 @@ void displaySpinningPulse() {
 
 scoreType evaluateMaterial(const quadboard qb, const byte team) {
 
-	return    SCORE_PAWN 	* populationCount(getPawns(qb, team))
-			+ SCORE_KNIGHT	* populationCount(getKnights(qb, team))
-			+ SCORE_BISHOP	* populationCount(getBishops(qb, team))
-			+ SCORE_ROOK	* populationCount(getRooks(qb, team))
-			+ SCORE_QUEEN	* populationCount(getQueens(qb, team))
+	return    SCORE_PAWN 	* populationCount(getPieces(qb, PAWN   | team))
+			+ SCORE_KNIGHT	* populationCount(getPieces(qb, KNIGHT | team))
+			+ SCORE_BISHOP	* populationCount(getPieces(qb, BISHOP | team))
+			+ SCORE_ROOK	* populationCount(getPieces(qb, ROOK   | team))
+			+ SCORE_QUEEN	* populationCount(getPieces(qb, QUEEN  | team))
 			
-			- SCORE_PAWN 	* populationCount(getPawns(qb, 1 - team))
-			- SCORE_KNIGHT	* populationCount(getKnights(qb, 1 - team))
-			- SCORE_BISHOP	* populationCount(getBishops(qb, 1 - team))
-			- SCORE_ROOK	* populationCount(getRooks(qb, 1 - team))
-			- SCORE_QUEEN	* populationCount(getQueens(qb, 1 - team)) ;
+			- SCORE_PAWN 	* populationCount(getPieces(qb, PAWN   | (team ^ 1)))
+			- SCORE_KNIGHT	* populationCount(getPieces(qb, KNIGHT | (team ^ 1)))
+			- SCORE_BISHOP	* populationCount(getPieces(qb, BISHOP | (team ^ 1)))
+			- SCORE_ROOK	* populationCount(getPieces(qb, ROOK   | (team ^ 1)))
+			- SCORE_QUEEN	* populationCount(getPieces(qb, QUEEN  | (team ^ 1))) ;
 			
 }
 
@@ -86,15 +86,14 @@ typedef bitboard (getterFuncPtr)(const quadboard, const byte);
 typedef bitboard (generatorFuncPtr)(const bitboard, const bitboard, const bitboard); 
 
 scoreType countMoves(	const quadboard qb, 
-						getterFuncPtr getter, 
 						generatorFuncPtr generator, 
 						const bitboard friends, 
 						const bitboard enemies, 
-						const byte team) {
+						const byte pieceType) {
 	
 	scoreType subscore = 0;
 	
-	iterator piece = { 0ULL, getter(qb, team) }; 
+	iterator piece = { 0ULL, getPieces(qb, pieceType) }; 
 	piece = getNextItem(piece);
 	
 	while (piece.item) { 	
@@ -113,19 +112,19 @@ scoreType countMoves(	const quadboard qb,
 
 scoreType evaluateMobility(const quadboard qb, const byte team) {
 	
-	const bitboard friends = getFriends(qb, team);
-	const bitboard enemies = getEnemies(qb, team);
+	const bitboard friends = getTeamPieces(qb, team);
+	const bitboard enemies = getTeamPieces(qb, team ^ 1);
 			
-	return    countMoves(qb, getKnights, generateKnightMoves, friends, enemies, team)
-			+ countMoves(qb, getBishops, generateBishopMoves, friends, enemies, team)
-			+ countMoves(qb, getRooks,   generateRookMoves,   friends, enemies, team)
-			+ countMoves(qb, getQueens,  generateQueenMoves,  friends, enemies, team)
+	return    countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | team)
+			+ countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | team)
+			+ countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | team)
+			+ countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | team)
 			// For the very moment, skipping kings and pawns.
 			
-			- countMoves(qb, getKnights, generateKnightMoves, friends, enemies, 1 - team)
-			- countMoves(qb, getBishops, generateBishopMoves, friends, enemies, 1 - team)
-			- countMoves(qb, getRooks,   generateRookMoves,   friends, enemies, 1 - team)
-			- countMoves(qb, getQueens,  generateQueenMoves,  friends, enemies, 1 - team);
+			- countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | (team ^ 1))
+			- countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | (team ^ 1))
+			- countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | (team ^ 1))
+			- countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | (team ^ 1));
 			// For the very moment, skipping kings and pawns.
 
 }

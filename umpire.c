@@ -8,8 +8,8 @@
 
 typedef struct { // 42 bytes
 	quadboard quad;
-	bitboard castlingCheckingMap; 	// Used to check castling ability.
-	byte piecesMoved;  				// KINGS and CASTLES tracked here.
+	byte currentCastlingRights; 	// Used to check castling ability for current move.
+	byte piecesMoved;  				// Used to check castling ability for future moves.
 	byte whosTurn;     				// 0 = WHITE, 1 = BLACK.
 } board;
 
@@ -46,11 +46,15 @@ byte isPawnPromotable(const bitboard piece) {
 	return (piece < (1ULL << 8) || piece > (1ULL << 55));
 }
 
+byte isKingChecked(const quadboard qb, byte team) {
+	return isSquareAttacked(qb, getPieces(qb, KING | team), team);
+}
+
 //
 // PRECONDITION: Only call this if there were no legal moves to make.
 //
 byte determineEndOfGameState(const board* const b) {
-	return getKings(b->quad, b->whosTurn) & b->castlingCheckingMap
+	return isKingChecked(b->quad, b->whosTurn)
 		   ? BOARD_CHECKMATE
 		   : BOARD_STALEMATE;
 }
@@ -78,14 +82,12 @@ byte spawnLeafBoard(const board* const old,
 	moveSquare(qb, from, to);
 
 	// Change the turn on the new board.  To get the team that just moved, use old->whosTurn.
-	new->whosTurn = 1 - new->whosTurn;
+	new->whosTurn = old->whosTurn ^ 1;
 
 
 	// Now we can perform the legality check
-	// The checking map is useful exactly once, so we don't cache it.
 	//
-	if (isSquareAttacked(new->quad, getKings(new->quad, old->whosTurn), old->whosTurn)) {
-//	if (getKings(new->quad, old->whosTurn) & generateCheckingMap(new->quad, new->whosTurn)) {				
+	if (isSquareAttacked(new->quad, getPieces(new->quad, KING | old->whosTurn), old->whosTurn)) {
 		return BOARD_NOT_LEGAL;
 	}
 
@@ -95,18 +97,13 @@ byte spawnLeafBoard(const board* const old,
 	//
 	if (promoteTo > 0) {
 		resetSquares(qb, to);
-		switch(promoteTo) {
-			case QUEEN:  addQueens(qb, to, old->whosTurn);	break;
-			case ROOK:   addRooks(qb, to, old->whosTurn);	break;
-			case BISHOP: addBishops(qb, to, old->whosTurn);	break;
-			case KNIGHT: addKnights(qb, to, old->whosTurn);	break;
-		}
+		addPieces(qb, to, promoteTo | old->whosTurn);
 	}
 
 	//
 	// Castling followup (moves the castle over the king).
 	//
-	if (getKings(old->quad, old->whosTurn) & from) {
+	if (getPieces(old->quad, KING | old->whosTurn) & from) {
 		if (getFile(from) - getFile(to) == 2) {
 			// Kingside castle detected
 			moveSquare(qb, 1ULL, 4ULL);
@@ -160,22 +157,22 @@ byte spawnFullBoard(const board* const old,
 		case 7 * 256 + 7: 	new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED; 	break;
 	}
 
-	const bitboard enemies = getEnemies(new->quad, new->whosTurn);
-	const bitboard friends = getEnemies(new->quad, new->whosTurn);
+	const bitboard enemies = getTeamPieces(new->quad, old->whosTurn);
+	const bitboard friends = getTeamPieces(new->quad, new->whosTurn);
 
 	//
 	// We need this for checking to see if in the next move, a castling move is allowed
 	//
 	// NOTE: FOR LEAF BOARDS, THIS IS A NEEDLESS COST !!!!!
 	//
-	new->castlingCheckingMap = 0;
+	new->currentCastlingRights = 0;
 	if (new->whosTurn == WHITE) {
 		if (!(new->piecesMoved & (WHITE_KING_MOVED|WHITE_KINGSIDE_CASTLE_MOVED)) && !(enemies|friends|15ULL)) {
 			for (byte i = 0; i < 4; i++) {
 				if (isSquareAttacked(new->quad, 1ULL << i, new->whosTurn)) {
 					// The thinking goes that if one square is attacked, 
 					// then they all may as well be - there's no difference.
-					new->castlingCheckingMap = 1ULL;
+					new->currentCastlingRights = WHITE_KINGSIDE_CASTLE_MOVED;
 				}
 			}
 		}
@@ -184,7 +181,7 @@ byte spawnFullBoard(const board* const old,
 				if (isSquareAttacked(new->quad, 1ULL << i, new->whosTurn)) {
 					// The thinking goes that if one square is attacked, 
 					// then they all may as well be - there's no difference.
-					new->castlingCheckingMap = 1ULL << 7;
+					new->currentCastlingRights |= WHITE_QUEENSIDE_CASTLE_MOVED;
 				}
 			}
 		}
@@ -192,19 +189,19 @@ byte spawnFullBoard(const board* const old,
 	else {
 		if (!(new->piecesMoved & (BLACK_KING_MOVED|BLACK_KINGSIDE_CASTLE_MOVED)) && !(enemies|friends|15ULL)) {
 			for (byte i = 0; i < 4; i++) {
-				if (isSquareAttacked(new->quad, 1ULL << i, new->whosTurn)) {
+				if (isSquareAttacked(new->quad, 1ULL << (i + 56), new->whosTurn)) {
 					// The thinking goes that if one square is attacked, 
 					// then they all may as well be - there's no difference.
-					new->castlingCheckingMap = 1ULL;
+					new->currentCastlingRights = BLACK_KINGSIDE_CASTLE_MOVED;
 				}
 			}
 		}
 		if (!(new->piecesMoved & (BLACK_KING_MOVED|BLACK_QUEENSIDE_CASTLE_MOVED)) && !(enemies|friends|31ULL << 3)) {
 			for (byte i = 5; i < 9; i++) {
-				if (isSquareAttacked(new->quad, 1ULL << i, new->whosTurn)) {
+				if (isSquareAttacked(new->quad, 1ULL << (i + 56), new->whosTurn)) {
 					// The thinking goes that if one square is attacked, 
 					// then they all may as well be - there's no difference.
-					new->castlingCheckingMap = 1ULL << 7;
+					new->currentCastlingRights |= BLACK_QUEENSIDE_CASTLE_MOVED;
 				}
 			}
 		}	
@@ -291,13 +288,13 @@ byte addMoveIfLegal(	analysisList* const list,
 
 void generateLegalMoveList(const board* const b, analysisList* const moveList, const byte leafMode) {
 	
-	const bitboard friends = getFriends(b->quad, b->whosTurn);
-	const bitboard enemies = getEnemies(b->quad, b->whosTurn);
+	const bitboard friends = getTeamPieces(b->quad, b->whosTurn);
+	const bitboard enemies = getTeamPieces(b->quad, b->whosTurn ^ 1);
 
 	// Excludes King
 	for (byte pieceType = 1; pieceType < 6; pieceType++) {
 
-		iterator piece = { 0ULL, getPiecesSwitched(b->quad, pieceType, b->whosTurn) };
+		iterator piece = { 0ULL, getPieces(b->quad, pieceType | b->whosTurn) };
 		piece = getNextItem(piece);
 			
 		while (piece.item) {
@@ -340,8 +337,8 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 	// King is a special case
 	//
 	{
-		const bitboard king = getKings(b->quad, b->whosTurn);
-		const bitboard moves = generateKingMoves(king, enemies, friends, b->castlingCheckingMap, b->whosTurn);
+		const bitboard king = getPieces(b->quad, KING | b->whosTurn);
+		const bitboard moves = generateKingMoves(king, enemies, friends, b->currentCastlingRights, b->whosTurn);
 
 		iterator move = { 0ULL, moves };
 		move = getNextItem(move);
@@ -361,26 +358,25 @@ void initBoard(board* const b) {
 	
 	clearBoard(b);
 	
-	addPawns(qb, 255ULL << (8 * 1), WHITE);
-	addPawns(qb, 255ULL << (8 * 6), BLACK);
+	addPieces(qb, 255ULL << (8 * 1), PAWN | WHITE);
+	addPieces(qb, 255ULL << (8 * 6), PAWN | BLACK);
 
-	addRooks(qb, (128ULL + 1),            WHITE);
-	addRooks(qb, (128ULL + 1) << (8 * 7), BLACK);
+	addPieces(qb, (128ULL + 1), PAWN | WHITE);
+	addPieces(qb, (128ULL + 1) << (8 * 7), PAWN | BLACK);
 
-	addKnights(qb, (64ULL + 2), WHITE);
-	addKnights(qb, (64ULL + 2) << (8 * 7), BLACK);
+	addPieces(qb, (64ULL + 2), PAWN | WHITE);
+	addPieces(qb, (64ULL + 2) << (8 * 7), PAWN | BLACK);
 
-	addBishops(qb, (32ULL + 4), WHITE);
-	addBishops(qb, (32ULL + 4) << (8 * 7), BLACK);
+	addPieces(qb, (32ULL + 4), PAWN | WHITE);
+	addPieces(qb, (32ULL + 4) << (8 * 7), PAWN | BLACK);
 
-	addKings(qb, 16ULL, WHITE);
-	addKings(qb, 16ULL << (8 * 7), BLACK);
+	addPieces(qb, 16ULL, PAWN | WHITE);
+	addPieces(qb, 16ULL << (8 * 7), PAWN | BLACK);
 
-	addQueens(qb, 8ULL, WHITE);
-	addQueens(qb, 8ULL << (8 * 7), BLACK);
+	addPieces(qb, 8ULL, PAWN | WHITE);
+	addPieces(qb, 8ULL << (8 * 7), PAWN | BLACK);
 
 	b->piecesMoved = 0;
 	b->whosTurn = WHITE;
-	b->castlingCheckingMap = generateCheckingMap(b->quad, 1 - b->whosTurn);
 }
 
