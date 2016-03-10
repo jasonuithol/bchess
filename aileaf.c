@@ -28,7 +28,7 @@ nodesCalculatedType nodesCalculated;
 
 void displaySpinningPulse() {
 
-	const nodesCalculatedType wrapMask = (1 << (PULSE_SPIN_MAGNITUDE + 1)) - 1;
+	const nodesCalculatedType wrapMask = (1 << (PULSE_SPIN_MAGNITUDE)) - 1;
 
 	nodesCalculated = (nodesCalculated + 1) & wrapMask; 
 
