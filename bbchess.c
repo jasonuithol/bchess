@@ -18,7 +18,13 @@
 /*
 #include "airoot.c"
 */
+
+#ifdef BUILD_TESTING
+
+#include "test.c"
 #include "performance.c"
+
+#endif
 
 int main() {
 	board b;
@@ -45,14 +51,28 @@ int main() {
 	
 
 	print("WHITE King, Friends and Enemies\n");
-	printBB(getPieces(b.quad , WHITE) | KING);   printf("\n");
+	printBB(getPieces(b.quad , WHITE | KING));   printf("\n");
 	printBB(getTeamPieces(b.quad, WHITE)); printf("\n");
 	printBB(getTeamPieces(b.quad, BLACK)); printf("\n");
 	
-	printf("Showing the whole board\n\n");
+	print("Showing the whole board\n\n");
 	printQB(b.quad);
-	
+	print("Showing board components. Type0\n");
+	printBB(b.quad.type0);
+	print("Type1\n");
+	printBB(b.quad.type1);
+	print("Type2\n");
+	printBB(b.quad.type2);
+	print("Team\n");
+	printBB(b.quad.team);
+
+#ifdef BUILD_TESTING
+	testSuite();	
 	runPerformanceSuite();
+#endif
+
+	
+	
 	
 //	printf("Print checking matrix for TEST\n\n");
 //	bitboard testAttacks = generateTestCheckingMap(b.quad);

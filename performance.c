@@ -53,8 +53,12 @@ double perftest_getBestMove_Initial() {
 	board b;	
 	initBoard(&b);
 	time_t startTime = time(NULL);
-	if (getBestMove(&bestMove, &b, 0, 5, 0) == 99) {
+	if (getBestMove(&bestMove, &b, 0, 4, 0) == 99) {
 		print("99 !!!!!\n");
+	}
+	else {
+		print("printing BestMove merged bitboard\n");
+		printBB(bestMove.from | bestMove.to);
 	}
 	time_t finishTime = time(NULL);
 	return difftime(finishTime, startTime);
@@ -93,21 +97,26 @@ double perftest_isSquareAttacked() {
 
 
 void runPerformanceSuite() {
-	printf("bill oddie\n"); fflush(stdout);
+
 	double a1 = perftest_displaySpinningPulse();
-	printf("bill oddie\n"); fflush(stdout);
+	printf("perftest_displaySpinningPulse: %f\n", a1); fflush(stdout);
+
 	double a2 = perftest_evaluateMaterial();
-	printf("bill oddie\n"); fflush(stdout);
+	printf("perftest_evaluateMaterial: %f\n", a2); fflush(stdout);
+
 	double a3 = perftest_evaluateMobility_Empty();
-	printf("bill oddie\n"); fflush(stdout);
+	printf("perftest_evaluateMobility_Empty: %f\n", a3); fflush(stdout);
+
 	double a4 = perftest_evaluateMobility_Initial();
-	printf("bill oddie\n"); fflush(stdout);
+	printf("perftest_evaluateMobility_Initial: %f\n", a4); fflush(stdout);
+
 	double a5 = perftest_generateLegalMoveList_LeafMode();
-	printf("bill oddie\n"); fflush(stdout);
+	printf("perftest_generateLegalMoveList_LeafMode: %f\n", a5); fflush(stdout);
+
 	double a6 = perftest_isSquareAttacked();
-	printf("bill oddie\n"); fflush(stdout);
+	printf("perftest_isSquareAttacked: %f\n", a6); fflush(stdout);
+
 	double a7 = perftest_getBestMove_Initial();
-	printf("bill oddie\n"); fflush(stdout);
+	printf("perftest_getBestMove_Initial: %f\n", a7); fflush(stdout);
 	
-	print("Performance results: %f %f %f %f %f %f %f\n", a1, a2, a3, a4, a5, a6, a7);
 }
