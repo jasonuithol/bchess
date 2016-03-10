@@ -5,12 +5,6 @@
 // Author: 		Jason Uithol
 // Copyright: 	2016
 //
-// State Use: 
-//
-//	4: pieceType - padded to 1 byte
-//
-//			  00000000 00000000 00000000 00000000
-//			  00000000 00000000 00000000 0000TTTT
 //
 // ==================================================================
 
@@ -18,12 +12,15 @@
 #define WHITE ((byte)0)
 #define BLACK ((byte)1)
 
-#define PAWN 	((byte)1)	// 0010
-#define ROOK 	((byte)2)	// 0100
-#define KNIGHT 	((byte)3)	// 0110
-#define BISHOP 	((byte)4)	// 1000
-#define QUEEN 	((byte)5)	// 1010
-#define KING 	((byte)6)	// 1100
+//
+// The rightmost (LSB) bit in these piece values is reserved for the team value.
+//
+#define PAWN 	((byte)2)	// 0010
+#define ROOK 	((byte)4)	// 0100
+#define KNIGHT 	((byte)6)	// 0110
+#define BISHOP 	((byte)8)	// 1000
+#define QUEEN 	((byte)10)	// 1010
+#define KING 	((byte)12)	// 1100
 
 byte opponentOf(byte team) {
 	return team ^ 1;
@@ -36,6 +33,13 @@ typedef struct {
 	bitboard team;
 } quadboard;
 
+
+void printByte(const byte v) {
+	for (byte i = 0; i < 8; i++) {
+		printf(v & 128U >> i ? "1" : "0");
+	} 
+	printf("\n");
+}
 
 void printQB(const quadboard qb) {
 	
@@ -56,18 +60,18 @@ void printQB(const quadboard qb) {
 		team  = (teamBB  & (1ULL << i)) >> i;
 
 		// We are int's because debugging.
-		int type = (type0 << 2) | (type1 << 1) | type2;
+		byte type = (type0 << 3) | (type1 << 2) | (type2 << 1);
 		
 		char c = '?';
 
 		switch(type) {
-			case PAWN:   c = 'P'; break;	// 001
-			case ROOK:   c = 'R'; break;	// 010
-			case KNIGHT: c = 'N'; break;	// 011
-			case BISHOP: c = 'B'; break;	// 100
-			case QUEEN:  c = 'Q'; break;	// 101
-			case KING:   c = 'K'; break;	// 110
-			default:     c = ' '; break;	// 000, (and in theory, >= 111)
+			case PAWN:   c = 'P'; break;	// 0010
+			case ROOK:   c = 'R'; break;	// 0100
+			case KNIGHT: c = 'N'; break;	// 0110
+			case BISHOP: c = 'B'; break;	// 1000
+			case QUEEN:  c = 'Q'; break;	// 1010
+			case KING:   c = 'K'; break;	// 1100
+			default:     c = ' '; break;	// 0000, (and in theory, >= 111x)
 		}
 
 		if (team && c != '?') {
@@ -91,26 +95,16 @@ void printQB(const quadboard qb) {
 // PRECONDITION: Target squares MUST BE KNOWN TO BE 0000 !!!!
 //
 void addPieces(quadboard* const qb, const bitboard pieces, const byte pieceType) {
-	qb->type2 |= pieceType & 8 ? pieces : 0;	
-	qb->type1 |= pieceType & 4 ? pieces : 0;	
-	qb->type0 |= pieceType & 2 ? pieces : 0;	
-	qb->team  |= pieceType & 1 ? pieces : 0;	
+	qb->type0 |= (pieceType & 8 ? pieces : 0);	
+	qb->type1 |= (pieceType & 4 ? pieces : 0);	
+	qb->type2 |= (pieceType & 2 ? pieces : 0);	
+	qb->team  |= (pieceType & 1 ? pieces : 0);	
 }
 
-
-//
-// pieceType is a horizontal bitfield corresponding to the
-// vertical layout of the quadboard bits.
-//
-// bit 3: team		8		
-// bit 2: type0		4
-// bit 1: type1		2
-// bit 0: type2		1
-//
 bitboard getPieces(const quadboard qb, const byte pieceType) {
-	return (pieceType & 8 ? qb.type2 : ~qb.type2) 
+	return (pieceType & 8 ? qb.type0 : ~qb.type0) 
 		 & (pieceType & 4 ? qb.type1 : ~qb.type1) 
-		 & (pieceType & 2 ? qb.type0 : ~qb.type0) 
+		 & (pieceType & 2 ? qb.type2 : ~qb.type2) 
 		 & (pieceType & 1 ? qb.team  : ~qb.team);
 }
 
@@ -127,10 +121,10 @@ void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
 	resetSquares(qb, to);
 	
 	// Set appropriate 1's to target square.
-	qb->team  |= (qb->team  & from) ? to : 0;
 	qb->type0 |= (qb->type0 & from) ? to : 0;
 	qb->type1 |= (qb->type1 & from) ? to : 0;
 	qb->type2 |= (qb->type2 & from) ? to : 0;
+	qb->team  |= (qb->team  & from) ? to : 0;
 	
 	// Write 0000 to source square.
 	resetSquares(qb, from);
