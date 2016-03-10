@@ -1,15 +1,15 @@
-#define BOARD_LEGAL (1)
+#define BOARD_LEGAL 	(1)
 #define BOARD_NOT_LEGAL (0)
 
-#define BOARD_NORMAL (0)
+#define BOARD_NORMAL 	(0)
 #define BOARD_CHECKMATE (1)
 #define BOARD_STALEMATE (2)
 
 
-typedef struct { // 42 bytes
+typedef struct { // 35 bytes
 	quadboard quad;
-	byte currentCastlingRights; 	// Used to check castling ability for current move.
-	byte piecesMoved;  				// Used to check castling ability for future moves.
+	byte currentCastlingRights; 	// Used to check castling ability for CURRENT move only.
+	byte piecesMoved;  				// Used to check castling ability for all future moves.
 	byte whosTurn;     				// 0 = WHITE, 1 = BLACK.
 } board;
 
@@ -270,9 +270,13 @@ byte addMoveIfLegal(	analysisList* const list,
 							: spawnFullBoard(old, &(next->resultingBoard), from, to, promoteTo);
 
 		if (legality == BOARD_LEGAL) {
+//			print("Keeping move\n");
 			// Keep this board.
 			list->ix++;
 		}
+//		else {
+//			print("Discarding move\n");
+//		}
 		
 		//
 		// Tell caller what happened re legality 
@@ -292,7 +296,7 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 	const bitboard enemies = getTeamPieces(b->quad, b->whosTurn ^ 1);
 
 	// Excludes King
-	for (byte pieceType = 1; pieceType < 6; pieceType++) {
+	for (byte pieceType = PAWN; pieceType < KING; pieceType += 2) {
 
 		iterator piece = { 0ULL, getPieces(b->quad, pieceType | b->whosTurn) };
 		piece = getNextItem(piece);
@@ -309,6 +313,8 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 				case QUEEN:  moves = generateQueenMoves(piece.item, enemies, friends);   break;
 				default: error("Bad pieceType\n");
 			}
+			
+//			print("Generated %d moves for pieceType %u\n", populationCount(moves), pieceType);
 			
 			iterator move = { 0ULL, moves };
 			move = getNextItem(move);
@@ -361,20 +367,20 @@ void initBoard(board* const b) {
 	addPieces(qb, 255ULL << (8 * 1), PAWN | WHITE);
 	addPieces(qb, 255ULL << (8 * 6), PAWN | BLACK);
 
-	addPieces(qb, (128ULL + 1), PAWN | WHITE);
-	addPieces(qb, (128ULL + 1) << (8 * 7), PAWN | BLACK);
+	addPieces(qb, (128ULL + 1), ROOK | WHITE);
+	addPieces(qb, (128ULL + 1) << (8 * 7), ROOK | BLACK);
 
-	addPieces(qb, (64ULL + 2), PAWN | WHITE);
-	addPieces(qb, (64ULL + 2) << (8 * 7), PAWN | BLACK);
+	addPieces(qb, (64ULL + 2), KNIGHT | WHITE);
+	addPieces(qb, (64ULL + 2) << (8 * 7), KNIGHT | BLACK);
 
-	addPieces(qb, (32ULL + 4), PAWN | WHITE);
-	addPieces(qb, (32ULL + 4) << (8 * 7), PAWN | BLACK);
+	addPieces(qb, (32ULL + 4), BISHOP | WHITE);
+	addPieces(qb, (32ULL + 4) << (8 * 7), BISHOP | BLACK);
 
-	addPieces(qb, 16ULL, PAWN | WHITE);
-	addPieces(qb, 16ULL << (8 * 7), PAWN | BLACK);
+	addPieces(qb, 16ULL, QUEEN | WHITE);
+	addPieces(qb, 16ULL << (8 * 7), QUEEN | BLACK);
 
-	addPieces(qb, 8ULL, PAWN | WHITE);
-	addPieces(qb, 8ULL << (8 * 7), PAWN | BLACK);
+	addPieces(qb, 8ULL, KING | WHITE);
+	addPieces(qb, 8ULL << (8 * 7), KING | BLACK);
 
 	b->piecesMoved = 0;
 	b->whosTurn = WHITE;
