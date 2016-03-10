@@ -201,36 +201,6 @@ bitboard singlePieceAttacks(const bitboard piece, const bitboard softBlockers, c
 	return attacks;
 }
 
-/*
-bitboard multiPieceAttacks(const bitboard pieces, const bitboard softBlockers, const bitboard hardBlockers, const bitboard positiveVectors, const byte attackMode) {
-
-	// This is the bitboard we build up and then return.
-	bitboard attacks = 0ULL;
-
-	//
-	// Used to set initial value of cursor for each vector path
-	// AND to remove the piece from the piece list in the piece loop.
-	//	
-	iterator piece = { 0ULL, pieces };
-	piece = getNextItem(piece);
-
-	// There might be zero pieces, so check up front.
-	while (piece.item) { 
-
-		// Add all the attacks by this piece.
-		attacks |= singlePieceAttacks(piece.item, softBlockers, hardBlockers, positiveVectors, attackMode);
-		
-		// Get the next piece, if any.
-		piece = getNextItem(piece);
-		
-	} // exits when pieces "list" is empty
-
-
-	// Viola !
-	return attacks;
-		
-}
-*/
 byte isSquareAttacked(const quadboard qb, const bitboard square, const byte askingTeam) {
 
 	const byte attackingTeam = askingTeam ^ 1;
@@ -376,7 +346,7 @@ bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const b
 
 		// First move, and nothing hardBlocked OR softBlocked the 1 square move
 		// - therefore can try to move two squares.	
-		nonTakingMoves |= applySingleAttackVector(piece, n, friends, direction);
+		nonTakingMoves |= applySingleAttackVector(nonTakingMoves, n, friends, direction);
 		
 		// Pawns cannot "take" enemies when going straight forward.
 		nonTakingMoves &= ~enemies;
@@ -393,34 +363,6 @@ bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const b
 	
 	return takingMoves | nonTakingMoves;
 }
-/*
-//
-// Returns a map of all squares in check.
-//
-bitboard generateCheckingMap(const quadboard qb, const byte team) {
-
-	// Everyone is a Soft Blocker when generating a checking map.
-	const bitboard frenemies = getFrenemies(qb);
-	
-	return
-		// SLIDING PIECES
-		  multiPieceAttacks(getQueens(qb, team),  frenemies, 0ULL, queenAttacks, ATTACKMODE_SLIDING)
-		| multiPieceAttacks(getRooks(qb, team),   frenemies, 0ULL, rookAttacks, ATTACKMODE_SLIDING)
-		| multiPieceAttacks(getBishops(qb, team), frenemies, 0ULL, bishopAttacks, ATTACKMODE_SLIDING)
-		
-		// SINGLE AND PAWN PIECES
-		| multiPieceAttacks(getKings(qb, team),   frenemies, 0ULL, kingAttacks, ATTACKMODE_SINGLE)
-		| multiPieceAttacks(getPawns(qb, team),   frenemies, 0ULL, nw | ne, ATTACKMODE_PAWN)
- 		| multiPieceAttacks(getKnights(qb, team), frenemies, 0ULL, knightAttacks, ATTACKMODE_SINGLE);
-}
-
-bitboard generateTestCheckingMap(const quadboard qb) {
-	bitboard softBlockers = getFrenemies(qb);
-	return multiPieceAttacks(1ULL << 35, softBlockers, 0ULL, nw|n|ne|w, ATTACKMODE_SLIDING);
-}
-*/
-
-
 
 
 
