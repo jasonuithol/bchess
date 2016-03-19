@@ -11,8 +11,6 @@ typedef uint8_t depthType;
 
 
 
-// GLOBAL VARIABLE
-nodesCalculatedType nodesCalculated;
 
 
 
@@ -27,6 +25,8 @@ nodesCalculatedType nodesCalculated;
 #define PULSE_SPIN_MAGNITUDE (17)
 
 void displaySpinningPulse() {
+
+	static nodesCalculatedType nodesCalculated;
 
 	const nodesCalculatedType wrapMask = (1 << (PULSE_SPIN_MAGNITUDE)) - 1;
 
