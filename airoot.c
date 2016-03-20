@@ -99,6 +99,6 @@ void aiMove(const board* const current, board* const next, const int turnNumber)
 	print(" (score: %d, nodes: %d)\n", (int)score, (int)nodesCalculated);
     print("Ai Move Time Taken: %f\n", timetaken);
 
-//	printBoardUnicode(next);	
-	printQB(next->quad);	
+	printQBUnicode(next->quad);	
+//	printQB(next->quad);	
 }

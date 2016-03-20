@@ -43,21 +43,17 @@ void printByte(const byte v) {
 
 void printQB(const quadboard qb) {
 	
-	// Flip the board so that white is at the bottom.
-	bitboard type0BB  = flipBoardVert(qb.type0);
-	bitboard type1BB  = flipBoardVert(qb.type1);
-	bitboard type2BB  = flipBoardVert(qb.type2);
-	bitboard teamBB   = flipBoardVert(qb.team);
-	
-	for (byte i = 0; i < 64; i++) {
-		
+	for (byte j = 64; j > 0; j--) {
+
+		byte i = j - 1;
+
 		byte type0,type1,type2,team;
 		
 		// Mask, then shift down to equal 1 (or 0).
-		type0 = (type0BB & (1ULL << i)) >> i;
-		type1 = (type1BB & (1ULL << i)) >> i;
-		type2 = (type2BB & (1ULL << i)) >> i;
-		team  = (teamBB  & (1ULL << i)) >> i;
+		type0 = (qb.type0 & (1ULL << i)) >> i;
+		type1 = (qb.type1 & (1ULL << i)) >> i;
+		type2 = (qb.type2 & (1ULL << i)) >> i;
+		team  = (qb.team  & (1ULL << i)) >> i;
 
 		// We are int's because debugging.
 		byte type = (type0 << 3) | (type1 << 2) | (type2 << 1);
@@ -89,6 +85,92 @@ void printQB(const quadboard qb) {
 		
 	}
 }
+
+#define UNICODESET_SOLID (0)
+#define UNICODESET_GHOST (1)
+
+void printPieceUnicode(const byte type, const byte team, const int setToUse) {
+		
+	if (team == WHITE) {
+		print("\033[31m\033[1m");  // bright red
+	} 
+	else {
+		print("\033[34m\033[1m");  // bright blue
+	}
+	
+	if(setToUse == UNICODESET_GHOST) {
+		switch (type) {
+			case 0: print(" ");break;
+			case KING:   print("\u2654"); break;
+			case QUEEN:  print("\u2655"); break;
+			case BISHOP: print("\u2657"); break;
+			case KNIGHT: print("\u2658"); break;
+			case ROOK:   print("\u2656"); break;
+			case PAWN:   print("\u2659"); break;
+			default:     print("?"); 
+		}
+	}
+	else {
+		switch (type) {
+			case 0: print(" ");break;
+			case KING:   print("\u265A"); break;
+			case QUEEN:  print("\u265B"); break;
+			case BISHOP: print("\u265D"); break;
+			case KNIGHT: print("\u265E"); break;
+			case ROOK:   print("\u265C"); break;
+			case PAWN:   print("\u265F"); break;
+			default:     print("?"); 
+		}
+	}
+}
+
+void printQBUnicode(const quadboard qb) {
+	
+	byte color = 0;
+	
+	for (byte j = 64; j > 0; j--) {
+
+		byte i = j - 1;
+
+		byte type0,type1,type2,team;
+		
+		// Mask, then shift down to equal 1 (or 0).
+		type0 = (qb.type0 & (1ULL << i)) >> i;
+		type1 = (qb.type1 & (1ULL << i)) >> i;
+		type2 = (qb.type2 & (1ULL << i)) >> i;
+		team  = (qb.team  & (1ULL << i)) >> i;
+
+		// We are int's because debugging.
+		byte type = (type0 << 3) | (type1 << 2) | (type2 << 1);
+
+		// Set the color of the square
+		if (color == 0) {
+			// Reverse
+			print("\033[47m"); // TODO: Use terminfo/tput, no hardcoding plox
+		}
+		else {
+			// Normal
+			print("\033[40m"); // TODO: Use terminfo/tput, no hardcoding plox
+		}
+
+		print(" ");
+		printPieceUnicode(type, team, UNICODESET_SOLID);
+		print(" ");
+
+		if (i % 8 == 0) { 
+			// Reset the color codes, and start a new line.
+			print("\033[49m\033[39m\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
+			print("\n");
+		}
+		else {
+			color = 1 - color;
+		}
+		
+	}
+}
+
+
+
 
 
 //
