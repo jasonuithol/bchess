@@ -59,6 +59,7 @@ byte determineEndOfGameState(const board* const b) {
 		   : BOARD_STALEMATE;
 }
 
+
 //
 // All moves MUST be performed by this method to ensure that:
 //
@@ -121,8 +122,7 @@ byte spawnLeafBoard(const board* const old,
 
 
 //
-// When an AI or human chooses a move to play, use this method.
-// If an AI is pondering a move higher than leaf level, also use this method.
+// If an AI is pondering a move higher than leaf level, use this method.
 //
 // Since this board is going to have future moves made against it, maintain a bit more
 // state.  It's more expensive, but required for boards that actually get played on.
@@ -211,6 +211,8 @@ byte spawnFullBoard(const board* const old,
 	return BOARD_LEGAL;
 
 }
+
+					
 
 byte addMoveIfLegal(	analysisList* const list, 
 						const board* const old, 
@@ -358,6 +360,63 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 }
 
 
+
+// ==========================================================
+//
+// 						WRAPPER FUNCTIONS
+//
+// ==========================================================
+
+
+
+void printMove(const analysisMove move) {
+	print("[");
+	printSquare(move.from);
+	print(",");
+	printSquare(move.to);
+	print("]");
+}
+
+void printMoveList(const analysisList* const moveList) {
+	for (int i = 0; i < moveList->ix; i++) {
+		printMove(moveList->items[i]);
+		print("\n");
+	}
+}
+
+void printAllowedMoves(const board* const b) {
+	analysisList moveList;
+	moveList.ix = 0;
+	generateLegalMoveList(b, &moveList, 0);
+	printMoveList(&moveList);
+}
+
+//
+// When an AI or human chooses a real move to play, use this method.
+// Wrapper function simply to hide implementation details of analysisMove.
+//
+byte makeMove(const board* const old, board* const new, const analysisMove* const move) {
+	return spawnFullBoard(old,new,move->from,move->to,move->promoteTo);
+}
+
+//
+// After making a real move, call this to see if the game has ended
+//
+byte detectCheckmate(const board* const b) {
+	analysisList moveList;
+	moveList.ix = 0;
+	generateLegalMoveList(b,&moveList,1);
+	if (moveList.ix == 0) {
+		return determineEndOfGameState(b);
+	}
+	else {
+		return BOARD_NORMAL;
+	}
+}
+
+//
+// Prepare the board for a standard game.
+//
 void initBoard(board* const b) {
 	
 	quadboard* const qb = &(b->quad);

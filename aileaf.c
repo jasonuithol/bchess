@@ -22,17 +22,17 @@ typedef uint8_t depthType;
 // We don't want this going into the logs !!!!
 //
 
+nodesCalculatedType nodesCalculated;
+
 #define PULSE_SPIN_MAGNITUDE (17)
 
 void displaySpinningPulse() {
 
-	static nodesCalculatedType nodesCalculated;
-
 	const nodesCalculatedType wrapMask = (1 << (PULSE_SPIN_MAGNITUDE)) - 1;
 
-	nodesCalculated = (nodesCalculated + 1) & wrapMask; 
+	nodesCalculated++; 
 
-	switch (nodesCalculated) {
+	switch (nodesCalculated & wrapMask) {
 		case 0:
 			printf("/\b");
 			fflush(stdout);

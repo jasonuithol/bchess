@@ -14,33 +14,18 @@
 #include "umpire.c"
 #include "aileaf.c"
 #include "ai2.c"
-
-/*
 #include "airoot.c"
-*/
+
 
 #ifdef BUILD_TESTING
 
 #include "test.c"
 #include "performance.c"
 
-#endif
-
-int main() {
+void diagnostics() {
 	board b;
 	initBoard(&b);
 	
-//	printf("setBitXY 0,0 and 7,7: %" PRIx64 " %" PRIx64 "\n", setBitXY(0,0), setBitXY(7,7));
-	
-//	int bbSize = sizeof(bitboard);
-//	int ullSize = sizeof(unsigned long long);
-//	int uiSize = sizeof(unsigned int);	
-//	printf("Sizeof bitboard %d, sizeof unsigned long long %d, sizeof unsigned int %d\n", 
-//	       bbSize, ullSize, uiSize);
-	
-//	printf("Number of pieces on the white teamboard %d\n", populationCount((bitboard*)&(b.white), sizeof(teamboard) / sizeof(bitboard) ));
-	
-//	printf("Value of white.bishops: %" PRIx64 "\n", b.white.bishops);
 	
 	printf("8ULL << 7 = %lld\n", 8ULL << 7);
 	bitboard testb = 8;
@@ -66,20 +51,91 @@ int main() {
 	print("Team\n");
 	printBB(b.quad.team);
 
-#ifdef BUILD_TESTING
 	testSuite();	
 	runPerformanceSuite();
-#endif
 
-	
-	
-	
-//	printf("Print checking matrix for TEST\n\n");
-//	bitboard testAttacks = generateTestCheckingMap(b.quad);
-//	printBB(testAttacks);
-	
-	
-//	printf("Showing the board with all the white pieces on it.\n\n");
-//	printBB(unionTeamBoard(&(b.white)));
-	
 }
+
+int main() {
+	diagnostics();
+}
+
+#else
+int main() {
+
+	// ----------------------
+	//
+	// EXECUTION STARTS HERE
+	//
+	// ----------------------
+
+//	openLog();
+
+	time_t startTime = time(NULL);
+
+	// Maintain pointers to a "current" board and a "next move" board.
+	board b1,b2;
+	board *b1ptr, *b2ptr, *tempPtr;
+	b1ptr = &b1;
+	b2ptr = &b2;
+
+//#ifdef PROFILING_BUILD	
+//	profilingBoard(b1ptr);
+//#else
+	initBoard(b1ptr);
+//	crashTest(b1ptr);
+//	pawnPromotionTest(b1ptr);
+//#endif
+
+//	printAllowedMoves(b1ptr);
+//	printBoardUnicode(b1ptr);
+	printQB(b1ptr->quad);
+//	exit(1);
+
+	print("\n-------------- ai test ----------------\n");
+
+	int turn;
+//#ifdef PROFILING_BUILD	
+//	for (turn = 0; turn < 2; turn++) { 
+//#else		
+	for (turn = 0; turn <= 200; turn++) { 
+//#endif		
+		print("==== TURN %d =====\n\n",turn);
+
+		printAllowedMoves(b1ptr);
+
+		if (b1ptr->whosTurn == WHITE) {
+			aiMove(b1ptr,b2ptr, turn);
+//			humanMove(b1ptr,b2ptr);
+		}
+		else {
+			aiMove(b1ptr,b2ptr, turn);
+		}
+
+		// swap board pointers to make the new board the next old board.
+		tempPtr = b1ptr;
+		b1ptr = b2ptr;
+		b2ptr = tempPtr;
+		
+		int gamestate = detectCheckmate(b1ptr);
+		switch(gamestate) {
+			case BOARD_CHECKMATE:
+				print("CHECKMATE !!! Victory to ");
+				print(b2ptr->whosTurn ? "BLACK" : "WHITE");
+				print("\n");
+//				quit(0);	
+				exit(0);
+			case BOARD_STALEMATE:
+				print("STALEMATE !!! It's a draw.\n");
+//				quit(0);	
+				exit(0);
+		}
+		
+	}
+
+	time_t finishTime = time(NULL);
+    printf("Overall Time Taken: %f\n", difftime(finishTime, startTime));
+    
+//	quit(0);
+}
+#endif

@@ -50,5 +50,14 @@ int populationCount(const bitboard b) {
 }
 
 offset getFile(const bitboard b) {
-	return trailingBit_Bitboard(b) & 7;
+//	return trailingBit_Bitboard(b) & 7;
+	return trailingBit_Bitboard(b) % 8;
+}
+
+offset getRank(const bitboard b) {
+	return trailingBit_Bitboard(b) / 8;
+}
+
+void printSquare(bitboard square) {
+	print("%c%c", getFile(square) + 'a', getRank(square) + '1');
 }

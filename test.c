@@ -35,4 +35,24 @@ void testSuite() {
 		print("generateLegalMoveList failed, incorrect number of legal moves: %u\n", moveList.ix);
 		exit(1);
 	}
+	
+	
+	// TEST LEGAL MOVES FOR EACH PIECE
+	clearBoard(&b);
+	initBoard(&b);
+	analysisMove move;
+	move.from = 16ULL;
+	move.to = 1ULL << 35;
+	move.promoteTo = 0;
+	board bNew;
+	makeMove(&b, &bNew, &move);
+	bitboard enemies = getTeamPieces(bNew.quad,BLACK);
+	bitboard friends = getTeamPieces(bNew.quad,WHITE);
+	print("allowed queen moves\n");
+	printBB(generateQueenMoves(1ULL << 35, enemies, friends)); 
+	print("Allowed west moves\n");
+	printBB(applySlidingAttackVector(1ULL << 35, w, enemies, friends, DIRECTION_UP));
+	print("Allowed east moves\n");
+	printBB(applySlidingAttackVector(1ULL << 35, w, enemies, friends, DIRECTION_DOWN));
+	
 }

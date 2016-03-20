@@ -1,4 +1,4 @@
-
+/*
 depthType determineAiStrength(const board* const current) {
 
 	moveList myMoves, theirMoves;
@@ -52,7 +52,7 @@ void printReasoning(const analysisList* const bestAnalysis, const board* const c
 	}
 	
 }
-
+*/
 //
 // Ask an AI agent to make a move.
 //
@@ -61,43 +61,42 @@ void aiMove(const board* const current, board* const next, const int turnNumber)
 	const time_t startTime = time(NULL);
 
 	// I'm just sick of the queen based games.
-	if (turnNumber > 5) {
-		queenCanMove = 1;
-	}
-	else {
-		queenCanMove = 0;
-	}
+//	if (turnNumber > 5) {
+//		queenCanMove = 1;
+//	}
+//	else {
+//		queenCanMove = 0;
+//	}
 	
 	nodesCalculated = 0;
 	analysisMove bestmove;
-	const depthType aiStrength = determineAiStrength(current);
+//	const depthType aiStrength = determineAiStrength(current);
 			
-	print("Choosing aiStrength %d\n", aiStrength);
+//	print("Choosing aiStrength %d\n", aiStrength);
 	
-	// TODO: Pick an AI strategy and pass it into this method call.
-	analysisList* bestAnalysis = getBestMove(&bestmove, current, current->whosTurn, aiStrength, aiStrength);
+	scoreType score = getBestMove(&bestmove, current, current->whosTurn, 3, 0);
 
 	// Print/log reasoning behind move.
-	printReasoning(bestAnalysis, current, aiStrength);
+//	printReasoning(bestAnalysis, current, aiStrength);
 
 	// deallocate the now useless history.
-	free(bestAnalysis);
+//	free(bestAnalysis);
 
 	print("\n");
-	makeMove(current, next, bestmove.mv);
+	makeMove(current, next, &bestmove);
 
 	const time_t finishTime = time(NULL);
 	const double timetaken = difftime(finishTime, startTime);
 	
-	print("===== ai move for ");printTeam(current->whosTurn);
-	print(" at ai strength %d =====\n", aiStrength);
+	print("===== ai move for %s", current->whosTurn ? "BLACK" : "WHITE");
+//	print(" at ai strength %d =====\n", aiStrength);
 
 	print("Move chosen: ");
-	printMove(current, bestmove.mv);
-	if (isKingChecked(next, next->whosTurn)) {
+//	printMove(current, bestmove);
+	if (isKingChecked(next->quad, next->whosTurn)) {
 		print(" >>> CHECK <<<");
 	}
-	print(" (score: %d)\n", bestmove.score);
+	print(" (score: %d, nodes: %d)\n", (int)score, (int)nodesCalculated);
     print("Ai Move Time Taken: %f\n", timetaken);
 
 //	printBoardUnicode(next);	

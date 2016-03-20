@@ -30,7 +30,8 @@
 #define nne (1ULL << 17)
 #define nee (1ULL << 10)
 
-const bitboard queenAttacks 	= nw | n | ne | w;
+//const bitboard queenAttacks 	= nw | n | ne | w;
+const bitboard queenAttacks 	= nw | n | w;
 const bitboard bishopAttacks 	= nw | ne;
 const bitboard rookAttacks 		= n  | w;    
 const bitboard kingAttacks 		= nw | n | ne | w;
@@ -76,7 +77,7 @@ bitboard applySlidingAttackVector(	const bitboard piece,
 		// then the modulo distance will be 7.
 		//
 		// Are we still on the board ?
-		if (!attack || getFile(attack) - getFile(cursor) > 2) { 
+		if (!attack || abs(getFile(attack) - getFile(cursor)) > 2) { 
 											 // Anything larger than 2 is out.
 											 // We say 2 to keep in line with
 											 // single attack calculation.
