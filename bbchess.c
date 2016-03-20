@@ -102,7 +102,7 @@ int main() {
 //#endif		
 		print("==== TURN %d =====\n\n",turn);
 
-		printAllowedMoves(b1ptr);
+//		printAllowedMoves(b1ptr);
 
 		if (b1ptr->whosTurn == WHITE) {
 			aiMove(b1ptr,b2ptr, turn);

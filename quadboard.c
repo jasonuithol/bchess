@@ -41,26 +41,32 @@ void printByte(const byte v) {
 	printf("\n");
 }
 
+byte getTeam(const quadboard qb, offset i) {
+	return (qb.team & (1ULL << i)) >> i;
+}
+
+byte getType(const quadboard qb, offset i) {
+	
+	byte type0,type1,type2;
+	
+	// Mask, then shift down to equal 1 (or 0).
+	type0 = (qb.type0 & (1ULL << i)) >> i;
+	type1 = (qb.type1 & (1ULL << i)) >> i;
+	type2 = (qb.type2 & (1ULL << i)) >> i;
+
+	// We are int's because debugging.
+	return (type0 << 3) | (type1 << 2) | (type2 << 1);
+
+}
+
 void printQB(const quadboard qb) {
 	
 	for (byte j = 64; j > 0; j--) {
 
 		byte i = j - 1;
-
-		byte type0,type1,type2,team;
-		
-		// Mask, then shift down to equal 1 (or 0).
-		type0 = (qb.type0 & (1ULL << i)) >> i;
-		type1 = (qb.type1 & (1ULL << i)) >> i;
-		type2 = (qb.type2 & (1ULL << i)) >> i;
-		team  = (qb.team  & (1ULL << i)) >> i;
-
-		// We are int's because debugging.
-		byte type = (type0 << 3) | (type1 << 2) | (type2 << 1);
-		
 		char c = '?';
 
-		switch(type) {
+		switch(getType(qb,i)) {
 			case PAWN:   c = 'P'; break;	// 0010
 			case ROOK:   c = 'R'; break;	// 0100
 			case KNIGHT: c = 'N'; break;	// 0110
@@ -70,7 +76,7 @@ void printQB(const quadboard qb) {
 			default:     c = ' '; break;	// 0000, (and in theory, >= 111x)
 		}
 
-		if (team && c != '?') {
+		if (getTeam(qb,i) && c != '?') {
 			// If BLACK, then decapitalise in order to tell the difference
 			// between the two teams.
 			c += 'a' - 'A';
@@ -89,14 +95,26 @@ void printQB(const quadboard qb) {
 #define UNICODESET_SOLID (0)
 #define UNICODESET_GHOST (1)
 
-void printPieceUnicode(const byte type, const byte team, const int setToUse) {
-		
+void printTeamColor(const byte team) {
 	if (team == WHITE) {
 		print("\033[31m\033[1m");  // bright red
 	} 
 	else {
 		print("\033[34m\033[1m");  // bright blue
 	}
+}
+
+void printResetColors() {
+	print("\033[49m\033[39m\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
+}
+
+//void printDot() {
+//	print("\u00B7");
+//}
+
+void printPieceUnicode(const byte type, const byte team, const int setToUse) {
+		
+	printTeamColor(team);
 	
 	if(setToUse == UNICODESET_GHOST) {
 		switch (type) {
@@ -124,6 +142,7 @@ void printPieceUnicode(const byte type, const byte team, const int setToUse) {
 	}
 }
 
+
 void printQBUnicode(const quadboard qb) {
 	
 	byte color = 0;
@@ -131,17 +150,6 @@ void printQBUnicode(const quadboard qb) {
 	for (byte j = 64; j > 0; j--) {
 
 		byte i = j - 1;
-
-		byte type0,type1,type2,team;
-		
-		// Mask, then shift down to equal 1 (or 0).
-		type0 = (qb.type0 & (1ULL << i)) >> i;
-		type1 = (qb.type1 & (1ULL << i)) >> i;
-		type2 = (qb.type2 & (1ULL << i)) >> i;
-		team  = (qb.team  & (1ULL << i)) >> i;
-
-		// We are int's because debugging.
-		byte type = (type0 << 3) | (type1 << 2) | (type2 << 1);
 
 		// Set the color of the square
 		if (color == 0) {
@@ -154,13 +162,13 @@ void printQBUnicode(const quadboard qb) {
 		}
 
 		print(" ");
-		printPieceUnicode(type, team, UNICODESET_SOLID);
+		printPieceUnicode(getType(qb,i), getTeam(qb,i), UNICODESET_SOLID);
 		print(" ");
 
 		if (i % 8 == 0) { 
 			// Reset the color codes, and start a new line.
-			print("\033[49m\033[39m\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
-			print("\n");
+			printResetColors();
+ 			print("\n");
 		}
 		else {
 			color = 1 - color;

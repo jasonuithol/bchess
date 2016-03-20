@@ -88,11 +88,25 @@ void aiMove(const board* const current, board* const next, const int turnNumber)
 	const time_t finishTime = time(NULL);
 	const double timetaken = difftime(finishTime, startTime);
 	
-	print("===== ai move for %s", current->whosTurn ? "BLACK" : "WHITE");
+	print("===== ai move for %s\n", current->whosTurn ? "BLACK" : "WHITE");
 //	print(" at ai strength %d =====\n", aiStrength);
 
 	print("Move chosen: ");
-//	printMove(current, bestmove);
+	byte mover = trailingBit_Bitboard(bestmove.from);
+	printPieceUnicode(getType(current->quad,mover), current->whosTurn, UNICODESET_SOLID);
+	printResetColors();
+	print(" ");
+	bitboard taken = getAllPieces(current->quad) & bestmove.to;
+	if (taken) {
+		byte takenOffset = trailingBit_Bitboard(bestmove.to);
+		print("x ");
+		printPieceUnicode(getType(current->quad,takenOffset), opponentOf(current->whosTurn), UNICODESET_SOLID);
+		printResetColors();
+		print(" ");
+	}
+	
+	
+	printMove(bestmove);
 	if (isKingChecked(next->quad, next->whosTurn)) {
 		print(" >>> CHECK <<<");
 	}
