@@ -10,8 +10,8 @@
 //
 #define ANALYSIS_SIZE (10)
 
+typedef unsigned long nodesCalculatedType;
 
-int nodesCalculated;
 int queenCanMove;
 
 typedef struct {
@@ -81,35 +81,43 @@ void addAnalysisMove(analysisList* amvs, analysisMove amv2, int depth) {
 	
 }
 
-
 //
 // Animates a little spinner to show that we are still alive.
 //
 // IMPORTANT: Do not use print() !! Instead, use printf() 
 // We don't want this going into the logs !!!!
 //
+
+nodesCalculatedType nodesCalculated;
+
+#define PULSE_SPIN_MAGNITUDE (17)
+
 void displaySpinningPulse() {
 
-	nodesCalculated = (nodesCalculated + 1) % 100000;
-	switch (nodesCalculated) {
+	const nodesCalculatedType wrapMask = (1 << (PULSE_SPIN_MAGNITUDE)) - 1;
+
+	nodesCalculated++; 
+
+	switch (nodesCalculated & wrapMask) {
 		case 0:
 			printf("/\b");
 			fflush(stdout);
 			break;
-		case 24900:
+		case (1 << (PULSE_SPIN_MAGNITUDE - 2)):
 			printf("-\b");
 			fflush(stdout);
 			break;
-		case 49900:
+		case (1 << (PULSE_SPIN_MAGNITUDE - 1)):
 			printf("\\\b");
 			fflush(stdout);
 			break;
-		case 74900:
+		case (1 << (PULSE_SPIN_MAGNITUDE - 2)) | (1 << (PULSE_SPIN_MAGNITUDE - 1)):
 			printf("|\b");
 			fflush(stdout);
 			break;
 	}
 }
+
 
 
 //
@@ -498,7 +506,7 @@ void aiMove(const board* const current, board* const next, const int turnNumber)
 	if (isKingChecked(next, next->whosTurn)) {
 		print(" >>> CHECK <<<");
 	}
-	print(" (score: %d)\n", bestmove.score);
+	print(" (score: %d, nodes: %d\n", bestmove.score, (int)nodesCalculated);
     print("Ai Move Time Taken: %f\n", timetaken);
 
 	printBoardUnicode(next);	
