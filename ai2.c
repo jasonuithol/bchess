@@ -10,9 +10,9 @@
 // Recursively search for the best move and set "bestMove" to point to it.
 // Search depth set by "numMoves"
 //
-scoreType getBestMove(analysisMove* const bestMove, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth) {
+scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth) {
 		
-//	print("Entering getBestMove at depth %u\n", depth);	
+//	print("Entering getBestMove for %s at depth %u\n", b->whosTurn ? "BLACK" : "WHITE", depth);	
 	
 //	printQB(b->quad);
 		
@@ -68,45 +68,32 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const b, const 
 		//
 		analysisMove* move = &(moveList.items[ix]);
 		analysisMove dummyMove;
+		scoreType score;
 		
-		scoreType score = depth < aiStrength
-							? getBestMove(&dummyMove, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1)
-							: analyseLeafNonTerminal(move->resultingBoard.quad, scoringTeam);
+		if (areEqualQB(loopDetect->quad, move->resultingBoard.quad)) {
+			
+			score = (b->whosTurn == scoringTeam) ? (-9998 + aiStrength + 1) : (9999 - aiStrength - 1);
+	//		print("Detected looping move, setting score = %d\n", (int)score);
+		}
+		else {
+
+			score = depth < aiStrength
+					? getBestMove(&dummyMove, loopDetect, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1)
+					: analyseLeafNonTerminal(move->resultingBoard.quad, scoringTeam);
+		}
 		
 		//
 		// Update bestscore to be the best score.
 		//
-		if (b->whosTurn == scoringTeam) {
-			// We analysed one of our moves, so pick the highest scoring move.
-			if (score > bestScore) {
-				
-//				logg("New best score found at depth %d for my move: %d\n", depth, score);
-				
-				bestScore = score;
-				memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
-			}
-			else {
-				
-				// For now, only log possible alternative moves.
-//				if (score > bestScore - 4 && depth == 0) {
-//					logg("Found competing alternative to best scoring move so far for score: %d\n", score);
-//				}
-				
-			}
+		// If it's our turn, get the highest (MAX), if it's their turn, get the lowest (MIN)
+		//
+		if ((b->whosTurn == scoringTeam) ? (score > bestScore) : (score < bestScore)) {
+			
+			bestScore = score;
+			// Literally only useful at depth == 0;
+			memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
 		}
-		else {
-			// We analysed one of the opponent's moves, so pick the lowest scoring move.
-			// This basically assumes that the opponent will play to their best ability.
-			// Note that the score is OUR score, not the moving team's score.
-			if (score < bestScore) {
-				
-//				logg("New best score found at depth %d for their move: %d\n", depth, score);
-				
-				bestScore = score;
-				memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
 
-			}
-		}
 				
 	} // for ix
 

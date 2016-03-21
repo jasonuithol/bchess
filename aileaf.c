@@ -140,11 +140,10 @@ scoreType analyseLeafNonTerminal(const quadboard qb, const byte team) {
 	
 	// Tell the world we still live.
 	displaySpinningPulse();
-
+		
 	// We have hit the limit of our depth search - time to score the board.
 	return (1 * evaluateMobility(qb, team))
 		 + (2 * evaluateMaterial(qb, team));	
-					  
 }
 
 scoreType analyseLeafTerminal(const board* const b, const byte scoringTeam, const depthType depth) {

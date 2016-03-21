@@ -33,6 +33,12 @@ typedef struct {
 	bitboard team;
 } quadboard;
 
+byte areEqualQB(quadboard a, quadboard b) {
+	return a.team == b.team
+		&& a.type0 == b.type0
+		&& a.type1 == b.type1
+		&& a.type2 == b.type2;	
+}
 
 void printByte(const byte v) {
 	for (byte i = 0; i < 8; i++) {

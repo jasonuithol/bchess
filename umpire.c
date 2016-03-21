@@ -140,6 +140,9 @@ byte spawnFullBoard(const board* const old,
 	// First, spawn a leaf board, it will have all the tidying up and illegal position checks.
 	if (spawnLeafBoard(old, new, from, to, promoteTo) == BOARD_NOT_LEGAL) {
 		
+//		print("Discarding illegal board\n");
+//		printQB(new->quad);
+//		print("\n");
 		// Board was found to be illegal, abort and notify caller.
 		return BOARD_NOT_LEGAL;
 	}
@@ -405,7 +408,7 @@ byte makeMove(const board* const old, board* const new, const analysisMove* cons
 byte detectCheckmate(const board* const b) {
 	analysisList moveList;
 	moveList.ix = 0;
-	generateLegalMoveList(b,&moveList,1);
+	generateLegalMoveList(b,&moveList,0);
 	if (moveList.ix == 0) {
 		return determineEndOfGameState(b);
 	}

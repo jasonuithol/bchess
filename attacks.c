@@ -228,13 +228,28 @@ byte isSquareAttacked(const quadboard qb, const bitboard square, const byte aski
 	}
 
 	const bitboard enemyKings = getPieces(qb, KING | attackingTeam);
-	if (enemyKnights & singlePieceAttacks(square, enemies, friends, kingAttacks, ATTACKMODE_SINGLE)) {	
+	if (enemyKings & singlePieceAttacks(square, enemies, friends, kingAttacks, ATTACKMODE_SINGLE)) {	
 		return 1;
 	}
 
-	const bitboard enemyPawns	= getPieces(qb, PAWN | attackingTeam);
-	// NOTE: Pawns always think they are WHITE - fix.
-	if (enemyPawns & singlePieceAttacks(square, enemies, friends, ne | nw, ATTACKMODE_PAWN)) {	
+	//
+	// WARNING: FRAGILE CODE
+	//
+	// UP   is the direction WHITE pawns move.
+	// DOWN is the direction BLACK pawns move.
+	//
+	// Therefore direction = team, because:
+	//
+	// WHITE == UP   == 0
+	// BLACK == DOWN == 1
+	//
+	const byte direction = askingTeam;
+
+	const bitboard enemyPawns = getPieces(qb, PAWN | attackingTeam);
+	if (enemyPawns & (applySingleAttackVector(square, ne, friends, direction)
+				      |
+					  applySingleAttackVector(square, nw, friends, direction))) {
+						   	
 		return 1;
 	}
 

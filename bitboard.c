@@ -59,5 +59,5 @@ offset getRank(const bitboard b) {
 }
 
 void printSquare(bitboard square) {
-	print("%c%c", getFile(square) + 'a', getRank(square) + '1');
+	print("%c%c", (7 - getFile(square)) + 'a', getRank(square) + '1');
 }

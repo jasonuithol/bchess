@@ -56,7 +56,7 @@ void printReasoning(const analysisList* const bestAnalysis, const board* const c
 //
 // Ask an AI agent to make a move.
 //
-void aiMove(const board* const current, board* const next, const int turnNumber) {
+void aiMove(const board* const current, board* const next, const board* const loopDetectPtr, const int turnNumber) {
 
 	const time_t startTime = time(NULL);
 
@@ -74,7 +74,7 @@ void aiMove(const board* const current, board* const next, const int turnNumber)
 			
 //	print("Choosing aiStrength %d\n", aiStrength);
 	
-	scoreType score = getBestMove(&bestmove, current, current->whosTurn, 3, 0);
+	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 4, 0);
 
 	// Print/log reasoning behind move.
 //	printReasoning(bestAnalysis, current, aiStrength);
