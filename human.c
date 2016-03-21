@@ -24,13 +24,6 @@ int inputMove(analysisMove* parsedMove) {
 
 		parsedMove->from = toBitboard(buffer[0], buffer[1]);
 		parsedMove->to   = toBitboard(buffer[3], buffer[4]);
-		
-		print("FROM\n");
-		printBB(parsedMove->from);
-		print("TO\n");
-		printBB(parsedMove->to);
-		
-	   
    }
    else {
 	   error("fgets() is no better than anything else around\n");
@@ -74,11 +67,17 @@ void humanMove(board* current, board* next) {
 		command = inputMove(&mv);
 		
 		analysisList myAllowedMoves;
+		myAllowedMoves.ix = 0;
 		
 		switch (command) {
 			case COMMAND_PRINTMOVES:
 				generateLegalMoveList(current, &myAllowedMoves, 0);
+				print("Allowed moves (%u in total)\n", myAllowedMoves.ix);
 				printMoveList(&myAllowedMoves);
+				print("Current castling rights: ");
+				printByte(current->currentCastlingRights);
+				print("Pieces moved: ");
+				printByte(current->piecesMoved);
 				break;
 			case COMMAND_UNDO:
 				print("Undoing move...\n");

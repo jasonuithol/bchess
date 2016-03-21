@@ -74,7 +74,7 @@ void aiMove(const board* const current, board* const next, const board* const lo
 			
 //	print("Choosing aiStrength %d\n", aiStrength);
 	
-	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 3, 0);
+	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 4, 0);
 
 	// Print/log reasoning behind move.
 //	printReasoning(bestAnalysis, current, aiStrength);

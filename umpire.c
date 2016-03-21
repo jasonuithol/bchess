@@ -152,12 +152,12 @@ byte spawnFullBoard(const board* const old,
 	// we track whether the relevant pieces have moved.
 	//
 	switch(from) {
-		case 0: 			new->piecesMoved |= WHITE_QUEENSIDE_CASTLE_MOVED; 	break;
-		case 4: 			new->piecesMoved |= WHITE_KING_MOVED; 				break;
-		case 7: 			new->piecesMoved |= WHITE_KINGSIDE_CASTLE_MOVED; 	break;
-		case 7 * 256 + 0: 	new->piecesMoved |= BLACK_QUEENSIDE_CASTLE_MOVED; 	break;
-		case 7 * 256 + 4: 	new->piecesMoved |= BLACK_KING_MOVED; 				break;
-		case 7 * 256 + 7: 	new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED; 	break;
+		case toBitboard('a','1'): new->piecesMoved |= WHITE_QUEENSIDE_CASTLE_MOVED; break;
+		case toBitboard('d','1'): new->piecesMoved |= WHITE_KING_MOVED; 			break;
+		case toBitboard('h','1'): new->piecesMoved |= WHITE_KINGSIDE_CASTLE_MOVED; 	break;
+		case toBitboard('a','8'): new->piecesMoved |= BLACK_QUEENSIDE_CASTLE_MOVED; break;
+		case toBitboard('d','8'): new->piecesMoved |= BLACK_KING_MOVED; 			break;
+		case toBitboard('h','8'): new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED; 	break;
 	}
 
 	const bitboard enemies = getTeamPieces(new->quad, old->whosTurn);
@@ -168,46 +168,62 @@ byte spawnFullBoard(const board* const old,
 	//
 	// NOTE: FOR LEAF BOARDS, THIS IS A NEEDLESS COST !!!!!
 	//
-	new->currentCastlingRights = 0;
-	if (new->whosTurn == WHITE) {
-		if (!(new->piecesMoved & (WHITE_KING_MOVED|WHITE_KINGSIDE_CASTLE_MOVED)) && !(enemies|friends|15ULL)) {
-			for (byte i = 0; i < 4; i++) {
-				if (isSquareAttacked(new->quad, 1ULL << i, new->whosTurn)) {
-					// The thinking goes that if one square is attacked, 
-					// then they all may as well be - there's no difference.
-					new->currentCastlingRights = WHITE_KINGSIDE_CASTLE_MOVED;
-				}
-			}
-		}
-		if (!(new->piecesMoved & (WHITE_KING_MOVED|WHITE_QUEENSIDE_CASTLE_MOVED)) && !(enemies|friends|31ULL << 3)) {
-			for (byte i = 5; i < 9; i++) {
-				if (isSquareAttacked(new->quad, 1ULL << i, new->whosTurn)) {
-					// The thinking goes that if one square is attacked, 
-					// then they all may as well be - there's no difference.
-					new->currentCastlingRights |= WHITE_QUEENSIDE_CASTLE_MOVED;
-				}
-			}
-		}
+	new->currentCastlingRights = new->piecesMoved;
+	
+	char rank = new->whosTurn ? '8' : '1';
+
+	//
+	// KINGSIDE
+	//
+											
+	// Check if squares are occupied.
+	if ( (enemies|friends) & (toBitboard('f',rank) | toBitboard('g',rank) ) ) {
+
+		new->currentCastlingRights |= new->whosTurn 
+										? BLACK_KINGSIDE_CASTLE_MOVED 
+										: WHITE_KINGSIDE_CASTLE_MOVED;
 	}
 	else {
-		if (!(new->piecesMoved & (BLACK_KING_MOVED|BLACK_KINGSIDE_CASTLE_MOVED)) && !(enemies|friends|15ULL)) {
-			for (byte i = 0; i < 4; i++) {
-				if (isSquareAttacked(new->quad, 1ULL << (i + 56), new->whosTurn)) {
-					// The thinking goes that if one square is attacked, 
-					// then they all may as well be - there's no difference.
-					new->currentCastlingRights = BLACK_KINGSIDE_CASTLE_MOVED;
-				}
+		
+		// Check if squares are attacked
+		for (char file = 'e'; file < 'h'; file++) {
+			
+			if (isSquareAttacked(new->quad, toBitboard(file,rank), new->whosTurn)) {
+				
+				new->currentCastlingRights |= new->whosTurn 
+												? BLACK_KINGSIDE_CASTLE_MOVED 
+												: WHITE_KINGSIDE_CASTLE_MOVED;
+				break;
 			}
 		}
-		if (!(new->piecesMoved & (BLACK_KING_MOVED|BLACK_QUEENSIDE_CASTLE_MOVED)) && !(enemies|friends|31ULL << 3)) {
-			for (byte i = 5; i < 9; i++) {
-				if (isSquareAttacked(new->quad, 1ULL << (i + 56), new->whosTurn)) {
-					// The thinking goes that if one square is attacked, 
-					// then they all may as well be - there's no difference.
-					new->currentCastlingRights |= BLACK_QUEENSIDE_CASTLE_MOVED;
-				}
+		
+	}
+
+	//
+	// QUEENSIDE
+	//
+											
+	// Check if squares are occupied.
+	if ( (enemies|friends) & (toBitboard('b',rank) | toBitboard('c',rank) | toBitboard('d',rank) ) ) {
+
+		new->currentCastlingRights |= new->whosTurn 
+										? BLACK_QUEENSIDE_CASTLE_MOVED 
+										: WHITE_QUEENSIDE_CASTLE_MOVED;
+	}
+	else {
+		
+		// Check if squares are attacked
+		for (char file = 'a'; file < 'e'; file++) {
+			
+			if (isSquareAttacked(new->quad, toBitboard(file,rank), new->whosTurn)) {
+				
+				new->currentCastlingRights |= new->whosTurn 
+												? BLACK_QUEENSIDE_CASTLE_MOVED 
+												: WHITE_QUEENSIDE_CASTLE_MOVED;
+				break;
 			}
-		}	
+		}
+		
 	}
 
 	// Board passed the illegal check state test earlier, so board is legal.

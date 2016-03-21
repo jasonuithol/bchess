@@ -30,6 +30,9 @@
 #define nne (1ULL << 17)
 #define nee (1ULL << 10)
 
+#define castle (1ULL << 2)
+
+
 const bitboard queenAttacks 	= nw | n | ne | w;
 const bitboard bishopAttacks 	= nw | ne;
 const bitboard rookAttacks 		= n  | w;    
@@ -287,26 +290,26 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 	if (team == WHITE) {
 		
 		// KINGSIDE CASTLING - WHITE
-		if (!(currentCastlingRights & WHITE_KINGSIDE_CASTLE_MOVED)) {
-			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_DOWN);
+		if ((currentCastlingRights & WHITE_KINGSIDE_CASTLE_MOVED) == 0) {
+			kingMoves |= applySingleAttackVector(piece, castle, 0, DIRECTION_DOWN);
 		}
 
 		// QUEENSIDE CASTLING - WHITE
-		if (!(currentCastlingRights & WHITE_QUEENSIDE_CASTLE_MOVED)) {
-			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_UP);
+		if ((currentCastlingRights & WHITE_QUEENSIDE_CASTLE_MOVED) == 0) {
+			kingMoves |= applySingleAttackVector(piece, castle, 0, DIRECTION_UP);
 		}
 
 	}
 	else {
 
 		// KINGSIDE CASTLING - BLACK
-		if (!(currentCastlingRights & BLACK_KINGSIDE_CASTLE_MOVED)) {
-			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_UP);
+		if ((currentCastlingRights & BLACK_KINGSIDE_CASTLE_MOVED) == 0) {
+			kingMoves |= applySingleAttackVector(piece, castle, 0, DIRECTION_DOWN);
 		}
 
 		// QUEENSIDE CASTLING - BLACK
-		if (!(currentCastlingRights & BLACK_QUEENSIDE_CASTLE_MOVED)) {
-			kingMoves |= applySingleAttackVector(piece, 2ULL, friends|enemies, DIRECTION_DOWN);
+		if ((currentCastlingRights & BLACK_QUEENSIDE_CASTLE_MOVED) == 0) {
+			kingMoves |= applySingleAttackVector(piece, castle, 0, DIRECTION_UP);
 		}
 		
 	}
