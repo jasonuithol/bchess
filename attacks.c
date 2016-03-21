@@ -30,8 +30,7 @@
 #define nne (1ULL << 17)
 #define nee (1ULL << 10)
 
-//const bitboard queenAttacks 	= nw | n | ne | w;
-const bitboard queenAttacks 	= nw | n | w;
+const bitboard queenAttacks 	= nw | n | ne | w;
 const bitboard bishopAttacks 	= nw | ne;
 const bitboard rookAttacks 		= n  | w;    
 const bitboard kingAttacks 		= nw | n | ne | w;
@@ -243,7 +242,7 @@ byte isSquareAttacked(const quadboard qb, const bitboard square, const byte aski
 	// WHITE == UP   == 0
 	// BLACK == DOWN == 1
 	//
-	const byte direction = askingTeam;
+	const byte direction = attackingTeam;
 
 	const bitboard enemyPawns = getPieces(qb, PAWN | attackingTeam);
 	if (enemyPawns & (applySingleAttackVector(square, ne, friends, direction)
