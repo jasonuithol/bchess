@@ -61,3 +61,7 @@ offset getRank(const bitboard b) {
 void printSquare(bitboard square) {
 	print("%c%c", (7 - getFile(square)) + 'a', getRank(square) + '1');
 }
+
+bitboard toBitboard(char file, char rank) {
+	return 1ULL << (7 - (file - 'a')) + ((rank - '1') * 8);
+}

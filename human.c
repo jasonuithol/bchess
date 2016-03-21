@@ -9,7 +9,7 @@
 
 board undoBoard;
 
-int inputMove(move* parsedMove) {
+int inputMove(analysisMove* parsedMove) {
 	
    char buffer[20];
 	
@@ -22,10 +22,14 @@ int inputMove(move* parsedMove) {
 			case 'L': return COMMAND_LOGGING; break;
 		}
 
-		parsedMove->from.x = (byte)(buffer[0] - 'a');
-		parsedMove->from.y = (byte)(buffer[1] - '1');
-		parsedMove->to.x = (byte)(buffer[3] - 'a');
-		parsedMove->to.y = (byte)(buffer[4] - '1');
+		parsedMove->from = toBitboard(buffer[0], buffer[1]);
+		parsedMove->to   = toBitboard(buffer[3], buffer[4]);
+		
+		print("FROM\n");
+		printBB(parsedMove->from);
+		print("TO\n");
+		printBB(parsedMove->to);
+		
 	   
    }
    else {
@@ -62,23 +66,24 @@ void humanMove(board* current, board* next) {
 	time_t startTime = time(NULL);
 	
 	// First up, actually get the move from the human player.
-	move mv;
+	analysisMove mv;
 	
 	int i,isValid,command;
 	isValid = 0; // shut the compiler up.
 	do {
 		command = inputMove(&mv);
 		
-		moveList myAllowedMoves;
+		analysisList myAllowedMoves;
 		
 		switch (command) {
 			case COMMAND_PRINTMOVES:
-				printAllowedMoves(current);
+				generateLegalMoveList(current, &myAllowedMoves, 0);
+				printMoveList(&myAllowedMoves);
 				break;
 			case COMMAND_UNDO:
 				print("Undoing move...\n");
 				memcpy((void*)current, (void*)(&undoBoard), sizeof(board));
-				printBoardUnicode(current);
+				printQBUnicode(current->quad);
 				break;
 			case COMMAND_LOGGING:
 				if (logging == 0) {
@@ -92,19 +97,18 @@ void humanMove(board* current, board* next) {
 				break;
 			case COMMAND_MOVE:
 				// Check that it's valid.
-				allowedMoves(&myAllowedMoves, current, current->whosTurn);
+				generateLegalMoveList(current, &myAllowedMoves, 0);
 				isValid = 0;
 				for (i = 0; i < myAllowedMoves.ix; i++) {
-					if (myAllowedMoves.moves[i].from.x == mv.from.x 
-						&& myAllowedMoves.moves[i].from.y == mv.from.y
-						&& myAllowedMoves.moves[i].to.x == mv.to.x
-						&& myAllowedMoves.moves[i].to.y == mv.to.y) {
+					
+					if (myAllowedMoves.items[i].from == mv.from 
+						&& myAllowedMoves.items[i].to == mv.to) {
 							
 						// Ensure this gets zeroed, we will set it explicilty 
 						// iff there's promotion afoot.
 						mv.promoteTo = 0;
 
-						if (myAllowedMoves.moves[i].promoteTo != 0) {
+						if (myAllowedMoves.items[i].promoteTo != 0) {
 							
 							int promoted = inputPawnPromotion();
 							
@@ -134,21 +138,24 @@ void humanMove(board* current, board* next) {
 	memcpy((void*)(&undoBoard), (void*)current, sizeof(board));
 
 	// Now actually make the move
-	makeMove(current, next, mv);
+	makeMove(current, next, &mv);
 
 	// Move made, print the result then return to main program loop.
 	time_t finishTime = time(NULL);
 	double timetaken = difftime(finishTime, startTime);
 	
-	print("===== human move for ");printTeam(current->whosTurn);printf(" =====\n");
+	print("===== human move for ");
+	print(current->whosTurn ? "BLACK" : "WHITE");
+	printf(" =====\n");
 	print("Move chosen: ");
-	print(" ");printMove(current, mv);
-	if (isKingChecked(next, next->whosTurn)) {
+	print(" ");
+	printMove(mv);
+	if (isKingChecked(next->quad, next->whosTurn)) {
 		print(" >>> CHECK <<<");
 	}
 	printf("\n");
     print("Human Move Time Taken: %f\n", timetaken);
 
-	printBoardUnicode(next);
+	printQBUnicode(next->quad);
 	
 }

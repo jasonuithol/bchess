@@ -15,6 +15,7 @@
 #include "aileaf.c"
 #include "ai2.c"
 #include "airoot.c"
+#include "human.c"
 //#include "loopdetect.c"
 
 
@@ -128,8 +129,8 @@ int main() {
 //		printAllowedMoves(b1ptr);
 
 		if (b1ptr->whosTurn == WHITE) {
-			aiMove(b1ptr,b2ptr,loopDetectPtr,turn);
-//			humanMove(b1ptr,b2ptr);
+//			aiMove(b1ptr,b2ptr,loopDetectPtr,turn);
+			humanMove(b1ptr,b2ptr);
 		}
 		else {
 			aiMove(b1ptr,b2ptr,loopDetectPtr,turn);
