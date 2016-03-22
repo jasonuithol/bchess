@@ -140,9 +140,6 @@ byte spawnFullBoard(const board* const old,
 	// First, spawn a leaf board, it will have all the tidying up and illegal position checks.
 	if (spawnLeafBoard(old, new, from, to, promoteTo) == BOARD_NOT_LEGAL) {
 		
-//		print("Discarding illegal board\n");
-//		printQB(new->quad);
-//		print("\n");
 		// Board was found to be illegal, abort and notify caller.
 		return BOARD_NOT_LEGAL;
 	}
@@ -249,55 +246,14 @@ byte addMoveIfLegal(	analysisList* const list,
 		next->score     = 0;
 		next->promoteTo = promoteTo;	   
 		
-		//
-		// There's only one way to check if a move is legal and that's to
-		// spawn the board, generate a checking map and look at the results.  
-		// So, if we are going to all that trouble, then we may as well cache
-		// the board.
-		//
-		// Especially if spawnFullBoard is called - because the very next
-		// thing that will happen (once this loop is done) is that the 
-		// board will get moves generated against it.
-		//
-		// The trade-off is space.  Board is currently 42 bytes.
-		// A move can be compressed to 1 byte.  But now it weighs in
-		// at a hefty 61 bytes (analysisMove) !!!!
-		//
-		// All this caching of state might get thrown out the window.
-		// It's gotten way out of hand.
-		//
-		// The prefetcher won't be able to stream the resulting array
-		// because the operations on it are quite complex:
-		//
-		// bestMove pt1 -> generateMoveList -> getPiece -> generateAttacks 
-		// -> all that vector stuff -> YOU ARE HERE -> spawnXXXBoard
-		// -> generateCheckingMap -> getpiece -> generateAttacks 
-		// -> all that vector stuff
-		// 
-		// If FULL board: generateCheckingMap (again, but for the other side)
-		// -> getPiece -> generateAttacks -> all that vector stuff
-		//
-		// IF leaf level: -> leafAnalysis -> material -> mobility 
-		// -> generateMoveList ???? -> getPiece -> generateAttacks
-		// -> all that vector stuff -> RETURN 
-		//
-		// ELSE bestMove pt1 recursion
-		//
-		// AFTER RECURSION (inside bestmove) -> min max -> RETURN
-		//
-		//
 		const byte legality = leafMode 
 							? spawnLeafBoard(old, &(next->resultingBoard), from, to, promoteTo)
 							: spawnFullBoard(old, &(next->resultingBoard), from, to, promoteTo);
 
 		if (legality == BOARD_LEGAL) {
-//			print("Keeping move\n");
 			// Keep this board.
 			list->ix++;
 		}
-//		else {
-//			print("Discarding move\n");
-//		}
 		
 		//
 		// Tell caller what happened re legality 
@@ -334,9 +290,7 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 				case QUEEN:  moves = generateQueenMoves(piece.item, enemies, friends);   break;
 				default: error("Bad pieceType\n");
 			}
-			
-//			print("Generated %d moves for pieceType %u\n", populationCount(moves), pieceType);
-			
+						
 			iterator move = { 0ULL, moves };
 			move = getNextItem(move);
 

@@ -114,10 +114,6 @@ void printResetColors() {
 	print("\033[49m\033[39m\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
 }
 
-//void printDot() {
-//	print("\u00B7");
-//}
-
 void printPieceUnicode(const byte type, const byte team, const int setToUse) {
 		
 	printTeamColor(team);
@@ -182,10 +178,6 @@ void printQBUnicode(const quadboard qb) {
 		
 	}
 }
-
-
-
-
 
 //
 // PRECONDITION: Target squares MUST BE KNOWN TO BE 0000 !!!!

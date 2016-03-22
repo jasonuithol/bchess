@@ -9,12 +9,6 @@
 typedef uint32_t nodesCalculatedType;
 typedef uint8_t depthType;
 
-
-
-
-
-
-
 //
 // Animates a little spinner to show that we are still alive.
 //
@@ -77,7 +71,7 @@ scoreType evaluateMaterial(const quadboard qb, const byte team) {
 
 
 //
-// MOBILITY: A hideously expensive strategy for deciding the best move 
+// MOBILITY: A mildly expensive strategy for deciding the best move 
 // 			 based on how many more possible PSUEDOLEGAL moves the player
 //           has than it's opponent.
 //
@@ -127,13 +121,6 @@ scoreType evaluateMobility(const quadboard qb, const byte team) {
 			- countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | (team ^ 1));
 			// For the very moment, skipping kings and pawns.
 
-}
-// SOMEHOW this is slower than evaluateMobility ?!?!?!?
-scoreType evaluateCentre(const quadboard qb, const byte team) {
-	return isSquareAttacked(qb, 1ULL << 35, team)
-		+ isSquareAttacked(qb, 1ULL << 36, team)
-		+ isSquareAttacked(qb, 1ULL << 37, team)
-		+ isSquareAttacked(qb, 1ULL << 38, team);
 }
 
 scoreType analyseLeafNonTerminal(const quadboard qb, const byte team) {
