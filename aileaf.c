@@ -140,22 +140,18 @@ scoreType analyseLeafTerminal(const board* const b, const byte scoringTeam, cons
 	if (b->whosTurn == scoringTeam) {
 		
 		if (boardState == BOARD_CHECKMATE) {
-			logg("Detected possible checkmate defeat\n");
 			return -9998 + (depth);
 		}
 		else {
-			logg("Detected possible stalemate\n");
 			return 0;
 		}
 	}
 	else {
 				
 		if (boardState == BOARD_CHECKMATE) {
-			logg("Detected possible checkmate victory\n");
 			return 9998 - (depth);
 		}
 		else {
-			logg("Detected possible stalemate\n");
 			return 0;
 		}
 	}
