@@ -9,7 +9,6 @@
 #include "bitboard.c"
 #include "iterator.c"
 #include "quadboard.c"
-//#include "board.c"
 #include "attacks.c"
 #include "umpire.c"
 #include "aileaf.c"
