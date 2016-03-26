@@ -53,19 +53,19 @@ void displaySpinningPulse() {
 //           each possible move.
 //
 
-scoreType evaluateMaterial(const quadboard qb, const byte team) {
+scoreType evaluateMaterial(const board* const b) {
 
-	return    SCORE_PAWN 	* populationCount(getPieces(qb, PAWN   | team))
-			+ SCORE_KNIGHT	* populationCount(getPieces(qb, KNIGHT | team))
-			+ SCORE_BISHOP	* populationCount(getPieces(qb, BISHOP | team))
-			+ SCORE_ROOK	* populationCount(getPieces(qb, ROOK   | team))
-			+ SCORE_QUEEN	* populationCount(getPieces(qb, QUEEN  | team))
+	return    SCORE_PAWN 	* populationCount(getPieces(b->quad, PAWN   | b->whosTurn))
+			+ SCORE_KNIGHT	* populationCount(getPieces(b->quad, KNIGHT | b->whosTurn))
+			+ SCORE_BISHOP	* populationCount(getPieces(b->quad, BISHOP | b->whosTurn))
+			+ SCORE_ROOK	* populationCount(getPieces(b->quad, ROOK   | b->whosTurn))
+			+ SCORE_QUEEN	* populationCount(getPieces(b->quad, QUEEN  | b->whosTurn))
 			
-			- SCORE_PAWN 	* populationCount(getPieces(qb, PAWN   | (team ^ 1)))
-			- SCORE_KNIGHT	* populationCount(getPieces(qb, KNIGHT | (team ^ 1)))
-			- SCORE_BISHOP	* populationCount(getPieces(qb, BISHOP | (team ^ 1)))
-			- SCORE_ROOK	* populationCount(getPieces(qb, ROOK   | (team ^ 1)))
-			- SCORE_QUEEN	* populationCount(getPieces(qb, QUEEN  | (team ^ 1))) ;
+			- SCORE_PAWN 	* populationCount(getPieces(b->quad, PAWN   | (b->whosTurn ^ 1)))
+			- SCORE_KNIGHT	* populationCount(getPieces(b->quad, KNIGHT | (b->whosTurn ^ 1)))
+			- SCORE_BISHOP	* populationCount(getPieces(b->quad, BISHOP | (b->whosTurn ^ 1)))
+			- SCORE_ROOK	* populationCount(getPieces(b->quad, ROOK   | (b->whosTurn ^ 1)))
+			- SCORE_QUEEN	* populationCount(getPieces(b->quad, QUEEN  | (b->whosTurn ^ 1))) ;
 			
 }
 
@@ -104,58 +104,34 @@ scoreType countMoves(	const quadboard qb,
 	return subscore;
 }
 
-scoreType evaluateMobility(const quadboard qb, const byte team) {
+scoreType evaluateMobility(const board* const b) {
 	
-	const bitboard friends = getTeamPieces(qb, team);
-	const bitboard enemies = getTeamPieces(qb, team ^ 1);
+	const bitboard friends = getTeamPieces(b->quad, b->whosTurn);
+	const bitboard enemies = getTeamPieces(b->quad, b->whosTurn ^ 1);
 			
-	return    countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | team)
-			+ countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | team)
-			+ countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | team)
-			+ countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | team)
+	return    countMoves(b->quad, generateKnightMoves, friends, enemies, KNIGHT | b->whosTurn)
+			+ countMoves(b->quad, generateBishopMoves, friends, enemies, BISHOP | b->whosTurn)
+			+ countMoves(b->quad, generateRookMoves,   friends, enemies, ROOK   | b->whosTurn)
+			+ countMoves(b->quad, generateQueenMoves,  friends, enemies, QUEEN  | b->whosTurn)
 			// For the very moment, skipping kings and pawns.
 			
-			- countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | (team ^ 1))
-			- countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | (team ^ 1))
-			- countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | (team ^ 1))
-			- countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | (team ^ 1));
+			- countMoves(b->quad, generateKnightMoves, friends, enemies, KNIGHT | (b->whosTurn ^ 1))
+			- countMoves(b->quad, generateBishopMoves, friends, enemies, BISHOP | (b->whosTurn ^ 1))
+			- countMoves(b->quad, generateRookMoves,   friends, enemies, ROOK   | (b->whosTurn ^ 1))
+			- countMoves(b->quad, generateQueenMoves,  friends, enemies, QUEEN  | (b->whosTurn ^ 1));
 			// For the very moment, skipping kings and pawns.
 
 }
 
-scoreType analyseLeafNonTerminal(const quadboard qb, const byte team) {
+scoreType analyseLeafNonTerminal(const board* const b) {
 	
 	// Tell the world we still live.
 	displaySpinningPulse();
 		
 	// We have hit the limit of our depth search - time to score the board.
-	return (1 * evaluateMobility(qb, team))
-		 + (2 * evaluateMaterial(qb, team));	
+	return (1 * evaluateMobility(b))
+		 + (2 * evaluateMaterial(b));	
 }
 
-scoreType analyseLeafTerminal(const board* const b, const byte scoringTeam, const depthType depth) {
-
-	const byte boardState = determineEndOfGameState(b);
-
-	if (b->whosTurn == scoringTeam) {
-		
-		if (boardState == BOARD_CHECKMATE) {
-			return -9998 + (depth);
-		}
-		else {
-			return 0;
-		}
-	}
-	else {
-				
-		if (boardState == BOARD_CHECKMATE) {
-			return 9998 - (depth);
-		}
-		else {
-			return 0;
-		}
-	}
-	
-}
 
 

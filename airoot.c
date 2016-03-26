@@ -7,7 +7,8 @@ void aiMove(const board* const current, board* const next, const board* const lo
 	
 	nodesCalculated = 0;
 	analysisMove bestmove;
-	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 4, 0);
+//	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 4, 0);
+	scoreType score = level0(&bestmove, loopDetectPtr, current);
 
 	print("\n");
 	makeMove(current, next, &bestmove);
@@ -37,7 +38,7 @@ void aiMove(const board* const current, board* const next, const board* const lo
 		print(" >>> CHECK <<<");
 	}
 	print(" (score: %d, nodes: %d)\n", (int)score, (int)nodesCalculated);
-    print("Ai Move Time Taken: %f\n", timetaken);
+    print("Ai Move Time Taken: %f, processing speed %f\n", timetaken, nodesCalculated / timetaken);
 
 	printQBUnicode(next->quad);	
 }
