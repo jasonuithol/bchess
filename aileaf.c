@@ -53,19 +53,19 @@ void displaySpinningPulse() {
 //           each possible move.
 //
 
-scoreType evaluateMaterial(const board* const b) {
+scoreType evaluateMaterial(const quadboard qb, const byte whosTurn, const byte opponent) {
 
-	return    SCORE_PAWN 	* populationCount(getPieces(b->quad, PAWN   | b->whosTurn))
-			+ SCORE_KNIGHT	* populationCount(getPieces(b->quad, KNIGHT | b->whosTurn))
-			+ SCORE_BISHOP	* populationCount(getPieces(b->quad, BISHOP | b->whosTurn))
-			+ SCORE_ROOK	* populationCount(getPieces(b->quad, ROOK   | b->whosTurn))
-			+ SCORE_QUEEN	* populationCount(getPieces(b->quad, QUEEN  | b->whosTurn))
+	return    SCORE_PAWN 	* populationCount(getPieces(qb, PAWN   | whosTurn))
+			+ SCORE_KNIGHT	* populationCount(getPieces(qb, KNIGHT | whosTurn))
+			+ SCORE_BISHOP	* populationCount(getPieces(qb, BISHOP | whosTurn))
+			+ SCORE_ROOK	* populationCount(getPieces(qb, ROOK   | whosTurn))
+			+ SCORE_QUEEN	* populationCount(getPieces(qb, QUEEN  | whosTurn))
 			
-			- SCORE_PAWN 	* populationCount(getPieces(b->quad, PAWN   | (b->whosTurn ^ 1)))
-			- SCORE_KNIGHT	* populationCount(getPieces(b->quad, KNIGHT | (b->whosTurn ^ 1)))
-			- SCORE_BISHOP	* populationCount(getPieces(b->quad, BISHOP | (b->whosTurn ^ 1)))
-			- SCORE_ROOK	* populationCount(getPieces(b->quad, ROOK   | (b->whosTurn ^ 1)))
-			- SCORE_QUEEN	* populationCount(getPieces(b->quad, QUEEN  | (b->whosTurn ^ 1))) ;
+			- SCORE_PAWN 	* populationCount(getPieces(qb, PAWN   | opponent))
+			- SCORE_KNIGHT	* populationCount(getPieces(qb, KNIGHT | opponent))
+			- SCORE_BISHOP	* populationCount(getPieces(qb, BISHOP | opponent))
+			- SCORE_ROOK	* populationCount(getPieces(qb, ROOK   | opponent))
+			- SCORE_QUEEN	* populationCount(getPieces(qb, QUEEN  | opponent)) ;
 			
 }
 
@@ -104,21 +104,21 @@ scoreType countMoves(	const quadboard qb,
 	return subscore;
 }
 
-scoreType evaluateMobility(const board* const b) {
+scoreType evaluateMobility(const quadboard qb, const byte whosTurn, const byte opponent) {
 	
-	const bitboard friends = getTeamPieces(b->quad, b->whosTurn);
-	const bitboard enemies = getTeamPieces(b->quad, b->whosTurn ^ 1);
+	const bitboard friends = getTeamPieces(qb, whosTurn);
+	const bitboard enemies = getTeamPieces(qb, opponent);
 			
-	return    countMoves(b->quad, generateKnightMoves, friends, enemies, KNIGHT | b->whosTurn)
-			+ countMoves(b->quad, generateBishopMoves, friends, enemies, BISHOP | b->whosTurn)
-			+ countMoves(b->quad, generateRookMoves,   friends, enemies, ROOK   | b->whosTurn)
-			+ countMoves(b->quad, generateQueenMoves,  friends, enemies, QUEEN  | b->whosTurn)
+	return    countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | whosTurn)
+			+ countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | whosTurn)
+			+ countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | whosTurn)
+			+ countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | whosTurn)
 			// For the very moment, skipping kings and pawns.
 			
-			- countMoves(b->quad, generateKnightMoves, friends, enemies, KNIGHT | (b->whosTurn ^ 1))
-			- countMoves(b->quad, generateBishopMoves, friends, enemies, BISHOP | (b->whosTurn ^ 1))
-			- countMoves(b->quad, generateRookMoves,   friends, enemies, ROOK   | (b->whosTurn ^ 1))
-			- countMoves(b->quad, generateQueenMoves,  friends, enemies, QUEEN  | (b->whosTurn ^ 1));
+			- countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | opponent)
+			- countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | opponent)
+			- countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | opponent)
+			- countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | opponent);
 			// For the very moment, skipping kings and pawns.
 
 }
@@ -129,8 +129,9 @@ scoreType analyseLeafNonTerminal(const board* const b) {
 	displaySpinningPulse();
 		
 	// We have hit the limit of our depth search - time to score the board.
-	return (1 * evaluateMobility(b))
-		 + (2 * evaluateMaterial(b));	
+	return (1 * evaluateMobility(b->quad, b->whosTurn, b->whosTurn ^ 1))
+		 + (2 * evaluateMaterial(b->quad, b->whosTurn, b->whosTurn ^ 1));	
+
 }
 
 
