@@ -90,7 +90,7 @@ void printQB(const quadboard qb) {
 		
 		printf("%c", c);
 
-		if (i % 8 == 7) { 
+		if (i % 8 == 0) { 
 			// We just printed at the end of the line, so CR LF plox.
 			printf("\n");
 		}

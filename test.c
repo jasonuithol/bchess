@@ -33,6 +33,10 @@ void testSuite() {
 	generateLegalMoveList(&b, &moveList, 1); // Leaf Mode = 1
 	if (moveList.ix != 20) {
 		print("generateLegalMoveList failed, incorrect number of legal moves: %u\n", moveList.ix);
+		printMoveList(&moveList);
+		print("Current castling rights: ");
+		printByte(b.currentCastlingRights);
+		print("\n");
 		exit(1);
 	}
 	

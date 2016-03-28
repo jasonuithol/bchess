@@ -19,14 +19,13 @@ typedef struct {
 
 	bitboard from;
 	bitboard to;
-	scoreType score;
 	byte promoteTo;
 	board resultingBoard;
 	
 } analysisMove;
 
 
-#define ANALYSIS_SIZE (255)
+#define ANALYSIS_SIZE (100)
 
 typedef struct {
 	
@@ -105,13 +104,14 @@ byte spawnLeafBoard(const board* const old,
 	// Castling followup (moves the castle over the king).
 	//
 	if (getPieces(old->quad, KING | old->whosTurn) & from) {
+		char rank = getRank(from) + '1';
 		if (getFile(from) - getFile(to) == 2) {
 			// Kingside castle detected
-			moveSquare(qb, 1ULL, 4ULL);
+			moveSquare(qb, toBitboard('h',rank), toBitboard('f',rank));
 		}
-		else if (getFile(from) - getFile(to) == -2) {
+		else if (getFile(to) - getFile(from) == 2) {
 			// Queenside castle detected
-			moveSquare(qb, 128ULL, 16ULL);
+			moveSquare(qb, toBitboard('a',rank), toBitboard('d',rank));
 		}
 	}
 
@@ -173,7 +173,7 @@ byte spawnFullBoard(const board* const old,
 	// KINGSIDE
 	//
 											
-	// Check if squares are occupied.
+	// Check if squares are occupied.	
 	if ( (enemies|friends) & (toBitboard('f',rank) | toBitboard('g',rank) ) ) {
 
 		new->currentCastlingRights |= new->whosTurn 
@@ -243,7 +243,7 @@ byte addMoveIfLegal(	analysisList* const list,
 		
 		next->from      = from;
 		next->to        = to;
-		next->score     = 0;
+//		next->score     = 0;
 		next->promoteTo = promoteTo;	   
 		
 		const byte legality = leafMode 
@@ -415,6 +415,11 @@ void initBoard(board* const b) {
 	addPieces(qb, 8ULL << (8 * 7), KING | BLACK);
 
 	b->piecesMoved = 0;
+	b->currentCastlingRights = WHITE_KINGSIDE_CASTLE_MOVED 
+							   | WHITE_QUEENSIDE_CASTLE_MOVED
+							   | BLACK_KINGSIDE_CASTLE_MOVED
+							   | BLACK_QUEENSIDE_CASTLE_MOVED ;
+							   
 	b->whosTurn = WHITE;
 }
 

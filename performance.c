@@ -14,7 +14,7 @@ double perftest_evaluateMaterial() {
 	initBoard(&b);
 	time_t startTime = time(NULL);
 	for (int i = 0; i < PERF_ITERATIONS; i++) {
-		if (evaluateMaterial(b.quad, WHITE) == 99) {
+		if (evaluateMaterial(b.quad, WHITE, BLACK) == 99) {
 			print("99 !!!!!\n");
 		}
 	}
@@ -27,7 +27,7 @@ double perftest_evaluateMobility_Empty() {
 	clearBoard(&b);
 	time_t startTime = time(NULL);
 	for (int i = 0; i < PERF_ITERATIONS; i++) {
-		if (evaluateMobility(b.quad, WHITE) == 99) {
+		if (evaluateMobility(b.quad, WHITE, BLACK) == 99) {
 			print("99 !!!!!\n");
 		}
 	}
@@ -40,7 +40,7 @@ double perftest_evaluateMobility_Initial() {
 	initBoard(&b);
 	time_t startTime = time(NULL);
 	for (int i = 0; i < PERF_ITERATIONS; i++) {
-		if (evaluateMobility(b.quad, WHITE) == 99) {
+		if (evaluateMobility(b.quad, WHITE, BLACK) == 99) {
 			print("99 !!!!!\n");
 		}
 	}
@@ -50,10 +50,11 @@ double perftest_evaluateMobility_Initial() {
 
 double perftest_getBestMove_Initial() {
 	analysisMove bestMove;
-	board b;	
+	board b, loop;	
 	initBoard(&b);
+	clearBoard(&loop);
 	time_t startTime = time(NULL);
-	if (getBestMove(&bestMove, &b, 0, 4, 0) == 99) {
+	if (level0(&bestMove, &loop, &b, 1) == 99) {
 		print("99 !!!!!\n");
 	}
 	else {
@@ -97,7 +98,7 @@ double perftest_isSquareAttacked() {
 
 
 void runPerformanceSuite() {
-
+/*
 	double a1 = perftest_displaySpinningPulse();
 	printf("perftest_displaySpinningPulse: %f\n", a1); fflush(stdout);
 
@@ -115,7 +116,7 @@ void runPerformanceSuite() {
 
 	double a6 = perftest_isSquareAttacked();
 	printf("perftest_isSquareAttacked: %f\n", a6); fflush(stdout);
-
+*/
 	double a7 = perftest_getBestMove_Initial();
 	printf("perftest_getBestMove_Initial: %f\n", a7); fflush(stdout);
 	

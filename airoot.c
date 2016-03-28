@@ -8,7 +8,7 @@ void aiMove(const board* const current, board* const next, const board* const lo
 	nodesCalculated = 0;
 	analysisMove bestmove;
 //	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 4, 0);
-	scoreType score = level0(&bestmove, loopDetectPtr, current);
+	scoreType score = level0(&bestmove, loopDetectPtr, current, 1);
 
 	print("\n");
 	makeMove(current, next, &bestmove);
