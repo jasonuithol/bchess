@@ -49,18 +49,21 @@ double perftest_evaluateMobility_Initial() {
 } 
 
 double perftest_getBestMove_Initial() {
-	analysisMove bestMove;
+	analysisMove* bestMove;
 	board b, loop;	
 	initBoard(&b);
 	clearBoard(&loop);
 	time_t startTime = time(NULL);
-	if (level0(&bestMove, &loop, &b, 1) == 99) {
+	movePlan* plan = level0(&loop, &b, 0);  // deeplevel
+	bestMove = &(plan->items[0]);
+	if (plan->score == 99) { 
 		print("99 !!!!!\n");
 	}
 	else {
 		print("printing BestMove merged bitboard\n");
-		printBB(bestMove.from | bestMove.to);
+		printBB(bestMove->from | bestMove->to);
 	}
+	free(plan);
 	time_t finishTime = time(NULL);
 	return difftime(finishTime, startTime);
 }
