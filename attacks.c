@@ -240,12 +240,16 @@ byte isSquareAttacked(const quadboard qb, const bitboard square, const byte aski
 	// UP   is the direction WHITE pawns move.
 	// DOWN is the direction BLACK pawns move.
 	//
-	// Therefore direction = team, because:
+	// *******************************************************
+	// But when checking for attacks, one must reverse this.
+	// *******************************************************
 	//
-	// WHITE == UP   == 0
-	// BLACK == DOWN == 1
+	// Therefore direction = team ^ 1, because:
 	//
-	const byte direction = attackingTeam;
+	// WHITE == 0 -> 0^1 == DOWN
+	// BLACK == 1 -> 1^1 == UP 
+	//
+	const byte direction = attackingTeam ^ 1;
 
 	const bitboard enemyPawns = getPieces(qb, PAWN | attackingTeam);
 	if (enemyPawns & (applySingleAttackVector(square, ne, friends, direction)
