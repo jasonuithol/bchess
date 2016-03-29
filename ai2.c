@@ -286,10 +286,9 @@ movePlan* level1(	const board* const loopDetect,
 
 
 
-scoreType level0toplevel(	analysisMove* const bestMove, 
-							const board* const loopDetect, 
+movePlan* level0toplevel(	const board* const loopDetect, 
 							const board* const b,
-							movePlan plans[ANALYSIS_SIZE],
+							movePlan* plans[ANALYSIS_SIZE],
 							analysisList moveList);
 
 //
@@ -298,6 +297,9 @@ scoreType level0toplevel(	analysisMove* const bestMove,
 movePlan* level0(	const board* const loopDetect, 
 					const board* const b,
 					const byte toplevel) {
+
+	print("level0 handed the following board\n");
+	printQB(b->quad);
 
 	const byte planIx = 0;
 
@@ -332,7 +334,7 @@ movePlan* level0(	const board* const loopDetect,
 		}
 	}
 	
-	// In this level, we keep a copy of ALL plans.
+	// In this level, we keep a list of pointers to ALL plans.
 	// However, this is only useful for toplevel
 	movePlan* candidates[ANALYSIS_SIZE];
 		
@@ -359,6 +361,7 @@ movePlan* level0(	const board* const loopDetect,
 		}
 		else {
 			candidate = level1(loopDetect, &(move->resultingBoard));
+//			candidate = level3(loopDetect, &(move->resultingBoard));
 			score = candidate->score;
 		}
 
@@ -390,29 +393,27 @@ movePlan* level0(	const board* const loopDetect,
 	} // for ix
 
 
-//	if (toplevel) {
+	if (toplevel) {
 		
-//		bestPlan = level0toplevel(	bestMove, 
-//									loopDetect, 
-//									b,
-//									plans,
-//									moveList	);
+		bestPlan = level0toplevel(	loopDetect, 
+									b,
+									candidates,
+									moveList	);
 
-//		for (byte ix = 0; ix < moveList.ix; ix++) {
-//			if (candidates[ix] != bestPlan) {
-//				// Don't need any candidate plans that aren't the best plan
-//				free(candidates[ix]);
-//			}
-//		}
-
-//	}
-//	else {
+		for (byte ix = 0; ix < moveList.ix; ix++) {
+			if (candidates[ix] != bestPlan) {
+				// Don't need any candidate plans that aren't the best plan
+				print("About to free candidates[ix] in level0toplevel\n");
+				free(candidates[ix]);
+			}
+		}
+	}
+	else {
 
 		// Update the moveplan.
 		bestPlan->score = bestScore;
-		addMoveToPlan(bestPlan, bestMove, planIx);
-	
-//	}
+		addMoveToPlan(bestPlan, bestMove, planIx);	
+	}
 
 	for (byte j = 0; j < 4; j++) {
 		printMove(bestPlan->items[j]);
@@ -433,15 +434,16 @@ movePlan* level0(	const board* const loopDetect,
 //
 // YOUR TURN: b->whosTurn
 //
-scoreType level0toplevel(	analysisMove* const bestMove, 
-							const board* const loopDetect, 
+movePlan* level0toplevel(	const board* const loopDetect, 
 							const board* const b,
-							movePlan plans[ANALYSIS_SIZE],
+							movePlan* plans[ANALYSIS_SIZE],
 							analysisList moveList			) {
 
+	movePlan* veryBestPlan = NULL;
 	scoreType bestScores[SECOND_ANALYSIS_SIZE];
 	int bestMoveIx[SECOND_ANALYSIS_SIZE];
 
+	// Assume the worst
 	for (byte j = 0; j < SECOND_ANALYSIS_SIZE; j++) {
 		bestScores[j] = -9999;
 		bestMoveIx[j] = -1;
@@ -452,7 +454,7 @@ scoreType level0toplevel(	analysisMove* const bestMove,
 	//
 	for (int ix = 0; ix < moveList.ix; ix++) {
 
-		movePlan* plan = &(plans[ix]);
+		movePlan* plan = plans[ix];
 		
 		// Look for a best slot that we are better than
 		for (byte j = 0; j < SECOND_ANALYSIS_SIZE; j++) {
@@ -489,7 +491,7 @@ scoreType level0toplevel(	analysisMove* const bestMove,
 			continue;
 		}
 		
-		movePlan* bestPlan = &(plans[bestIx]);
+		movePlan* bestPlan = plans[bestIx];
 		analysisMove* deepMove = &(bestPlan->items[3]);
 
 		scoreType score;
@@ -500,36 +502,48 @@ scoreType level0toplevel(	analysisMove* const bestMove,
 			print(" ");
 		}
 
-//		if (bestPlan->score < 9000 || bestPlan->score > -9000) {
+		
+		if (bestPlan->score < 9000 || bestPlan->score > -9000) {
+
+			movePlan* candidateDeepPlan;
 
 			//
 			// Drill down 4 more levels on this candidate move.
 			//
-//			score = level0(	bestMove, 	// <-- We throw away the result here
-//							loopDetect, 
-//							&(deepMove->resultingBoard), 
-//							0);
+			candidateDeepPlan = level0(	loopDetect, 
+							&(deepMove->resultingBoard), 
+							0);
+							
+			score = candidateDeepPlan->score;
 
+			// we only really need the score.
+			print("About to free candidateDeepPlan in level0toplevel\n");
+			free(candidateDeepPlan);
 
-//		}
-//		else {
+		}
+		else {
 			// Was a terminal move (checkmate or stalemate) so 
 			// do not try to drill down any further.
 			score = bestPlan->score;
-//		}
+		}
 		
 		print("now scoring %d\n", score);
 					
 		if (score > bestScore) {
 			
+//			if (veryBestPlan != NULL) {
+				// Don't need this plan anymore.
+//				print("About to free old veryBestPlan in level0toplevel\n");
+//				free(veryBestPlan);
+//			}
+						
 			bestScore = score;
-			
-			// We have a potential winner - update the bestMove
-			memcpy((void*)bestMove, (void*)&(bestPlan->items[0]), sizeof(analysisMove));
+			veryBestPlan = bestPlan;
 		}
 		
 	}
 	
-	return bestScore;
+	veryBestPlan->score = bestScore; // For display purposes only.
+	return veryBestPlan;
 }
 

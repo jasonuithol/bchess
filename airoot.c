@@ -7,7 +7,7 @@ void aiMove(const board* const current, board* const next, const board* const lo
 	
 	nodesCalculated = 0;
 //	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 4, 0);
-	movePlan* plan = level0(loopDetectPtr, current, 0); // deep plan
+	movePlan* plan = level0(loopDetectPtr, current, 1); // deep plan
 	analysisMove* bestmove = &(plan->items[0]);
 
 	print("\n");
@@ -43,5 +43,6 @@ void aiMove(const board* const current, board* const next, const board* const lo
 	printQBUnicode(next->quad);	
 
 	// We are done with this plan.
+	print("About to free plan in airoot:aiMove\n");
 	free(plan);
 }

@@ -54,7 +54,7 @@ double perftest_getBestMove_Initial() {
 	initBoard(&b);
 	clearBoard(&loop);
 	time_t startTime = time(NULL);
-	movePlan* plan = level0(&loop, &b, 0);  // deeplevel
+	movePlan* plan = level0(&loop, &b, 1);  // toplevel
 	bestMove = &(plan->items[0]);
 	if (plan->score == 99) { 
 		print("99 !!!!!\n");
