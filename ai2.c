@@ -16,7 +16,7 @@ typedef struct {
 	scoreType score;
 } movePlan;
 
-#define SECOND_ANALYSIS_SIZE (3)
+#define SECOND_ANALYSIS_SIZE (4)
 
 void addMoveToPlan(movePlan* const plan, const analysisMove* const move, byte planIx) {
 	memcpy((void*)&(plan->items[planIx]), (void*)move, sizeof(analysisMove));
@@ -298,8 +298,8 @@ movePlan* level0(	const board* const loopDetect,
 					const board* const b,
 					const byte toplevel) {
 
-	print("level0 handed the following board\n");
-	printQB(b->quad);
+//	print("level0 handed the following board\n");
+//	printQB(b->quad);
 
 	const byte planIx = 0;
 
@@ -403,7 +403,7 @@ movePlan* level0(	const board* const loopDetect,
 		for (byte ix = 0; ix < moveList.ix; ix++) {
 			if (candidates[ix] != bestPlan) {
 				// Don't need any candidate plans that aren't the best plan
-				print("About to free candidates[ix] in level0toplevel\n");
+//				print("About to free candidates[ix] in level0toplevel\n");
 				free(candidates[ix]);
 			}
 		}
@@ -415,15 +415,15 @@ movePlan* level0(	const board* const loopDetect,
 		addMoveToPlan(bestPlan, bestMove, planIx);	
 	}
 
-	for (byte j = 0; j < 4; j++) {
-		printMove(bestPlan->items[j]);
-		print(" ");
-	}
-	print("\n");
-	for (byte j = 0; j < 4; j++) {
-		printQB(bestPlan->items[j].resultingBoard.quad);
-		print("\n");
-	}
+//	for (byte j = 0; j < 4; j++) {
+//		printMove(bestPlan->items[j]);
+//		print(" ");
+//	}
+//	print("\n");
+//	for (byte j = 0; j < 4; j++) {
+//		printQB(bestPlan->items[j].resultingBoard.quad);
+//		print("\n");
+//	}
 
 	// Return our rating of the move now living in bestMove.
 	// (only useful in deep analysis)
@@ -496,11 +496,11 @@ movePlan* level0toplevel(	const board* const loopDetect,
 
 		scoreType score;
 		
-		print("Candidate plan at current score %d\n", bestPlan->score);
-		for (byte j = 0; j < 4; j++) {
-			printMove(bestPlan->items[j]);
-			print(" ");
-		}
+//		print("Candidate plan at current score %d\n", bestPlan->score);
+//		for (byte j = 0; j < 4; j++) {
+//			printMove(bestPlan->items[j]);
+//			print(" ");
+//		}
 
 		
 		if (bestPlan->score < 9000 || bestPlan->score > -9000) {
@@ -517,7 +517,7 @@ movePlan* level0toplevel(	const board* const loopDetect,
 			score = candidateDeepPlan->score;
 
 			// we only really need the score.
-			print("About to free candidateDeepPlan in level0toplevel\n");
+//			print("About to free candidateDeepPlan in level0toplevel\n");
 			free(candidateDeepPlan);
 
 		}
@@ -527,7 +527,7 @@ movePlan* level0toplevel(	const board* const loopDetect,
 			score = bestPlan->score;
 		}
 		
-		print("now scoring %d\n", score);
+//		print("now scoring %d\n", score);
 					
 		if (score > bestScore) {
 			
