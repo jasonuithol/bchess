@@ -2,10 +2,11 @@
 // Ask a human agent to make a move.
 //
 
-#define COMMAND_MOVE (0)
-#define COMMAND_PRINTMOVES (1)
-#define COMMAND_UNDO (2)
-#define COMMAND_LOGGING (3)
+#define COMMAND_MOVE 		(0)
+#define COMMAND_PRINTMOVES 	(1)
+#define COMMAND_UNDO 		(2)
+#define COMMAND_LOGGING 	(3)
+#define COMMAND_QUIT 		(4)
 
 board undoBoard;
 
@@ -20,6 +21,7 @@ int inputMove(analysisMove* parsedMove) {
 			case 'M': return COMMAND_PRINTMOVES; break;
 			case 'U': return COMMAND_UNDO; break;
 			case 'L': return COMMAND_LOGGING; break;
+			case 'Q': return COMMAND_QUIT; break;
 		}
 
 		parsedMove->from = toBitboard(buffer[0], buffer[1]);
@@ -128,6 +130,11 @@ void humanMove(board* current, board* next) {
 					print("Entered move is not valid, please try again\n");
 				}
 				break; // out of while loop.
+			case COMMAND_QUIT:
+				print("Received Quit command, exiting...\n");
+				exit(0);
+				break;
+				
 		}
 		
 	} while (isValid == 0);

@@ -5,10 +5,14 @@ void aiMove(const board* const current, board* const next, const board* const lo
 
 	const time_t startTime = time(NULL);
 	
+	// Seed the random number generator
+//	srand(startTime);
+	
 	nodesCalculated = 0;
 //	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 4, 0);
-	movePlan* plan = level0(loopDetectPtr, current, 1); // deep plan
-	analysisMove* bestmove = &(plan->items[0]);
+	movePlan plan; 
+	level0(loopDetectPtr, current, &plan, 1); // deep plan
+	analysisMove* bestmove = &(plan.items[0]);
 
 	print("\n");
 	makeMove(current, next, bestmove);
@@ -37,12 +41,8 @@ void aiMove(const board* const current, board* const next, const board* const lo
 	if (isKingChecked(next->quad, next->whosTurn)) {
 		print(" >>> CHECK <<<");
 	}
-	print(" (score: %d, nodes: %d)\n", (int)plan->score, (int)nodesCalculated);
+	print(" (score: %d, nodes: %d)\n", (int)plan.score, (int)nodesCalculated);
     print("Ai Move Time Taken: %f, processing speed %f\n", timetaken, nodesCalculated / timetaken);
 
 	printQBUnicode(next->quad);	
-
-	// We are done with this plan.
-	print("About to free plan in airoot:aiMove\n");
-	free(plan);
 }

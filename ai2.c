@@ -16,7 +16,7 @@ typedef struct {
 	scoreType score;
 } movePlan;
 
-#define SECOND_ANALYSIS_SIZE (4)
+#define SECOND_ANALYSIS_SIZE (6)
 
 void addMoveToPlan(movePlan* const plan, const analysisMove* const move, byte planIx) {
 	memcpy((void*)&(plan->items[planIx]), (void*)move, sizeof(analysisMove));
@@ -29,13 +29,11 @@ void addMoveToPlan_NULL(movePlan* const plan, byte planIx) {
 //
 // OPPONENT TURN: ~b->whosTurn
 //
-movePlan* level3(	const board* const loopDetect, 
-					const board* const b) {
+void level3(	const board* const loopDetect, 
+				const board* const b,
+				movePlan* const plan) {
 
 	const byte planIx = 3;
-
-	// MALLOC: This could be the chosen plan !
-	movePlan* plan = malloc(sizeof(movePlan));
 
 	// Start by assuming the best us, and see if the opponent can make it worse.
 	scoreType bestScore = 9999;
@@ -57,7 +55,7 @@ movePlan* level3(	const board* const loopDetect,
 		addMoveToPlan_NULL(plan, planIx);
 		
 		// Stop thinking, and report back with our plan.
-		return plan;
+		return;
 	}
 	
 	for (byte ix = 0; ix < moveList.ix; ix++) {
@@ -100,35 +98,32 @@ movePlan* level3(	const board* const loopDetect,
 	plan->score = bestScore;
 	addMoveToPlan(plan, bestMove, planIx);
 
-	// Return our plan.
-	return plan;
 }
 
 //
 // YOUR TURN: b->whosTurn
 //
-movePlan* level2(	const board* const loopDetect, 
-					const board* const b) {
+void level2(	const board* const loopDetect, 
+				const board* const b,
+				movePlan* const plan) {
 
 	const byte planIx = 2;
 
 	// Start by assuming the worst for us and see if we can do better than that.
 	scoreType bestScore = -9999;
 
-	movePlan* bestPlan = NULL;
-	analysisMove* bestMove = NULL;	
+	int bestIx = -1;
 	analysisList moveList;
 	moveList.ix = 0; // MANDATORY
 
+	movePlan candidatePlans[ANALYSIS_SIZE];
+	
 	
 	// Do non-leaf analysis
 	generateLegalMoveList(b, &moveList, 0);			
 
 	// Checkmate/stalemate detection for AI.  Game over decision made elsewhere.
 	if (moveList.ix == 0) {
-
-		// MALLOC: This could be the chosen plan !
-		movePlan* plan = malloc(sizeof(movePlan));
 
 		// Potential checkmate/stalemate found.  Score now.
 		plan->score = determineEndOfGameState(b) == BOARD_CHECKMATE ? -9996 : 0;
@@ -137,7 +132,7 @@ movePlan* level2(	const board* const loopDetect,
 		addMoveToPlan_NULL(plan, planIx);
 		
 		// Stop thinking, and report back with our plan.
-		return plan;		
+		return;		
 	}
 	
 	for (byte ix = 0; ix < moveList.ix; ix++) {
@@ -150,17 +145,16 @@ movePlan* level2(	const board* const loopDetect,
 		// than what we have now.
 		//
 		analysisMove* move = &(moveList.items[ix]);
+		movePlan* candidate = &(candidatePlans[ix]);
 		scoreType score;
-		movePlan* candidate = NULL;
 		
 		if (areEqualQB(loopDetect->quad, move->resultingBoard.quad)) {
 			
 			// If a loop is detected, don't recurse, just score very badly
-			candidate = malloc(sizeof(movePlan));
 			score = -9980;
 		}
 		else {
-			candidate = level3(loopDetect, &(move->resultingBoard));
+			level3(loopDetect, &(move->resultingBoard), candidate);
 			score = candidate->score;
 		}
 		
@@ -170,54 +164,42 @@ movePlan* level2(	const board* const loopDetect,
 		// Our turn, so pick the highest.
 		//
 		if (score > bestScore) {
-
-			if (bestPlan != NULL) {
-				// We're not going to use this plan, so discard.
-				free(bestPlan);
-			}
-
 			bestScore = score;
-			bestMove = move;
-			bestPlan = candidate;
+			bestIx = ix;
 		}
-		else {
-			// We're not going to use this plan, so discard.
-			free(candidate);
-		}
+		
 	} // for ix
 
 	// Update the moveplan.
-	bestPlan->score = bestScore;
-	addMoveToPlan(bestPlan, bestMove, planIx);
+	plan->score = bestScore;
+	addMoveToPlan(plan, &(moveList.items[bestIx]), planIx);
+	addMoveToPlan(plan, &(candidatePlans[bestIx].items[planIx + 1]), planIx + 1);
 
-	// Return our plan.
-	return bestPlan;
 }
 
 //
 // OPPONENT TURN: ~b->whosTurn
 //
-movePlan* level1(	const board* const loopDetect, 
-					const board* const b) {
+void level1(	const board* const loopDetect, 
+				const board* const b,
+				movePlan* const plan	) {
 
 	const byte planIx = 1;
 
 	// Start by assuming the best us, and see if the opponent can make it worse.
 	scoreType bestScore = 9999;
 
-	movePlan* bestPlan = NULL;
-	analysisMove* bestMove = NULL;	
+	int bestIx = -1;
 	analysisList moveList;
 	moveList.ix = 0; // MANDATORY
 	
+	movePlan candidatePlans[ANALYSIS_SIZE];
+
 	// Do non-leaf analysis
 	generateLegalMoveList(b, &moveList, 0);			
 	
 	// Checkmate/stalemate detection for AI.  Game over decision made elsewhere.
 	if (moveList.ix == 0) {
-
-		// MALLOC: This could be the chosen plan !
-		movePlan* plan = malloc(sizeof(movePlan));
 
 		// Potential checkmate/stalemate found.  Score now.
 		plan->score = determineEndOfGameState(b) == BOARD_CHECKMATE ? 9997 : 0;
@@ -226,7 +208,7 @@ movePlan* level1(	const board* const loopDetect,
 		addMoveToPlan_NULL(plan, planIx);
 		
 		// Stop thinking, and report back with our plan.
-		return plan;				
+		return;
 	}
 	
 	for (byte ix = 0; ix < moveList.ix; ix++) {
@@ -239,17 +221,16 @@ movePlan* level1(	const board* const loopDetect,
 		// than what we have now.
 		//
 		analysisMove* move = &(moveList.items[ix]);
+		movePlan* candidate = &(candidatePlans[ix]);
 		scoreType score;
-		movePlan* candidate = NULL;
 		
 		if (areEqualQB(loopDetect->quad, move->resultingBoard.quad)) {
 			
 			// If a loop is detected, don't recurse, just score very badly
-			candidate = malloc(sizeof(movePlan));
 			score = -9980;
 		}
 		else {
-			candidate = level2(loopDetect, &(move->resultingBoard));
+			level2(loopDetect, &(move->resultingBoard), candidate);
 			score = candidate->score;
 		}
 		
@@ -259,44 +240,34 @@ movePlan* level1(	const board* const loopDetect,
 		// Opponent's turn, and so will pick lowest score for us.
 		//
 		if (score < bestScore) {
-
-			if (bestPlan != NULL) {
-				// We're not going to use this plan, so discard.
-				free(bestPlan);
-			}
-			
 			bestScore = score;
-			bestMove = move;			
-			bestPlan = candidate;
-		}
-		else {
-			// We're not going to use this plan, so discard.
-			free(candidate);
+			bestIx = ix;			
 		}
 				
 	} // for ix
 
 	// Update the moveplan.
-	bestPlan->score = bestScore;
-	addMoveToPlan(bestPlan, bestMove, planIx);
+	plan->score = bestScore;
+	addMoveToPlan(plan, &(moveList.items[bestIx]), planIx);
+	addMoveToPlan(plan, &(candidatePlans[bestIx].items[planIx + 1]), planIx + 1);
+	addMoveToPlan(plan, &(candidatePlans[bestIx].items[planIx + 2]), planIx + 2);
 
-	// Return our plan.
-	return bestPlan;
 }
 
 
 
-movePlan* level0toplevel(	const board* const loopDetect, 
-							const board* const b,
-							movePlan* plans[ANALYSIS_SIZE],
-							analysisList moveList);
+int level0toplevel(	const board* const loopDetect, 
+					const board* const b,
+					movePlan plans[ANALYSIS_SIZE],
+					byte numMoves);
 
 //
 // YOUR TURN: b->whosTurn
 //
-movePlan* level0(	const board* const loopDetect, 
-					const board* const b,
-					const byte toplevel) {
+void level0(	const board* const loopDetect, 
+				const board* const b,
+				movePlan* const plan,
+				const byte toplevel) {
 
 //	print("level0 handed the following board\n");
 //	printQB(b->quad);
@@ -306,8 +277,7 @@ movePlan* level0(	const board* const loopDetect,
 	// Start by assuming the worst for us and see if we can do better than that.
 	scoreType bestScore = -9999;
 
-	movePlan* bestPlan = NULL;
-	analysisMove* bestMove = NULL;	
+	int bestIx = -1;
 	analysisList moveList;
 	moveList.ix = 0; // MANDATORY
 	
@@ -320,9 +290,6 @@ movePlan* level0(	const board* const loopDetect,
 			error("OOOPSSSS !!!! I've been asked to move when the game has finished !!!\n");
 		}
 		else {
-			// MALLOC: This could be the chosen plan !
-			movePlan* plan = malloc(sizeof(movePlan));
-
 			// Potential checkmate/stalemate found.  Score now.
 			plan->score = determineEndOfGameState(b) == BOARD_CHECKMATE ? -9998 : 0;
 
@@ -330,13 +297,13 @@ movePlan* level0(	const board* const loopDetect,
 			addMoveToPlan_NULL(plan, planIx);
 			
 			// Stop thinking, and report back with our plan.
-			return plan;				
+			return;				
 		}
 	}
 	
 	// In this level, we keep a list of pointers to ALL plans.
 	// However, this is only useful for toplevel
-	movePlan* candidates[ANALYSIS_SIZE];
+	movePlan candidatePlans[ANALYSIS_SIZE];
 		
 	//
 	// Score each move at a depth of 4 plys (2 full turns)
@@ -351,17 +318,15 @@ movePlan* level0(	const board* const loopDetect,
 		// than what we have now.
 		//
 		analysisMove* move = &(moveList.items[ix]);
+		movePlan* candidate = &(candidatePlans[ix]);
 		scoreType score;
-		movePlan* candidate = NULL;
 		
 		if (areEqualQB(loopDetect->quad, move->resultingBoard.quad)) {
 			// If a loop is detected, don't recurse, just score very badly
-			candidate = malloc(sizeof(movePlan));
 			score = -9980;
 		}
 		else {
-			candidate = level1(loopDetect, &(move->resultingBoard));
-//			candidate = level3(loopDetect, &(move->resultingBoard));
+			level1(loopDetect, &(move->resultingBoard), candidate);
 			score = candidate->score;
 		}
 
@@ -369,24 +334,12 @@ movePlan* level0(	const board* const loopDetect,
 			// At toplevel, we track multiple plans.
 			candidate->score = score;
 			addMoveToPlan(candidate, move, planIx);
-			candidates[ix] = candidate;
 		}
 		else {
 			// At deep level, we look for the best plan.
-			// (and chuck away the rest)
 			if (score > bestScore) {
-				
-				if (bestPlan != NULL) {
-					// We're not going to use this plan, so discard.
-					free(bestPlan);
-				}
-
 				bestScore = score;
-				bestMove = move;
-				bestPlan = candidate;
-			}
-			else {
-				free(candidate);
+				bestIx = ix;
 			}
 		}
 						
@@ -395,51 +348,35 @@ movePlan* level0(	const board* const loopDetect,
 
 	if (toplevel) {
 		
-		bestPlan = level0toplevel(	loopDetect, 
+		// We need to go deeper.
+		bestIx = level0toplevel(	loopDetect, 
 									b,
-									candidates,
-									moveList	);
+									candidatePlans,
+									moveList.ix	);
+									
+		// Grab the deeper score.							
+		bestScore = candidatePlans[bestIx].score;
 
-		for (byte ix = 0; ix < moveList.ix; ix++) {
-			if (candidates[ix] != bestPlan) {
-				// Don't need any candidate plans that aren't the best plan
-//				print("About to free candidates[ix] in level0toplevel\n");
-				free(candidates[ix]);
-			}
-		}
-	}
-	else {
-
-		// Update the moveplan.
-		bestPlan->score = bestScore;
-		addMoveToPlan(bestPlan, bestMove, planIx);	
 	}
 
-//	for (byte j = 0; j < 4; j++) {
-//		printMove(bestPlan->items[j]);
-//		print(" ");
-//	}
-//	print("\n");
-//	for (byte j = 0; j < 4; j++) {
-//		printQB(bestPlan->items[j].resultingBoard.quad);
-//		print("\n");
-//	}
+	// Update the moveplan.
+	plan->score = bestScore;
+	addMoveToPlan(plan, &(moveList.items[bestIx]), planIx);
+	addMoveToPlan(plan, &(candidatePlans[bestIx].items[planIx + 1]), planIx + 1);
+	addMoveToPlan(plan, &(candidatePlans[bestIx].items[planIx + 2]), planIx + 2);
+	addMoveToPlan(plan, &(candidatePlans[bestIx].items[planIx + 3]), planIx + 3);
 
-	// Return our rating of the move now living in bestMove.
-	// (only useful in deep analysis)
-	return bestPlan;
 }
 
 
 //
 // YOUR TURN: b->whosTurn
 //
-movePlan* level0toplevel(	const board* const loopDetect, 
-							const board* const b,
-							movePlan* plans[ANALYSIS_SIZE],
-							analysisList moveList			) {
+int level0toplevel(		const board* const loopDetect, 
+						const board* const b,
+						movePlan plans[ANALYSIS_SIZE],
+						byte numMoves			) {
 
-	movePlan* veryBestPlan = NULL;
 	scoreType bestScores[SECOND_ANALYSIS_SIZE];
 	int bestMoveIx[SECOND_ANALYSIS_SIZE];
 
@@ -450,20 +387,16 @@ movePlan* level0toplevel(	const board* const loopDetect,
 	}
 
 	//
-	// Find the best moves
+	// Find the best 3 moves, the worst move, and 2 random moves
 	//
-	for (int ix = 0; ix < moveList.ix; ix++) {
+	for (int ix = 0; ix < numMoves; ix++) {
 
-		movePlan* plan = plans[ix];
+		movePlan* plan = &(plans[ix]);
 		
 		// Look for a best slot that we are better than
-		for (byte j = 0; j < SECOND_ANALYSIS_SIZE; j++) {
+		for (byte j = 0; j < 3; j++) {
 			
-			if (plan->score > bestScores[j]) {
-
-//					print("Found new potential candidate move at score %d: ", plan->score);
-//					printMove(plan->items[0]);
-//					print("\n");
+			if (plan->score > bestScores[j]) {  // FINDING THE BEST
 				
 				bestScores[j] = plan->score;
 				bestMoveIx[j] = ix;
@@ -472,27 +405,41 @@ movePlan* level0toplevel(	const board* const loopDetect,
 				break;
 			}
 		}
-		
 	}
+/*	
+	for (int ix = 0; ix < moveList.ix; ix++) {
+		movePlan* plan = plans[ix];
+		if (plan->score < bestScores[3]) {	// FINDING THE WORST
+			
+			bestScores[3] = plan->score;
+			bestMoveIx[3] = ix;
+		}
+	}
+	
+	int r = rand();
+*/	
+	
+	
 
 	//
 	// Further analyse remaining moves
 	//
 	
 	scoreType bestScore = -9999;
-//		movePlan deepPlans[SECOND_ANALYSIS_SIZE];
+	movePlan candidateDeepPlans[SECOND_ANALYSIS_SIZE];
+	int bestIx = -1;
 
 	for (byte j = 0; j < SECOND_ANALYSIS_SIZE; j++) {
 
-		int bestIx = bestMoveIx[j];
+		int ix = bestMoveIx[j];
 
 		// It's possible to have less than SECOND_ANALYSIS_SIZE moves to consider.
-		if (bestIx == -1) {
+		if (ix == -1) {
 			continue;
 		}
 		
-		movePlan* bestPlan = plans[bestIx];
-		analysisMove* deepMove = &(bestPlan->items[3]);
+		movePlan* candidatePlan = &(plans[ix]);
+		analysisMove* deepMove = &(candidatePlan->items[3]);
 
 		scoreType score;
 		
@@ -503,47 +450,36 @@ movePlan* level0toplevel(	const board* const loopDetect,
 //		}
 
 		
-		if (bestPlan->score < 9000 || bestPlan->score > -9000) {
+		if (candidatePlan->score < 9000 || candidatePlan->score > -9000) {
 
-			movePlan* candidateDeepPlan;
+			movePlan* candidateDeepPlan = &(candidateDeepPlans[j]);
 
 			//
 			// Drill down 4 more levels on this candidate move.
 			//
-			candidateDeepPlan = level0(	loopDetect, 
-							&(deepMove->resultingBoard), 
-							0);
+			level0(		loopDetect, 
+						&(deepMove->resultingBoard),
+						candidateDeepPlan, 
+						0					);
 							
 			score = candidateDeepPlan->score;
-
-			// we only really need the score.
-//			print("About to free candidateDeepPlan in level0toplevel\n");
-			free(candidateDeepPlan);
-
 		}
 		else {
 			// Was a terminal move (checkmate or stalemate) so 
 			// do not try to drill down any further.
-			score = bestPlan->score;
+			score = candidatePlan->score;
 		}
 		
 //		print("now scoring %d\n", score);
 					
 		if (score > bestScore) {
-			
-//			if (veryBestPlan != NULL) {
-				// Don't need this plan anymore.
-//				print("About to free old veryBestPlan in level0toplevel\n");
-//				free(veryBestPlan);
-//			}
-						
 			bestScore = score;
-			veryBestPlan = bestPlan;
+			bestIx = ix;
 		}
 		
 	}
-	
-	veryBestPlan->score = bestScore; // For display purposes only.
-	return veryBestPlan;
+
+	// Return the index to the best plan we found.
+	return bestIx;
 }
 
