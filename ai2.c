@@ -16,7 +16,9 @@ typedef struct {
 	scoreType score;
 } movePlan;
 
-#define SECOND_ANALYSIS_SIZE (6)
+#define SECOND_ANALYSIS_SIZE 	(10)
+#define BEST_PLAN_CUTOFF 		(3)
+#define WORST_PLAN_CUTOFF 		(3)
 
 void addMoveToPlan(movePlan* const plan, const analysisMove* const move, byte planIx) {
 	memcpy((void*)&(plan->items[planIx]), (void*)move, sizeof(analysisMove));
@@ -24,6 +26,20 @@ void addMoveToPlan(movePlan* const plan, const analysisMove* const move, byte pl
 
 void addMoveToPlan_NULL(movePlan* const plan, byte planIx) {
 	memset((void*)&(plan->items[planIx]), 0, sizeof(analysisMove));
+}
+
+
+void printMovePlan(const movePlan* const plan) {
+	for (byte j = 0; j < 4; j++) {
+		if (plan->items[j].from == 0 && plan->items[j].to == 0) {
+			print("FINISH! ");
+			break;
+		}
+		else {
+			printMove(plan->items[j]);
+			print(" ");
+		}
+	}
 }
 
 //
@@ -385,16 +401,21 @@ int level0toplevel(		const board* const loopDetect,
 		bestScores[j] = -9999;
 		bestMoveIx[j] = -1;
 	}
+	// For the worst moves, actually assume the best instead.
+	for (byte j = BEST_PLAN_CUTOFF; j < BEST_PLAN_CUTOFF + WORST_PLAN_CUTOFF; j++) {
+		bestScores[j] = 9999;
+	}
+
 
 	//
-	// Find the best 3 moves, the worst move, and 2 random moves
+	// Find BEST_PLAN_CUTOFF of the best moves.
 	//
 	for (int ix = 0; ix < numMoves; ix++) {
 
 		movePlan* plan = &(plans[ix]);
 		
 		// Look for a best slot that we are better than
-		for (byte j = 0; j < 3; j++) {
+		for (byte j = 0; j < BEST_PLAN_CUTOFF && j < numMoves; j++) {
 			
 			if (plan->score > bestScores[j]) {  // FINDING THE BEST
 				
@@ -406,20 +427,51 @@ int level0toplevel(		const board* const loopDetect,
 			}
 		}
 	}
-/*	
-	for (int ix = 0; ix < moveList.ix; ix++) {
-		movePlan* plan = plans[ix];
-		if (plan->score < bestScores[3]) {	// FINDING THE WORST
+	
+	
+	//
+	// Find WORST_PLAN_CUTOFF of the worst moves.
+	//
+	for (int ix = 0; ix < numMoves; ix++) {
+
+		movePlan* plan = &(plans[ix]);
+		
+		// Look for a slot that we are worse than
+		for (byte j = BEST_PLAN_CUTOFF; j < BEST_PLAN_CUTOFF + WORST_PLAN_CUTOFF && j < numMoves; j++) {
 			
-			bestScores[3] = plan->score;
-			bestMoveIx[3] = ix;
+			if (plan->score < bestScores[j] && plan->score > -9000) {  // FINDING THE WORST
+				
+				bestScores[j] = plan->score;
+				bestMoveIx[j] = ix;
+				
+				// Only overwrite one slot, not all.
+				break;
+			}
 		}
 	}
 	
-	int r = rand();
-*/	
-	
-	
+	//
+	// Fill the remainder with random picks that aren't already chosen.
+	//
+	int remainingIx = BEST_PLAN_CUTOFF + WORST_PLAN_CUTOFF + 1;
+		
+	while (remainingIx < SECOND_ANALYSIS_SIZE && remainingIx < numMoves) {
+		
+		int randIx = rand() % numMoves;
+		int isUnique = 1;
+		
+		for (int j = 0; j < remainingIx; j++) {
+			if (randIx == bestMoveIx[j]) {
+				isUnique = 0;
+				break;
+			}
+		}
+
+		if (isUnique && plans[randIx].score > -9000) {
+			bestMoveIx[remainingIx] = randIx;
+			remainingIx++;
+		}
+	}
 
 	//
 	// Further analyse remaining moves
@@ -443,14 +495,10 @@ int level0toplevel(		const board* const loopDetect,
 
 		scoreType score;
 		
-//		print("Candidate plan at current score %d\n", bestPlan->score);
-//		for (byte j = 0; j < 4; j++) {
-//			printMove(bestPlan->items[j]);
-//			print(" ");
-//		}
-
+		print("Plan %d scored %d: ", (int)j, candidatePlan->score);
+		printMovePlan(candidatePlan);
 		
-		if (candidatePlan->score < 9000 || candidatePlan->score > -9000) {
+		if (candidatePlan->score < 9000 && candidatePlan->score > -9000) {
 
 			movePlan* candidateDeepPlan = &(candidateDeepPlans[j]);
 
@@ -463,11 +511,20 @@ int level0toplevel(		const board* const loopDetect,
 						0					);
 							
 			score = candidateDeepPlan->score;
+			
+			// Might as well pass the deep score back up to the caller.
+			candidatePlan->score = score;
+			
+			printMovePlan(candidateDeepPlan);
+			print("now scoring %d\n", score);
+			
+			
 		}
 		else {
 			// Was a terminal move (checkmate or stalemate) so 
 			// do not try to drill down any further.
 			score = candidatePlan->score;
+			print(" not analysing terminal node further.\n");
 		}
 		
 //		print("now scoring %d\n", score);

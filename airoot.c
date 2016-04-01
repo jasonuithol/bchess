@@ -6,7 +6,7 @@ void aiMove(const board* const current, board* const next, const board* const lo
 	const time_t startTime = time(NULL);
 	
 	// Seed the random number generator
-//	srand(startTime);
+	srand(startTime);
 	
 	nodesCalculated = 0;
 //	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 4, 0);
