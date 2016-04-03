@@ -237,15 +237,15 @@ byte isSquareAttacked(const quadboard qb, const bitboard square, const byte aski
 	//
 	// WARNING: FRAGILE CODE
 	//
-	// UP   is the direction WHITE pawns move.
-	// DOWN is the direction BLACK pawns move.
+	// DOWN   is the direction WHITE pawns attack.
+	// UP     is the direction BLACK pawns attack.
 	//
-	// Therefore direction = team, because:
+	// Therefore direction = team ^ 1, because:
 	//
-	// WHITE == UP   == 0
-	// BLACK == DOWN == 1
+	// WHITE ^ 1 == DOWN == 1
+	// BLACK ^ 1 == UP   == 0
 	//
-	const byte direction = attackingTeam;
+	const byte direction = attackingTeam ^ 1;
 
 	const bitboard enemyPawns = getPieces(qb, PAWN | attackingTeam);
 	if (enemyPawns & (applySingleAttackVector(square, ne, friends, direction)
