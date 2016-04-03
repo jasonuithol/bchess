@@ -23,18 +23,16 @@ bitboard flipBoardVert(bitboard b) {
 
 void printBB(const bitboard b) {
 
-	bitboard flipped = flipBoardVert(b);
-
-	for (int i = 0; i < 64; i++) {
+	for (int i = 63; i >= 0; i--) {
 		
 		byte bit;
 
 		// Mask, then shift down to equal 1 (or 0).
-		bit = (flipped & (1ULL << i)) >> i;
+		bit = (b & (1ULL << i)) >> i;
 		
 		printf("%u", bit);
 
-		if (i % 8 == 7) { // We just printed at the end of the line, so CR LF plox.
+		if (i % 8 == 0) { // We just printed at the end of the line, so CR LF plox.
 			printf("\n");
 		}
 		
