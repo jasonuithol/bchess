@@ -11,6 +11,7 @@
 #include "quadboard.c"
 #include "attacks.c"
 #include "umpire.c"
+#include "savegame.c"
 #include "aileaf.c"
 #include "ai2.c"
 #include "airoot.c"
@@ -61,47 +62,32 @@ int main() {
 }
 
 #else
-int main() {
 
-	// ----------------------
-	//
-	// EXECUTION STARTS HERE
-	//
-	// ----------------------
+void run(gameContext* game) {
 
 	time_t startTime = time(NULL);
 
-	board boards[5];
+	board* b1ptr = &(game->boards[game->current]);
+	board* b2ptr = &(game->boards[game->next]);
+	board* loopDetectPtr = &(game->boards[game->loopDetectIx]);
 
-	byte current = 0;
-	byte next = 1;
-	byte loopDetectIx = 2;
-	byte loopCount = 0;
-	
-	board* b1ptr = &(boards[current]);
-	board* b2ptr = &(boards[next]);
-	board* loopDetectPtr = &(boards[loopDetectIx]);
+	printQBUnicode(b1ptr->quad);
 
-	initBoard(b1ptr);
-	printQB(b1ptr->quad);
+	while (game->turn <= 200) { 
 
-	print("\n-------------- ai test ----------------\n");
-
-	for (byte turn = 0; turn <= 200; turn++) { 
-
-		// For the first 3 moves, ensure no board will equal the loop detector, by clearing it.
-		if (turn < 3) {
-			clearBoard(loopDetectPtr);
-		}
-
-		print("==== TURN %d =====\n\n",turn);
+		print("==== TURN %d =====\n\n",game->turn);
+		
+//		printBB(getTeamPieces(b1ptr->quad, b1ptr->whosTurn));
+		
+		print("Current board score: %d\n", (int)analyseLeafNonTerminal(b1ptr));
 
 		if (b1ptr->whosTurn == WHITE) {
-//			aiMove(b1ptr,b2ptr,loopDetectPtr,turn);
-			humanMove(b1ptr,b2ptr);
+			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn,0);
+//			humanMove(b1ptr,b2ptr);
 		}
 		else {
-			aiMove(b1ptr,b2ptr,loopDetectPtr,turn);
+			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn,0);
+//			humanMove(b1ptr,b2ptr);
 		}
 		
 		int gamestate = detectCheckmate(b2ptr);
@@ -119,9 +105,9 @@ int main() {
 
 		if (areEqualQB(b2ptr->quad, loopDetectPtr->quad)) {
 
-			loopCount++;
+			game->loopCount++;
 			
-			if (loopCount >= 3) {
+			if (game->loopCount >= 3) {
 				print("DRAW BY 3 LOOPS !!!\n");
 				exit(0);
 			}
@@ -130,18 +116,36 @@ int main() {
 		//
 		// Increment the board indexes, and update the respective pointers.
 		//
-		current = (current + 1) % 5;
-		next = (next + 1) % 5;
-		loopDetectIx = (loopDetectIx + 1) % 5;
+		game->current = (game->current + 1) % 5;
+		game->next = (game->next + 1) % 5;
+		game->loopDetectIx = (game->loopDetectIx + 1) % 5;
 
-		b1ptr = &(boards[current]);
-		b2ptr = &(boards[next]);
-		loopDetectPtr = &(boards[loopDetectIx]);
-				
+		b1ptr = &(game->boards[game->current]);
+		b2ptr = &(game->boards[game->next]);
+		loopDetectPtr = &(game->boards[game->loopDetectIx]);
+
+		game->turn++;
+		
+		save(game);				
 	}
 
 	time_t finishTime = time(NULL);
     printf("Overall Time Taken: %f\n", difftime(finishTime, startTime));
-    
+	
+}
+
+int main() {
+
+	// ----------------------
+	//
+	// EXECUTION STARTS HERE
+	//
+	// ----------------------
+
+	gameContext game;
+
+	load(&game);
+	
+	run(&game);    
 }
 #endif
