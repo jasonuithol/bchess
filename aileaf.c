@@ -92,6 +92,9 @@ scoreType countMoves(	const quadboard qb,
 	
 	while (piece.item) { 	
 		
+//		print("\ncountMoves counting new move\n");
+//		printBB(generator(piece.item, friends, enemies));
+		
 		// Add the number of moves this piece can make to the tally.
 		//
 		// NOTE: The call to generator probably blows our cache 
@@ -109,16 +112,18 @@ scoreType evaluateMobility(const quadboard qb, const byte team) {
 	const bitboard friends = getTeamPieces(qb, team);
 	const bitboard enemies = getTeamPieces(qb, team ^ 1);
 			
-	return    countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | team)
-			+ countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | team)
-			+ countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | team)
-			+ countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | team)
-			// For the very moment, skipping kings and pawns.
+	return    countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | whosTurn)
+			+ countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | whosTurn)
+			+ countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | whosTurn)
+			+ countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | whosTurn)
+			// For the very moment, skipping kings and pawns. */
+
 			
-			- countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | (team ^ 1))
-			- countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | (team ^ 1))
-			- countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | (team ^ 1))
-			- countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | (team ^ 1));
+			- countMoves(qb, generateKnightMoves, enemies, friends, KNIGHT | opponent)
+			- countMoves(qb, generateBishopMoves, enemies, friends, BISHOP | opponent)
+			- countMoves(qb, generateRookMoves,   enemies, friends, ROOK   | opponent)
+			- countMoves(qb, generateQueenMoves,  enemies, friends, QUEEN  | opponent)
+			;
 			// For the very moment, skipping kings and pawns.
 
 }
@@ -129,8 +134,9 @@ scoreType analyseLeafNonTerminal(const quadboard qb, const byte team) {
 	displaySpinningPulse();
 		
 	// We have hit the limit of our depth search - time to score the board.
-	return (1 * evaluateMobility(qb, team))
-		 + (2 * evaluateMaterial(qb, team));	
+	return (1 * evaluateMobility(b->quad, b->whosTurn, b->whosTurn ^ 1))
+		 + (8 * evaluateMaterial(b->quad, b->whosTurn, b->whosTurn ^ 1));	
+
 }
 
 scoreType analyseLeafTerminal(const board* const b, const byte scoringTeam, const depthType depth) {
