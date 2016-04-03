@@ -97,8 +97,8 @@ int main() {
 		print("==== TURN %d =====\n\n",turn);
 
 		if (b1ptr->whosTurn == WHITE) {
-//			aiMove(b1ptr,b2ptr,loopDetectPtr,turn);
-			humanMove(b1ptr,b2ptr);
+			aiMove(b1ptr,b2ptr,loopDetectPtr,turn);
+//			humanMove(b1ptr,b2ptr);
 		}
 		else {
 			aiMove(b1ptr,b2ptr,loopDetectPtr,turn);
