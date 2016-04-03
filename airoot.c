@@ -1,7 +1,7 @@
 //
 // Ask an AI agent to make a move.
 //
-void aiMove(const board* const current, board* const next, const board* const loopDetectPtr, const int turnNumber) {
+void aiMove(const board* const current, board* const next, const board* const loopDetectPtr, const int turnNumber, const int strategy) {
 
 	const time_t startTime = time(NULL);
 	
@@ -11,7 +11,7 @@ void aiMove(const board* const current, board* const next, const board* const lo
 	nodesCalculated = 0;
 //	scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 4, 0);
 	movePlan plan; 
-	level0(loopDetectPtr, current, &plan, 1); // deep plan
+	level0(loopDetectPtr, current, &plan, strategy);
 	analysisMove* bestmove = &(plan.items[0]);
 
 	print("\n");
