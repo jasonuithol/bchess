@@ -92,6 +92,9 @@ scoreType countMoves(	const quadboard qb,
 	
 	while (piece.item) { 	
 		
+//		print("\ncountMoves counting new move\n");
+//		printBB(generator(piece.item, friends, enemies));
+		
 		// Add the number of moves this piece can make to the tally.
 		//
 		// NOTE: The call to generator probably blows our cache 
@@ -113,12 +116,14 @@ scoreType evaluateMobility(const quadboard qb, const byte whosTurn, const byte o
 			+ countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | whosTurn)
 			+ countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | whosTurn)
 			+ countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | whosTurn)
-			// For the very moment, skipping kings and pawns.
+			// For the very moment, skipping kings and pawns. */
+
 			
-			- countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | opponent)
-			- countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | opponent)
-			- countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | opponent)
-			- countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | opponent);
+			- countMoves(qb, generateKnightMoves, enemies, friends, KNIGHT | opponent)
+			- countMoves(qb, generateBishopMoves, enemies, friends, BISHOP | opponent)
+			- countMoves(qb, generateRookMoves,   enemies, friends, ROOK   | opponent)
+			- countMoves(qb, generateQueenMoves,  enemies, friends, QUEEN  | opponent)
+			;
 			// For the very moment, skipping kings and pawns.
 
 }
@@ -130,7 +135,7 @@ scoreType analyseLeafNonTerminal(const board* const b) {
 		
 	// We have hit the limit of our depth search - time to score the board.
 	return (1 * evaluateMobility(b->quad, b->whosTurn, b->whosTurn ^ 1))
-		 + (2 * evaluateMaterial(b->quad, b->whosTurn, b->whosTurn ^ 1));	
+		 + (8 * evaluateMaterial(b->quad, b->whosTurn, b->whosTurn ^ 1));	
 
 }
 
