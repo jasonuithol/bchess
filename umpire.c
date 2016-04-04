@@ -275,7 +275,7 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 	// Excludes King
 	for (byte pieceType = PAWN; pieceType < KING; pieceType += 2) {
 
-		iterator piece = { 0ULL, getPieces(b->quad, pieceType | b->whosTurn) };
+		iterator piece = newIterator(getPieces(b->quad, pieceType | b->whosTurn));
 		piece = getNextItem(piece);
 			
 		while (piece.item) {
@@ -291,7 +291,7 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 				default: error("Bad pieceType\n");
 			}
 						
-			iterator move = { 0ULL, moves };
+			iterator move = newIterator(moves);
 			move = getNextItem(move);
 
 			while (move.item) {
@@ -321,7 +321,7 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
 		const bitboard king = getPieces(b->quad, KING | b->whosTurn);
 		const bitboard moves = generateKingMoves(king, enemies, friends, b->currentCastlingRights, b->whosTurn);
 
-		iterator move = { 0ULL, moves };
+		iterator move = newIterator(moves);
 		move = getNextItem(move);
 
 		while (move.item) {

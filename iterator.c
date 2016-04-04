@@ -27,3 +27,5 @@ iterator getNextItem(iterator i) {
 	i.list &= ~i.item;
 	return i;
 }
+
+#define newIterator(listBitboard) { .item = 0ULL, .list = listBitboard }

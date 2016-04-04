@@ -172,7 +172,7 @@ bitboard singlePieceAttacks(const bitboard piece, const bitboard softBlockers, c
 	for (byte dir = 0; dir < 2; dir ++) {
 
 		// Create a new vector scratchlist.
-		iterator vector = { 0ULL, positiveVectors };
+		iterator vector = newIterator(positiveVectors);
 		vector = getNextItem(vector);
 		
 		// Iterating over the vectors.

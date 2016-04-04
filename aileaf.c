@@ -87,7 +87,7 @@ scoreType countMoves(	const quadboard qb,
 	
 	scoreType subscore = 0;
 	
-	iterator piece = { 0ULL, getPieces(qb, pieceType) }; 
+	iterator piece = newIterator(getPieces(qb, pieceType)); 
 	piece = getNextItem(piece);
 	
 	while (piece.item) { 	
