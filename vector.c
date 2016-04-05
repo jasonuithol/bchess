@@ -16,7 +16,7 @@ typedef struct {
 } directionalVector;
 
 
-byte stillOnBoard(const bitboard cursor, const bitboard attack) {
+inline byte stillOnBoard(const bitboard cursor, const bitboard attack) {
 
 	return 	!attack // Fell off the top or bottom of board. 
 			|| 
@@ -29,7 +29,7 @@ byte stillOnBoard(const bitboard cursor, const bitboard attack) {
 			abs(getFile(attack) - getFile(cursor)) > 2;
 }
 
-bitboard applyVector(const directionalVector* const dc, const bitboard cursor) {
+inline bitboard applyVector(const directionalVector* const dc, const bitboard cursor) {
 
 	// Create attack bitboard by shifting the piece
 	// by the approprate vector offset.

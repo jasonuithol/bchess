@@ -20,11 +20,11 @@ typedef struct {
 #define BEST_PLAN_CUTOFF 		(3)
 #define WORST_PLAN_CUTOFF 		(3)
 
-void addMoveToPlan(movePlan* const plan, const analysisMove* const move, byte planIx) {
+inline void addMoveToPlan(movePlan* const plan, const analysisMove* const move, byte planIx) {
 	memcpy((void*)&(plan->items[planIx]), (void*)move, sizeof(analysisMove));
 }
 
-void addMoveToPlan_NULL(movePlan* const plan, byte planIx) {
+inline void addMoveToPlan_NULL(movePlan* const plan, byte planIx) {
 	memset((void*)&(plan->items[planIx]), 0, sizeof(analysisMove));
 }
 
@@ -45,7 +45,7 @@ void printMovePlan(const movePlan* const plan) {
 //
 // OPPONENT TURN: ~b->whosTurn
 //
-void level3(	const board* const loopDetect, 
+inline void level3(	const board* const loopDetect, 
 				const board* const b,
 				movePlan* const plan) {
 

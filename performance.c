@@ -101,7 +101,7 @@ double perftest_isSquareAttacked() {
 
 
 void runPerformanceSuite() {
-/*
+
 	double a1 = perftest_displaySpinningPulse();
 	printf("perftest_displaySpinningPulse: %f\n", a1); fflush(stdout);
 
@@ -119,7 +119,7 @@ void runPerformanceSuite() {
 
 	double a6 = perftest_isSquareAttacked();
 	printf("perftest_isSquareAttacked: %f\n", a6); fflush(stdout);
-*/
+
 	double a7 = perftest_getBestMove_Initial();
 	printf("perftest_getBestMove_Initial: %f\n", a7); fflush(stdout);
 	

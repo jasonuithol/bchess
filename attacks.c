@@ -42,7 +42,7 @@ typedef struct {
 
 } vectorsContext;
 
-bitboard singlePieceAttacks_Directional(const attackContext* const ac, 
+inline bitboard singlePieceAttacks_Directional(const attackContext* const ac, 
 										const funcApplyAttack applier,
 										const bitboard directionalVectors,
 										const byte direction) {
@@ -67,7 +67,7 @@ bitboard singlePieceAttacks_Directional(const attackContext* const ac,
 	return attacks;
 }
 
-bitboard singlePieceAttacks(const attackContext* const ac, 
+inline bitboard singlePieceAttacks(const attackContext* const ac, 
 							const vectorsContext* const vc) {
 
 	return
@@ -117,7 +117,7 @@ const vectorsContext pieceVectorContexts[2][7] = {
 };
 
 
-byte isSquareAttacked(const quadboard qb, const bitboard square, const byte askingTeam) {
+inline byte isSquareAttacked(const quadboard qb, const bitboard square, const byte askingTeam) {
 
 	const byte attackingTeam = askingTeam ^ 1;
 
@@ -147,3 +147,4 @@ byte isSquareAttacked(const quadboard qb, const bitboard square, const byte aski
 	// Couldn't find any attackers.
 	return 0;
 }
+

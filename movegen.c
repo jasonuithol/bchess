@@ -32,12 +32,10 @@ const moveContext moveContexts[7] = {
 
 };
 
-void generateLegalMoveList(	const board* const b, 
+inline void generateLegalMoveList(	const board* const b, 
 							analysisList* const moveList, 
 							const byte leafMode) {
 	
-//	print("ONE- I made it safely. Starting.\n");
-
 	attackContext ac;
 	
 	ac.hardBlockers = getTeamPieces(b->quad, b->whosTurn);
@@ -53,22 +51,13 @@ void generateLegalMoveList(	const board* const b,
 		// Get all the pieces for the pieceType (e.g. all the black bishops).
 		iterator pieces = newIterator(getPieces(b->quad, vc->pieceType | b->whosTurn));
 		pieces = getNextItem(pieces);
-		
-		
-//		print("ONE.5 I made it safely: New value for %u\n", i);
 					
 		while (pieces.item) {
 			
 			ac.piece = pieces.item;
 
-//			print("TWO- I made it safely. New piece\n");
-//			printBB(pieces.item);
-			
 			// Obtain a list of standard attacks for the piece.												
 			iterator moves = newIterator(mc->moveGenerator(&ac, vc, b));
-
-//			print("THREE- I made it safely.  Got moves\n");
-//			printBB(moves.list);
 
 			moves = getNextItem(moves);
 			
@@ -86,31 +75,19 @@ void generateLegalMoveList(	const board* const b,
 				// all the pawn promotion variants.
 				//
 				// Otherwise, just add the move to the list (if legal).
-				//
-//				print("FOUR- I made it safely\n");
-								
+				//								
 				mc->moveAdder(moveList, b, &theMove, leafMode);
-
-//				print("FIVE- I made it safely\n");
 
 				// Obtain the next move (if any)
 				moves = getNextItem(moves);
 			}
-
-//			print("SIX- I made it safely\n");
-
 			
 			// Get the next black bishop.
 			pieces = getNextItem(pieces);
-		}
-		
-//		print("SEVEN- I made it safely\n");
-		
-	}
-	
-//	print("EIGHT- I made it safely\n");
-	
+		}	
+	}	
 }
+
 
 
 

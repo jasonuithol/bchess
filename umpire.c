@@ -46,14 +46,14 @@ void clearBoard(board* const b) {
 }
 
 
-byte isKingChecked(const quadboard qb, byte team) {
+inline byte isKingChecked(const quadboard qb, byte team) {
 	return isSquareAttacked(qb, getPieces(qb, KING | team), team);
 }
 
 //
 // PRECONDITION: Only call this if there were no legal moves to make.
 //
-byte determineEndOfGameState(const board* const b) {
+inline byte determineEndOfGameState(const board* const b) {
 	return isKingChecked(b->quad, b->whosTurn)
 		   ? BOARD_CHECKMATE
 		   : BOARD_STALEMATE;
@@ -67,7 +67,7 @@ byte determineEndOfGameState(const board* const b) {
 // * Pawns get promoted.
 // * Illegal board positions (involving check) are thrown out.
 //
-byte spawnLeafBoard(const board* const old, 
+inline byte spawnLeafBoard(const board* const old, 
 					board* const new, 
 					const analysisMove* const move) {
 
@@ -87,7 +87,6 @@ byte spawnLeafBoard(const board* const old,
 	// Now we can perform the legality check
 	//
 	if (isKingChecked(new->quad, old->whosTurn)) {
-//	if (isSquareAttacked(new->quad, getPieces(new->quad, KING | old->whosTurn), old->whosTurn)) {
 		return BOARD_NOT_LEGAL;
 	}
 
@@ -130,7 +129,7 @@ byte spawnLeafBoard(const board* const old,
 // The vast, vast majority of leaf boards never get spawnXXXBoard called on them,
 // only the Chosen Ones do. Use spawnLeafBoard for leaf boards.
 //
-byte spawnFullBoard(const board* const old, 
+inline byte spawnFullBoard(const board* const old, 
 					board* const new, 
 					const analysisMove* const move) {
 
@@ -224,7 +223,6 @@ byte spawnFullBoard(const board* const old,
 	return BOARD_LEGAL;
 
 }
-
 
 void addMoveIfLegal(	analysisList* const list, 
 						const board* const old, 

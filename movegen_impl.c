@@ -30,7 +30,7 @@ const vectorsContext pawnAheadContexts[2] = {
 // After one generates pawn moves, one must call this method to see if extra information
 // needs to be passed to spawnXXXBoard()
 //
-byte isPawnPromotable(const bitboard piece) {
+inline byte isPawnPromotable(const bitboard piece) {
 	return (piece < (1ULL << 8) || piece > (1ULL << 55));
 }
 
@@ -61,19 +61,15 @@ bitboard pawnMoveGenerator(	const attackContext* const ac,
 							const board* const b	) {
 
 	// Diagonal moves. 
-	bitboard takingMoves = singlePieceAttacks(ac, vc);
-
-	// Only squares with enemy pieces on them can be moved into diagonally.
-	takingMoves &= ac->softBlockers;
+	// NOTE: Can only be allowed onto squares with enemies on them.
+	const bitboard takingMoves = ac->softBlockers & singlePieceAttacks(ac, vc);
 
 	// Forward moves (a bit trickier)
 	const vectorsContext* moveVc = &(pawnAheadContexts[b->whosTurn]); 
 
 	// 1 square move
-	bitboard nonTakingMoves = singlePieceAttacks(ac, moveVc);
-
-	// Pawns cannot "take" enemies when going straight forward.
-	nonTakingMoves &= ~ac->softBlockers;
+	// NOTE: Pawns cannot "take" enemies when going straight forward.
+	bitboard nonTakingMoves = ~ac->softBlockers & singlePieceAttacks(ac, moveVc);
 
 	// Check to see if (a) the square ahead was clear and (b) our pawn is on it's original rank.
 	if (nonTakingMoves && ((b->whosTurn == WHITE && ac->piece < (1ULL << 16)) || (b->whosTurn == BLACK && ac->piece > (1ULL << 47)))) {
@@ -87,10 +83,8 @@ bitboard pawnMoveGenerator(	const attackContext* const ac,
 
 		// First move, and nothing hardBlocked OR softBlocked the 1 square move
 		// - therefore can try to move two squares.	
-		nonTakingMoves |= singlePieceAttacks(&ac2, moveVc);
-		
-		// Pawns cannot "take" enemies when going straight forward.
-		nonTakingMoves &= ~ac->softBlockers;		
+		// NOTE: Pawns cannot "take" enemies when going straight forward.
+		nonTakingMoves |= (~ac->softBlockers & singlePieceAttacks(&ac2, moveVc));
 	}
 		
 	return takingMoves | nonTakingMoves;
@@ -124,35 +118,38 @@ bitboard kingMoveGenerator(const attackContext* const ac,
 	// First of all, the standard moves. 
 	bitboard moves = singlePieceAttacks(ac, vc);
 
-	//
-	// Now check if there's any castling options available. 
-	//
-	if (b->whosTurn == WHITE) {
-		
-		// KINGSIDE CASTLING - WHITE
-		if ((b->currentCastlingRights & (WHITE_KING_MOVED | WHITE_KINGSIDE_CASTLE_MOVED)) == 0) {
-			moves |= singlePieceAttacks(ac, &(kingSideCastleContext));
-		}
+	if (b->currentCastlingRights) { // AN OPTIMIZATION FOR THE MOST COMMON SCENARIO
 
-		// QUEENSIDE CASTLING - WHITE
-		if ((b->currentCastlingRights & (WHITE_KING_MOVED | WHITE_QUEENSIDE_CASTLE_MOVED)) == 0) {
-			moves |= singlePieceAttacks(ac, &(queenSideCastleContext));
-		}
+		//
+		// Now check if there's any castling options available. 
+		//
+		if (b->whosTurn == WHITE) {
+			
+			// KINGSIDE CASTLING - WHITE
+			if ((b->currentCastlingRights & (WHITE_KING_MOVED | WHITE_KINGSIDE_CASTLE_MOVED)) == 0) {
+				moves |= singlePieceAttacks(ac, &(kingSideCastleContext));
+			}
 
+			// QUEENSIDE CASTLING - WHITE
+			if ((b->currentCastlingRights & (WHITE_KING_MOVED | WHITE_QUEENSIDE_CASTLE_MOVED)) == 0) {
+				moves |= singlePieceAttacks(ac, &(queenSideCastleContext));
+			}
+
+		}
+		else {
+
+			// KINGSIDE CASTLING - BLACK
+			if ((b->currentCastlingRights & (BLACK_KING_MOVED | BLACK_KINGSIDE_CASTLE_MOVED)) == 0) {
+				moves |= singlePieceAttacks(ac, &(kingSideCastleContext));
+			}
+
+			// QUEENSIDE CASTLING - BLACK
+			if ((b->currentCastlingRights & (BLACK_KING_MOVED | BLACK_QUEENSIDE_CASTLE_MOVED)) == 0) {
+				moves |= singlePieceAttacks(ac, &(queenSideCastleContext));
+			}
+			
+		}
 	}
-	else {
-
-		// KINGSIDE CASTLING - BLACK
-		if ((b->currentCastlingRights & (BLACK_KING_MOVED | BLACK_KINGSIDE_CASTLE_MOVED)) == 0) {
-			moves |= singlePieceAttacks(ac, &(kingSideCastleContext));
-		}
-
-		// QUEENSIDE CASTLING - BLACK
-		if ((b->currentCastlingRights & (BLACK_KING_MOVED | BLACK_QUEENSIDE_CASTLE_MOVED)) == 0) {
-			moves |= singlePieceAttacks(ac, &(queenSideCastleContext));
-		}
-		
-	}
-
+	
 	return moves;
 }

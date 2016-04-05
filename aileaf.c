@@ -20,7 +20,7 @@ nodesCalculatedType nodesCalculated;
 
 #define PULSE_SPIN_MAGNITUDE (17)
 
-void displaySpinningPulse() {
+inline void displaySpinningPulse() {
 
 	const nodesCalculatedType wrapMask = (1 << (PULSE_SPIN_MAGNITUDE)) - 1;
 
@@ -53,7 +53,7 @@ void displaySpinningPulse() {
 //           each possible move.
 //
 
-scoreType evaluateMaterial(const board* const b) {
+inline scoreType evaluateMaterial(const board* const b) {
 
 	return    SCORE_PAWN 	* populationCount(getPieces(b->quad, PAWN   | b->whosTurn))
 			+ SCORE_KNIGHT	* populationCount(getPieces(b->quad, KNIGHT | b->whosTurn))
@@ -70,27 +70,54 @@ scoreType evaluateMaterial(const board* const b) {
 }
 
 
+
+inline scoreType countLegalMoves(const board* const b, const byte team) {
+	
+	scoreType score = 0;
+	
+	attackContext ac;
+	
+	ac.hardBlockers = getTeamPieces(b->quad, team);
+	ac.softBlockers = getTeamPieces(b->quad, team ^ 1);
+
+	for (byte i = 0; i < 6; i++) {
+
+		// Choose the appropriate vector and moves context for the piece type (i)
+		// NOTE: i does NOT map to pieceType !
+		const vectorsContext* vc = &(pieceVectorContexts[b->whosTurn][i]);
+		const moveContext* mc = &(moveContexts[i]);
+		
+		// Get all the pieces for the pieceType (e.g. all the black bishops).
+		iterator pieces = newIterator(getPieces(b->quad, vc->pieceType | b->whosTurn));
+		pieces = getNextItem(pieces);
+					
+		while (pieces.item) {
+			
+			ac.piece = pieces.item;
+
+			// Obtain a list of standard attacks for the piece.												
+			score += populationCount(mc->moveGenerator(&ac, vc, b));
+			
+			// Get the next black bishop.
+			pieces = getNextItem(pieces);
+		}	
+	}	
+	
+	return score;
+}
+
+
+
 //
 // SLOW AS SHIT
 //
-scoreType evaluateMobility(const board* const b) {
-
-	return 0;
-
-	analysisList mine; mine.ix = 0;
-	analysisList theirs; theirs.ix = 0;
-		
-	board theirTurnBoard;
-	memcpy((void*)&theirTurnBoard, (void*)b, sizeof(board));
-	theirTurnBoard.whosTurn = b->whosTurn ^ 1;	
-		
-	generateLegalMoveList(b, &mine, 1);
-	generateLegalMoveList(&theirTurnBoard, &theirs, 1);
-	
-	return mine.ix - theirs.ix;
+inline scoreType evaluateMobility(const board* const b) {
+	return countLegalMoves(b, b->whosTurn) 
+		   - 
+		   countLegalMoves(b, b->whosTurn ^ 1);
 }
 
-scoreType analyseLeafNonTerminal(const board* const b) {
+inline scoreType analyseLeafNonTerminal(const board* const b) {
 	
 	// Tell the world we still live.
 	displaySpinningPulse();
