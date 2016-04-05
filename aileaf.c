@@ -1,4 +1,3 @@
-
 #define SCORE_PAWN 			(1)
 #define SCORE_KNIGHT 		(4)
 #define SCORE_BISHOP 		(6)
@@ -8,6 +7,7 @@
 
 typedef uint32_t nodesCalculatedType;
 typedef uint8_t depthType;
+typedef int16_t scoreType;
 
 //
 // Animates a little spinner to show that we are still alive.
@@ -53,79 +53,41 @@ void displaySpinningPulse() {
 //           each possible move.
 //
 
-scoreType evaluateMaterial(const quadboard qb, const byte whosTurn, const byte opponent) {
+scoreType evaluateMaterial(const board* const b) {
 
-	return    SCORE_PAWN 	* populationCount(getPieces(qb, PAWN   | whosTurn))
-			+ SCORE_KNIGHT	* populationCount(getPieces(qb, KNIGHT | whosTurn))
-			+ SCORE_BISHOP	* populationCount(getPieces(qb, BISHOP | whosTurn))
-			+ SCORE_ROOK	* populationCount(getPieces(qb, ROOK   | whosTurn))
-			+ SCORE_QUEEN	* populationCount(getPieces(qb, QUEEN  | whosTurn))
+	return    SCORE_PAWN 	* populationCount(getPieces(b->quad, PAWN   | b->whosTurn))
+			+ SCORE_KNIGHT	* populationCount(getPieces(b->quad, KNIGHT | b->whosTurn))
+			+ SCORE_BISHOP	* populationCount(getPieces(b->quad, BISHOP | b->whosTurn))
+			+ SCORE_ROOK	* populationCount(getPieces(b->quad, ROOK   | b->whosTurn))
+			+ SCORE_QUEEN	* populationCount(getPieces(b->quad, QUEEN  | b->whosTurn))
 			
-			- SCORE_PAWN 	* populationCount(getPieces(qb, PAWN   | opponent))
-			- SCORE_KNIGHT	* populationCount(getPieces(qb, KNIGHT | opponent))
-			- SCORE_BISHOP	* populationCount(getPieces(qb, BISHOP | opponent))
-			- SCORE_ROOK	* populationCount(getPieces(qb, ROOK   | opponent))
-			- SCORE_QUEEN	* populationCount(getPieces(qb, QUEEN  | opponent)) ;
-			
+			- SCORE_PAWN 	* populationCount(getPieces(b->quad, PAWN   | (b->whosTurn^1)))
+			- SCORE_KNIGHT	* populationCount(getPieces(b->quad, KNIGHT | (b->whosTurn^1)))
+			- SCORE_BISHOP	* populationCount(getPieces(b->quad, BISHOP | (b->whosTurn^1)))
+			- SCORE_ROOK	* populationCount(getPieces(b->quad, ROOK   | (b->whosTurn^1)))
+			- SCORE_QUEEN	* populationCount(getPieces(b->quad, QUEEN  | (b->whosTurn^1))) 
+	;			
 }
 
 
 //
-// MOBILITY: A mildly expensive strategy for deciding the best move 
-// 			 based on how many more possible PSUEDOLEGAL moves the player
-//           has than it's opponent.
+// SLOW AS SHIT
 //
+scoreType evaluateMobility(const board* const b) {
 
-typedef bitboard (getterFuncPtr)(const quadboard, const byte); 
-typedef bitboard (generatorFuncPtr)(const bitboard, const bitboard, const bitboard); 
+	return 0;
 
-scoreType countMoves(	const quadboard qb, 
-						generatorFuncPtr generator, 
-						const bitboard friends, 
-						const bitboard enemies, 
-						const byte pieceType) {
-	
-	scoreType subscore = 0;
-	
-	iterator piece = newIterator(getPieces(qb, pieceType)); 
-	piece = getNextItem(piece);
-	
-	while (piece.item) { 	
+	analysisList mine; mine.ix = 0;
+	analysisList theirs; theirs.ix = 0;
 		
-//		print("\ncountMoves counting new move\n");
-//		printBB(generator(piece.item, friends, enemies));
+	board theirTurnBoard;
+	memcpy((void*)&theirTurnBoard, (void*)b, sizeof(board));
+	theirTurnBoard.whosTurn = b->whosTurn ^ 1;	
 		
-		// Add the number of moves this piece can make to the tally.
-		//
-		// NOTE: The call to generator probably blows our cache 
-		//       right out of the water.
-		subscore += (scoreType)populationCount(generator(piece.item, enemies, friends));
-		
-		piece = getNextItem(piece);
-	}		
+	generateLegalMoveList(b, &mine, 1);
+	generateLegalMoveList(&theirTurnBoard, &theirs, 1);
 	
-	return subscore;
-}
-
-scoreType evaluateMobility(const quadboard qb, const byte whosTurn, const byte opponent) {
-	
-	const bitboard friends = getTeamPieces(qb, whosTurn);
-	const bitboard enemies = getTeamPieces(qb, opponent);
-			
-	return    countMoves(qb, generateKnightMoves, friends, enemies, KNIGHT | whosTurn)
-			+ countMoves(qb, generateBishopMoves, friends, enemies, BISHOP | whosTurn)
-			+ countMoves(qb, generateRookMoves,   friends, enemies, ROOK   | whosTurn)
-			+ countMoves(qb, generateQueenMoves,  friends, enemies, QUEEN  | whosTurn)
-			// For the very moment, skipping kings and pawns. */
-
-			
-			- countMoves(qb, generateKnightMoves, enemies, friends, KNIGHT | opponent)
-			- countMoves(qb, generateBishopMoves, enemies, friends, BISHOP | opponent)
-			- countMoves(qb, generateRookMoves,   enemies, friends, ROOK   | opponent)
-			- countMoves(qb, generateQueenMoves,  enemies, friends, QUEEN  | opponent)
-			;
-			// For the very moment, skipping kings and pawns.
-
+	return mine.ix - theirs.ix;
 }
 
 scoreType analyseLeafNonTerminal(const board* const b) {
@@ -134,8 +96,8 @@ scoreType analyseLeafNonTerminal(const board* const b) {
 	displaySpinningPulse();
 		
 	// We have hit the limit of our depth search - time to score the board.
-	return (1 * evaluateMobility(b->quad, b->whosTurn, b->whosTurn ^ 1))
-		 + (8 * evaluateMaterial(b->quad, b->whosTurn, b->whosTurn ^ 1));	
+	return (1 * evaluateMobility(b))
+		 + (8 * evaluateMaterial(b));	
 
 }
 

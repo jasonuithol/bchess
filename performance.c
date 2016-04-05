@@ -14,7 +14,7 @@ double perftest_evaluateMaterial() {
 	initBoard(&b);
 	time_t startTime = time(NULL);
 	for (int i = 0; i < PERF_ITERATIONS; i++) {
-		if (evaluateMaterial(b.quad, WHITE, BLACK) == 99) {
+		if (evaluateMaterial(&b) == 99) {
 			print("99 !!!!!\n");
 		}
 	}
@@ -27,7 +27,7 @@ double perftest_evaluateMobility_Empty() {
 	clearBoard(&b);
 	time_t startTime = time(NULL);
 	for (int i = 0; i < PERF_ITERATIONS; i++) {
-		if (evaluateMobility(b.quad, WHITE, BLACK) == 99) {
+		if (evaluateMobility(&b) == 99) {
 			print("99 !!!!!\n");
 		}
 	}
@@ -40,7 +40,7 @@ double perftest_evaluateMobility_Initial() {
 	initBoard(&b);
 	time_t startTime = time(NULL);
 	for (int i = 0; i < PERF_ITERATIONS; i++) {
-		if (evaluateMobility(b.quad, WHITE, BLACK) == 99) {
+		if (evaluateMobility(&b) == 99) {
 			print("99 !!!!!\n");
 		}
 	}
@@ -54,16 +54,16 @@ double perftest_getBestMove_Initial() {
 	initBoard(&b);
 	clearBoard(&loop);
 	time_t startTime = time(NULL);
-	movePlan* plan = level0(&loop, &b, 1);  // toplevel
-	bestMove = &(plan->items[0]);
-	if (plan->score == 99) { 
+	movePlan plan;
+	level0(&loop, &b, &plan, 0);  // do one level only
+	bestMove = &(plan.items[0]);
+	if (plan.score == 99) { 
 		print("99 !!!!!\n");
 	}
 	else {
 		print("printing BestMove merged bitboard\n");
 		printBB(bestMove->from | bestMove->to);
 	}
-	free(plan);
 	time_t finishTime = time(NULL);
 	return difftime(finishTime, startTime);
 }

@@ -1,7 +1,11 @@
 //
 // Ask an AI agent to make a move.
 //
-void aiMove(const board* const current, board* const next, const board* const loopDetectPtr, const int turnNumber, const int strategy) {
+void aiMove(const board* const current, 
+			board* const next, 
+			const board* const loopDetectPtr, 
+			const int turnNumber, 
+			const int strategy) {
 
 	const time_t startTime = time(NULL);
 	

@@ -6,15 +6,23 @@
 #include <time.h>
 
 #include "logging.c"
+
 #include "bitboard.c"
 #include "iterator.c"
 #include "quadboard.c"
+
+#include "vector.c"
 #include "attacks.c"
 #include "umpire.c"
+#include "movegen_impl.c"
+#include "movegen.c"
+
 #include "savegame.c"
+
 #include "aileaf.c"
 #include "ai2.c"
 #include "airoot.c"
+
 #include "human.c"
 
 #ifdef BUILD_TESTING

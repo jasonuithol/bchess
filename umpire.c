@@ -1,3 +1,10 @@
+#define WHITE_QUEENSIDE_CASTLE_MOVED	(128)
+#define WHITE_KING_MOVED				(64)
+#define WHITE_KINGSIDE_CASTLE_MOVED		(32)
+#define BLACK_QUEENSIDE_CASTLE_MOVED	(16)
+#define BLACK_KING_MOVED				(8)
+#define BLACK_KINGSIDE_CASTLE_MOVED		(4)
+
 #define BOARD_LEGAL 	(1)
 #define BOARD_NOT_LEGAL (0)
 
@@ -13,7 +20,6 @@ typedef struct { // 35 bytes
 	byte whosTurn;     				// 0 = WHITE, 1 = BLACK.
 } board;
 
-typedef int16_t scoreType;
 
 typedef struct {
 
@@ -39,11 +45,6 @@ void clearBoard(board* const b) {
 	memset((void*)b, 0, sizeof(board));
 }
 
-// After one generates pawn moves, one must call this method to see if extra information
-// needs to be passed to spawnXXXBoard()
-byte isPawnPromotable(const bitboard piece) {
-	return (piece < (1ULL << 8) || piece > (1ULL << 55));
-}
 
 byte isKingChecked(const quadboard qb, byte team) {
 	return isSquareAttacked(qb, getPieces(qb, KING | team), team);
@@ -68,9 +69,7 @@ byte determineEndOfGameState(const board* const b) {
 //
 byte spawnLeafBoard(const board* const old, 
 					board* const new, 
-					const bitboard from, 
-					const bitboard to, 
-					const byte promoteTo) {
+					const analysisMove* const move) {
 
 
 	quadboard* const qb = &(new->quad);
@@ -79,7 +78,7 @@ byte spawnLeafBoard(const board* const old,
 	memcpy((void*)new, (void*)old, sizeof(board));
 
 	// Now apply the change to the new board (i.e. move the piece from square "from" to square "to").
-	moveSquare(qb, from, to);
+	moveSquare(qb, move->from, move->to);
 
 	// Change the turn on the new board.  To get the team that just moved, use old->whosTurn.
 	new->whosTurn = old->whosTurn ^ 1;
@@ -87,7 +86,8 @@ byte spawnLeafBoard(const board* const old,
 
 	// Now we can perform the legality check
 	//
-	if (isSquareAttacked(new->quad, getPieces(new->quad, KING | old->whosTurn), old->whosTurn)) {
+	if (isKingChecked(new->quad, old->whosTurn)) {
+//	if (isSquareAttacked(new->quad, getPieces(new->quad, KING | old->whosTurn), old->whosTurn)) {
 		return BOARD_NOT_LEGAL;
 	}
 
@@ -95,21 +95,21 @@ byte spawnLeafBoard(const board* const old,
 	//
 	// Pawn promotion followup (takes the chosen promotion and applies it)
 	//
-	if (promoteTo > 0) {
-		resetSquares(qb, to);
-		addPieces(qb, to, promoteTo | old->whosTurn);
+	if (move->promoteTo > 0) {
+		resetSquares(qb, move->to);
+		addPieces(qb, move->to, move->promoteTo | old->whosTurn);
 	}
 
 	//
 	// Castling followup (moves the castle over the king).
 	//
-	if (getPieces(old->quad, KING | old->whosTurn) & from) {
-		char rank = getRank(from) + '1';
-		if (getFile(from) - getFile(to) == 2) {
+	if (getPieces(old->quad, KING | old->whosTurn) & move->from) {
+		char rank = getRank(move->from) + '1';
+		if (getFile(move->from) - getFile(move->to) == 2) {
 			// Kingside castle detected
 			moveSquare(qb, toBitboard('h',rank), toBitboard('f',rank));
 		}
-		else if (getFile(to) - getFile(from) == 2) {
+		else if (getFile(move->to) - getFile(move->from) == 2) {
 			// Queenside castle detected
 			moveSquare(qb, toBitboard('a',rank), toBitboard('d',rank));
 		}
@@ -132,13 +132,11 @@ byte spawnLeafBoard(const board* const old,
 //
 byte spawnFullBoard(const board* const old, 
 					board* const new, 
-					const bitboard from, 
-					const bitboard to, 
-					const byte promoteTo) {
+					const analysisMove* const move) {
 
 
 	// First, spawn a leaf board, it will have all the tidying up and illegal position checks.
-	if (spawnLeafBoard(old, new, from, to, promoteTo) == BOARD_NOT_LEGAL) {
+	if (spawnLeafBoard(old, new, move) == BOARD_NOT_LEGAL) {
 		
 		// Board was found to be illegal, abort and notify caller.
 		return BOARD_NOT_LEGAL;
@@ -148,7 +146,7 @@ byte spawnFullBoard(const board* const old,
 	// To see if it's still possible to castle in the future, 
 	// we track whether the relevant pieces have moved.
 	//
-	switch(from) {
+	switch(move->from) {
 		case toBitboard('a','1'): new->piecesMoved |= WHITE_QUEENSIDE_CASTLE_MOVED; break;
 		case toBitboard('d','1'): new->piecesMoved |= WHITE_KING_MOVED; 			break;
 		case toBitboard('h','1'): new->piecesMoved |= WHITE_KINGSIDE_CASTLE_MOVED; 	break;
@@ -157,8 +155,7 @@ byte spawnFullBoard(const board* const old,
 		case toBitboard('h','8'): new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED; 	break;
 	}
 
-	const bitboard enemies = getTeamPieces(new->quad, old->whosTurn);
-	const bitboard friends = getTeamPieces(new->quad, new->whosTurn);
+	const bitboard allPieces = getAllPieces(new->quad);
 
 	//
 	// We need this for checking to see if in the next move, a castling move is allowed
@@ -174,7 +171,7 @@ byte spawnFullBoard(const board* const old,
 	//
 											
 	// Check if squares are occupied.	
-	if ( (enemies|friends) & (toBitboard('f',rank) | toBitboard('g',rank) ) ) {
+	if (allPieces & (toBitboard('f',rank) | toBitboard('g',rank) ) ) {
 
 		new->currentCastlingRights |= new->whosTurn 
 										? BLACK_KINGSIDE_CASTLE_MOVED 
@@ -201,7 +198,7 @@ byte spawnFullBoard(const board* const old,
 	//
 											
 	// Check if squares are occupied.
-	if ( (enemies|friends) & (toBitboard('b',rank) | toBitboard('c',rank) | toBitboard('d',rank) ) ) {
+	if (allPieces & (toBitboard('b',rank) | toBitboard('c',rank) | toBitboard('d',rank) ) ) {
 
 		new->currentCastlingRights |= new->whosTurn 
 										? BLACK_QUEENSIDE_CASTLE_MOVED 
@@ -228,198 +225,33 @@ byte spawnFullBoard(const board* const old,
 
 }
 
-					
 
-byte addMoveIfLegal(	analysisList* const list, 
+void addMoveIfLegal(	analysisList* const list, 
 						const board* const old, 
-						const bitboard from, 
-						const bitboard to, 
-						const byte promoteTo, 
+						const analysisMove* const move,
 						const byte leafMode) {
 
 	if (list->ix < ANALYSIS_SIZE) {
 		
 		analysisMove* const next = &(list->items[list->ix]);
 		
-		next->from      = from;
-		next->to        = to;
-//		next->score     = 0;
-		next->promoteTo = promoteTo;	   
+		next->from      = move->from;
+		next->to        = move->to;
+		next->promoteTo = move->promoteTo;	   
 		
 		const byte legality = leafMode 
-							? spawnLeafBoard(old, &(next->resultingBoard), from, to, promoteTo)
-							: spawnFullBoard(old, &(next->resultingBoard), from, to, promoteTo);
+							? spawnLeafBoard(old, &(next->resultingBoard), move)
+							: spawnFullBoard(old, &(next->resultingBoard), move);
 
 		if (legality == BOARD_LEGAL) {
 			// Keep this board.
 			list->ix++;
 		}
 		
-		//
-		// Tell caller what happened re legality 
-		// (illegal implies that move was thrown out)
-		//
-		return legality;
+		return;
 	}
 	else {
 		error("\nMaximum analysis moves size exceeded.\n");
 	}
-
-}
-
-void generateLegalMoveList(const board* const b, analysisList* const moveList, const byte leafMode) {
-	
-	const bitboard friends = getTeamPieces(b->quad, b->whosTurn);
-	const bitboard enemies = getTeamPieces(b->quad, b->whosTurn ^ 1);
-
-	// Excludes King
-	for (byte pieceType = PAWN; pieceType < KING; pieceType += 2) {
-
-		iterator piece = newIterator(getPieces(b->quad, pieceType | b->whosTurn));
-		piece = getNextItem(piece);
-			
-		while (piece.item) {
-			
-			bitboard moves = 0ULL;
-			
-			switch(pieceType) {
-				case PAWN: 	 moves = generatePawnMoves(piece.item, enemies, friends, b->whosTurn);    break;
-				case ROOK:   moves = generateRookMoves(piece.item, enemies, friends);    break;
-				case KNIGHT: moves = generateKnightMoves(piece.item, enemies, friends);  break;
-				case BISHOP: moves = generateBishopMoves(piece.item, enemies, friends);  break;
-				case QUEEN:  moves = generateQueenMoves(piece.item, enemies, friends);   break;
-				default: error("Bad pieceType\n");
-			}
-						
-			iterator move = newIterator(moves);
-			move = getNextItem(move);
-
-			while (move.item) {
-				
-				if (pieceType == PAWN && isPawnPromotable(move.item)) {
-					addMoveIfLegal(moveList, b, piece.item, move.item, QUEEN, leafMode);
-					addMoveIfLegal(moveList, b, piece.item, move.item, KNIGHT, leafMode);
-					addMoveIfLegal(moveList, b, piece.item, move.item, BISHOP, leafMode);
-					addMoveIfLegal(moveList, b, piece.item, move.item, ROOK, leafMode);
-				}
-				else {
-					addMoveIfLegal(moveList, b, piece.item, move.item, 0, leafMode);
-				}
-				
-				move = getNextItem(move);
-			}
-			
-			piece = getNextItem(piece);
-		}
-
-	}
-
-	//
-	// King is a special case
-	//
-	{
-		const bitboard king = getPieces(b->quad, KING | b->whosTurn);
-		const bitboard moves = generateKingMoves(king, enemies, friends, b->currentCastlingRights, b->whosTurn);
-
-		iterator move = newIterator(moves);
-		move = getNextItem(move);
-
-		while (move.item) {
-			addMoveIfLegal(moveList, b, king, move.item, 0, leafMode);
-			move = getNextItem(move);
-		}
-	}
-
-}
-
-
-
-// ==========================================================
-//
-// 						WRAPPER FUNCTIONS
-//
-// ==========================================================
-
-
-
-void printMove(const analysisMove move) {
-	print("[");
-	printSquare(move.from);
-	print(",");
-	printSquare(move.to);
-	print("]");
-}
-
-void printMoveList(const analysisList* const moveList) {
-	for (int i = 0; i < moveList->ix; i++) {
-		printMove(moveList->items[i]);
-		print("\n");
-	}
-}
-
-void printAllowedMoves(const board* const b) {
-	analysisList moveList;
-	moveList.ix = 0;
-	generateLegalMoveList(b, &moveList, 0);
-	printMoveList(&moveList);
-}
-
-//
-// When an AI or human chooses a real move to play, use this method.
-// Wrapper function simply to hide implementation details of analysisMove.
-//
-byte makeMove(const board* const old, board* const new, const analysisMove* const move) {
-	return spawnFullBoard(old,new,move->from,move->to,move->promoteTo);
-}
-
-//
-// After making a real move, call this to see if the game has ended
-//
-byte detectCheckmate(const board* const b) {
-	analysisList moveList;
-	moveList.ix = 0;
-	generateLegalMoveList(b,&moveList,0);
-	if (moveList.ix == 0) {
-		return determineEndOfGameState(b);
-	}
-	else {
-		return BOARD_NORMAL;
-	}
-}
-
-//
-// Prepare the board for a standard game.
-//
-void initBoard(board* const b) {
-	
-	quadboard* const qb = &(b->quad);
-	
-	clearBoard(b);
-	
-	addPieces(qb, 255ULL << (8 * 1), PAWN | WHITE);
-	addPieces(qb, 255ULL << (8 * 6), PAWN | BLACK);
-
-	addPieces(qb, (128ULL + 1), ROOK | WHITE);
-	addPieces(qb, (128ULL + 1) << (8 * 7), ROOK | BLACK);
-
-	addPieces(qb, (64ULL + 2), KNIGHT | WHITE);
-	addPieces(qb, (64ULL + 2) << (8 * 7), KNIGHT | BLACK);
-
-	addPieces(qb, (32ULL + 4), BISHOP | WHITE);
-	addPieces(qb, (32ULL + 4) << (8 * 7), BISHOP | BLACK);
-
-	addPieces(qb, 16ULL, QUEEN | WHITE);
-	addPieces(qb, 16ULL << (8 * 7), QUEEN | BLACK);
-
-	addPieces(qb, 8ULL, KING | WHITE);
-	addPieces(qb, 8ULL << (8 * 7), KING | BLACK);
-
-	b->piecesMoved = 0;
-	b->currentCastlingRights = WHITE_KINGSIDE_CASTLE_MOVED 
-							   | WHITE_QUEENSIDE_CASTLE_MOVED
-							   | BLACK_KINGSIDE_CASTLE_MOVED
-							   | BLACK_QUEENSIDE_CASTLE_MOVED ;
-							   
-	b->whosTurn = WHITE;
 }
 

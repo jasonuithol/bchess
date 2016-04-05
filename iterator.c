@@ -28,4 +28,4 @@ iterator getNextItem(iterator i) {
 	return i;
 }
 
-#define newIterator(listBitboard) { .item = 0ULL, .list = listBitboard }
+#define newIterator(x) { .item = 0ULL, .list = x }; 

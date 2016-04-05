@@ -98,7 +98,7 @@ void testDisappearingKing() {
 
 
 	board next;
-	aiMove(&b, &next, &loopDetect, 44);
+	aiMove(&b, &next, &loopDetect, 44, 0);
 	
 }
 
@@ -145,7 +145,7 @@ void testSuite() {
 		exit(1);
 	}
 	
-	
+/*	
 	// TEST LEGAL MOVES FOR EACH PIECE
 	clearBoard(&b);
 	initBoard(&b);
@@ -163,7 +163,7 @@ void testSuite() {
 	printBB(applySlidingAttackVector(1ULL << 35, w, enemies, friends, DIRECTION_UP));
 	print("Allowed east moves\n");
 	printBB(applySlidingAttackVector(1ULL << 35, w, enemies, friends, DIRECTION_DOWN));
-	
+*/	
 	
 	testDisappearingKing();
 	
