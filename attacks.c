@@ -172,7 +172,7 @@ bitboard singlePieceAttacks(const bitboard piece, const bitboard softBlockers, c
 	for (byte dir = 0; dir < 2; dir ++) {
 
 		// Create a new vector scratchlist.
-		iterator vector = { 0ULL, positiveVectors };
+		iterator vector = newIterator(positiveVectors);
 		vector = getNextItem(vector);
 		
 		// Iterating over the vectors.
@@ -258,6 +258,22 @@ byte isSquareAttacked(const quadboard qb, const bitboard square, const byte aski
 	return 0;
 }
 
+/*
+inline bitboard findAttackingPieces(const quadboard qb, const bitboard square, const pieceType, const attackingTeam) {
+
+	const bitboard pieces = getPieces(qb, pieceType|attackingTeam);
+	
+	// NOTE: Pawns covered by bishop attacks, 
+	// kings and queens covered by bishop+rook attacks.
+
+
+
+	return  singlePieceAttacks(square, pieces, 0, bishopAttacks, ATTACKMODE_SLIDING)
+			| singlePieceAttacks(square, pieces, 0, rookAttacks,   ATTACKMODE_SLIDING)	
+			| singlePieceAttacks(square, allPieces, 0, knightAttacks, ATTACKMODE_SINGLE)
+	;
+}
+*/
 //
 // Generate a map of psuedolegal moves one piece can make - EVERYTHING EXCEPT PAWNS
 //

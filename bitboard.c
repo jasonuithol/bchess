@@ -39,19 +39,19 @@ void printBB(const bitboard b) {
 	}
 }
 
-offset trailingBit_Bitboard(const bitboard b) {
+inline offset trailingBit_Bitboard(const bitboard b) {
 	return (offset)__builtin_ctzll((unsigned long long)b);
 }
 
-int populationCount(const bitboard b) {
+inline int populationCount(const bitboard b) {
 	return __builtin_popcountll((unsigned long long)b);
 }
 
-offset getFile(const bitboard b) {
+inline offset getFile(const bitboard b) {
 	return trailingBit_Bitboard(b) % 8;
 }
 
-offset getRank(const bitboard b) {
+inline offset getRank(const bitboard b) {
 	return trailingBit_Bitboard(b) / 8;
 }
 

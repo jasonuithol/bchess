@@ -22,7 +22,7 @@
 #define QUEEN 	((byte)10)	// 1010
 #define KING 	((byte)12)	// 1100
 
-byte opponentOf(byte team) {
+inline byte opponentOf(byte team) {
 	return team ^ 1;
 }
 
@@ -33,7 +33,7 @@ typedef struct {
 	bitboard team;
 } quadboard;
 
-byte areEqualQB(quadboard a, quadboard b) {
+inline byte areEqualQB(quadboard a, quadboard b) {
 	return a.team == b.team
 		&& a.type0 == b.type0
 		&& a.type1 == b.type1
@@ -47,11 +47,11 @@ void printByte(const byte v) {
 	printf("\n");
 }
 
-byte getTeam(const quadboard qb, offset i) {
+inline byte getTeam(const quadboard qb, offset i) {
 	return (qb.team & (1ULL << i)) >> i;
 }
 
-byte getType(const quadboard qb, offset i) {
+inline byte getType(const quadboard qb, offset i) {
 	
 	byte type0,type1,type2;
 	
@@ -189,21 +189,21 @@ void addPieces(quadboard* const qb, const bitboard pieces, const byte pieceType)
 	qb->team  |= (pieceType & 1 ? pieces : 0);	
 }
 
-bitboard getPieces(const quadboard qb, const byte pieceType) {
+inline bitboard getPieces(const quadboard qb, const byte pieceType) {
 	return (pieceType & 8 ? qb.type0 : ~qb.type0) 
 		 & (pieceType & 4 ? qb.type1 : ~qb.type1) 
 		 & (pieceType & 2 ? qb.type2 : ~qb.type2) 
 		 & (pieceType & 1 ? qb.team  : ~qb.team);
 }
 
-void resetSquares(quadboard* const qb, const bitboard squares) {
+inline void resetSquares(quadboard* const qb, const bitboard squares) {
 	qb->type0 &= ~squares;
 	qb->type1 &= ~squares;
 	qb->type2 &= ~squares;
 	qb->team  &= ~squares;
 }
 
-void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
+inline void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
 
 	// Write 0000 to target square.
 	resetSquares(qb, to);
@@ -218,10 +218,10 @@ void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
 	resetSquares(qb, from);
 }
 
-bitboard getAllPieces(const quadboard qb) {
+inline bitboard getAllPieces(const quadboard qb) {
 	return qb.type0 | qb.type1 | qb.type2;
 }
 
-bitboard getTeamPieces(const quadboard qb, const byte team) {
+inline bitboard getTeamPieces(const quadboard qb, const byte team) {
 	return (team ? qb.team : ~qb.team) & getAllPieces(qb);
 }

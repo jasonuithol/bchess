@@ -87,7 +87,7 @@ scoreType countMoves(	const quadboard qb,
 	
 	scoreType subscore = 0;
 	
-	iterator piece = { 0ULL, getPieces(qb, pieceType) }; 
+	iterator piece = newIterator(getPieces(qb, pieceType)); 
 	piece = getNextItem(piece);
 	
 	while (piece.item) { 	
@@ -119,10 +119,10 @@ scoreType evaluateMobility(const quadboard qb, const byte team) {
 			// For the very moment, skipping kings and pawns. */
 
 			
-			- countMoves(qb, generateKnightMoves, enemies, friends, KNIGHT | team ^ 1)
-			- countMoves(qb, generateBishopMoves, enemies, friends, BISHOP | team ^ 1)
-			- countMoves(qb, generateRookMoves,   enemies, friends, ROOK   | team ^ 1)
-			- countMoves(qb, generateQueenMoves,  enemies, friends, QUEEN  | team ^ 1)
+			- countMoves(qb, generateKnightMoves, enemies, friends, KNIGHT | (team ^ 1))
+			- countMoves(qb, generateBishopMoves, enemies, friends, BISHOP | (team ^ 1))
+			- countMoves(qb, generateRookMoves,   enemies, friends, ROOK   | (team ^ 1))
+			- countMoves(qb, generateQueenMoves,  enemies, friends, QUEEN  | (team ^ 1))
 			;
 			// For the very moment, skipping kings and pawns.
 
@@ -135,7 +135,7 @@ scoreType analyseLeafNonTerminal(const quadboard qb, const byte team) {
 		
 	// We have hit the limit of our depth search - time to score the board.
 	return (1 * evaluateMobility(qb, team))
-		 + (8 * evaluateMaterial(qb, team));	
+		 + (4 * evaluateMaterial(qb, team));	
 
 }
 
