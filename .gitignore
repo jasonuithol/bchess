@@ -1,4 +1,8 @@
 a.out
 *.log
 *.txt
+*.save
+callgrind.out.*
+*.gcda
+*.s
 
