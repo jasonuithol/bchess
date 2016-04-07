@@ -167,7 +167,7 @@ byte spawnFullBoard(const board* const old,
 	//
 	new->currentCastlingRights = new->piecesMoved;
 	
-	char rank = new->whosTurn ? '8' : '1';
+	const char rank = new->whosTurn ? '8' : '1';
 
 	//
 	// KINGSIDE

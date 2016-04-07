@@ -47,7 +47,7 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
 		// and see if any of those leaf level boards has a higher best score
 		// than what we have now.
 		//
-		analysisMove* move = &(moveList.items[ix]);
+		const analysisMove* move = &(moveList.items[ix]);
 		analysisMove dummyMove;
 		scoreType score;
 		
