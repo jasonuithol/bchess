@@ -6,23 +6,18 @@
 #include <time.h>
 
 #include "logging.c"
-
 #include "bitboard.c"
 #include "iterator.c"
 #include "quadboard.c"
-
 #include "vector.c"
 #include "attacks.c"
 #include "umpire.c"
 #include "movegen_impl.c"
 #include "movegen.c"
-
 #include "savegame.c"
-
 #include "aileaf.c"
 #include "ai2.c"
 #include "airoot.c"
-
 #include "human.c"
 
 #ifdef BUILD_TESTING
@@ -81,8 +76,11 @@ void run(gameContext* game) {
 
 	printQBUnicode(b1ptr->quad);
 
+#ifdef BUILD_BENCHMARK
+	while (game->turn <= 20) { 
+#else
 	while (game->turn <= 200) { 
-
+#endif
 		print("==== TURN %d =====\n\n",game->turn);
 		
 //		printBB(getTeamPieces(b1ptr->quad, b1ptr->whosTurn));
@@ -90,12 +88,18 @@ void run(gameContext* game) {
 		print("Current board score: %d\n", (int)analyseLeafNonTerminal(b1ptr));
 
 		if (b1ptr->whosTurn == WHITE) {
-			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn,0);
-//			humanMove(b1ptr,b2ptr);
+#ifdef WHITE_HUMAN
+			humanMove(b1ptr,b2ptr);
+#else
+			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn, 0);
+#endif
 		}
 		else {
-			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn,0);
-//			humanMove(b1ptr,b2ptr);
+#ifdef BLACK_HUMAN
+			humanMove(b1ptr,b2ptr);
+#else			
+			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn, 0);
+#endif
 		}
 		
 		int gamestate = detectCheckmate(b2ptr);
