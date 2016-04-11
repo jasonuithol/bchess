@@ -1,1 +1,1 @@
-./build.sh -DBUILD_TESTING && ./run.sh
+./build.sh -DBUILD_TESTING $* && ./run.sh

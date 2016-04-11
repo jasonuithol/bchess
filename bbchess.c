@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+//#include <x86intrin.h>
+//#include <emmintrin.h>
 
 #include "logging.c"
 #include "bitboard.c"
