@@ -305,7 +305,9 @@ void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
 	resetSquares(qb, to);
 
 	byte pieceType = getType(*qb, trailingBit_Bitboard(from));
-	addPieces(qb,to,pieceType);
+	byte pieceTeam = getTeam(*qb, trailingBit_Bitboard(from));
+//	print("Derived pieceType %u\n",pieceType|pieceTeam);
+	addPieces(qb,to,pieceType|pieceTeam);
 	
 	// Set appropriate 1's to target square.
 //	qb->type0 = moveBitValue(qb->type0, from, to);
