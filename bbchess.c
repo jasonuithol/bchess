@@ -73,8 +73,11 @@ void run(gameContext* game) {
 
 	printQBUnicode(b1ptr->quad);
 
+#ifdef BUILD_BENCHMARK
+	while (game->turn <= 20) { 
+#else
 	while (game->turn <= 200) { 
-
+#endif
 		print("==== TURN %d =====\n\n",game->turn);
 		
 //		printBB(getTeamPieces(b1ptr->quad, b1ptr->whosTurn));
@@ -82,12 +85,18 @@ void run(gameContext* game) {
 		print("Current board score: %d\n", (int)analyseLeafNonTerminal(b1ptr));
 
 		if (b1ptr->whosTurn == WHITE) {
-			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn,0);
-//			humanMove(b1ptr,b2ptr);
+#ifdef WHITE_HUMAN
+			humanMove(b1ptr,b2ptr);
+#else
+			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn, 0);
+#endif
 		}
 		else {
-			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn,0);
-//			humanMove(b1ptr,b2ptr);
+#ifdef BLACK_HUMAN
+			humanMove(b1ptr,b2ptr);
+#else			
+			aiMove(b1ptr,b2ptr,loopDetectPtr,game->turn, 0);
+#endif
 		}
 		
 		int gamestate = detectCheckmate(b2ptr);
