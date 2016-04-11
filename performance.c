@@ -54,7 +54,7 @@ double perftest_getBestMove_Initial() {
 	initBoard(&b);
 	clearBoard(&loopDetect);
 	time_t startTime = time(NULL);
-	if (getBestMove(&bestMove, &b, &loopDetect, 0, 4, 0) == 99) {
+	if (getBestMove(&bestMove, &loopDetect, &b, 0, 4, 0) == 99) {
 		print("99 !!!!!\n");
 	}
 	else {
@@ -66,7 +66,7 @@ double perftest_getBestMove_Initial() {
 }
 
 double perftest_generateLegalMoveList_LeafMode() {
-	board b;	
+	board b;	 
 	initBoard(&b);
 	time_t startTime = time(NULL);
 	for (int i = 0; i < (PERF_ITERATIONS); i++) {
