@@ -53,7 +53,7 @@ void displaySpinningPulse() {
 //           each possible move.
 //
 
-scoreType evaluateMaterial(const quadboard qb, const byte team) {
+inline scoreType evaluateMaterial(const quadboard qb, const byte team) {
 
 	return    SCORE_PAWN 	* populationCount(getPieces(qb, PAWN   | team))
 			+ SCORE_KNIGHT	* populationCount(getPieces(qb, KNIGHT | team))
@@ -79,7 +79,7 @@ scoreType evaluateMaterial(const quadboard qb, const byte team) {
 typedef bitboard (getterFuncPtr)(const quadboard, const byte); 
 typedef bitboard (generatorFuncPtr)(const bitboard, const bitboard, const bitboard); 
 
-scoreType countMoves(	const quadboard qb, 
+inline scoreType countMoves(	const quadboard qb, 
 						generatorFuncPtr generator, 
 						const bitboard friends, 
 						const bitboard enemies, 
@@ -107,7 +107,7 @@ scoreType countMoves(	const quadboard qb,
 	return subscore;
 }
 
-scoreType evaluateMobility(const quadboard qb, const byte team) {
+inline scoreType evaluateMobility(const quadboard qb, const byte team) {
 	
 	const bitboard friends = getTeamPieces(qb, team);
 	const bitboard enemies = getTeamPieces(qb, team ^ 1);
@@ -128,7 +128,7 @@ scoreType evaluateMobility(const quadboard qb, const byte team) {
 
 }
 
-scoreType analyseLeafNonTerminal(const quadboard qb, const byte team) {
+inline scoreType analyseLeafNonTerminal(const quadboard qb, const byte team) {
 	
 	// Tell the world we still live.
 	displaySpinningPulse();

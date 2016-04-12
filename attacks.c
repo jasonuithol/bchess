@@ -279,23 +279,23 @@ inline bitboard findAttackingPieces(const quadboard qb, const bitboard square, c
 //
 
 
-bitboard generateQueenMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
+inline bitboard generateQueenMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
 	return singlePieceAttacks(piece, enemies, friends, queenAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateBishopMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
+inline bitboard generateBishopMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
 	return singlePieceAttacks(piece, enemies, friends, bishopAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateRookMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
+inline bitboard generateRookMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
 	return singlePieceAttacks(piece, enemies, friends, rookAttacks, ATTACKMODE_SLIDING);
 }
-bitboard generateKnightMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
+inline bitboard generateKnightMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
 	return singlePieceAttacks(piece, enemies, friends, knightAttacks, ATTACKMODE_SINGLE);
 }
 
 //
 // Generate a map of psuedolegal moves one piece can make - KING
 //
-bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const bitboard currentCastlingRights, const byte team) {
+inline bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const bitboard currentCastlingRights, const byte team) {
 
 	// First of all, do the boring, ordinary 1 square moves.
 	bitboard kingMoves = singlePieceAttacks(piece, enemies, friends, kingAttacks, ATTACKMODE_SINGLE);
@@ -337,7 +337,7 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 //
 // Generate a map of psuedolegal moves one piece can make - PAWN
 //
-bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
+inline bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
 
 
 	//

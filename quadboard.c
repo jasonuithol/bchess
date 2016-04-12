@@ -305,13 +305,7 @@ void resetSquares(quadboard* const qb, const bitboard squares) {
 	qb->team  &= ~squares;
 }
 
-bitboard moveBitValue(const bitboard field, const bitboard from, const bitboard to) {
-	// An alternative to shifting back to bit 0 is to popcount, but only if there's
-	// only one possible bit already set.
-	return (populationCount(field & from) * ~0ULL) & to;
-}
-
-void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
+inline void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
 
 	// Write 0000 to target square.
 	resetSquares(qb, to);

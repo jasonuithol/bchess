@@ -375,7 +375,7 @@ byte makeMove(const board* const old, board* const new, const analysisMove* cons
 //
 // After making a real move, call this to see if the game has ended
 //
-byte detectCheckmate(const board* const b) {
+inline byte detectCheckmate(const board* const b) {
 	analysisList moveList;
 	moveList.ix = 0;
 	generateLegalMoveList(b,&moveList,0);
