@@ -7,7 +7,7 @@ COMPILER="gcc"
 LANGUAGE="-std=c11"
 
 # Common sense.  Even warnings are treated as SERIOUS BUSINESS.
-WARNINGS="-Wall -pedantic"
+WARNINGS="-Wall -pedantic -Winline"
 
 # We need to go fast
 TARGET_ARCH="-march=native"
