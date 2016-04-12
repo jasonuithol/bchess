@@ -26,9 +26,6 @@ byte opponentOf(byte team) {
 	return team ^ 1;
 }
 
-//typedef __m128i doubleboard;
-
-
 typedef struct {
 	bitboard type0; // bit 3 in pieceType values
 	bitboard type1; // bit 2 in pieceType values
@@ -184,42 +181,30 @@ void printQBUnicode(const quadboard qb) {
 
 //
 // Returns 11111111 11111111 11111111 11111111 11111111 11111111 11111111 11111111 
+//
 // if pieceType has bitPosition bit set to 1
+//
 // else returns 0
 //
 bitboard get64Mask(const byte pieceType, const offset bitPosition) {
-	// Start with all 64 11111's
-	// Shift bitPosition bit to the least significant bit 
-	//  (after masking out all the other bits)
-	// Shift it back to 6th position (is now 0 or 64)
-	// Now shift the 11111's value either 0 or 64 times
-	// Now invert, because we wanted the opposite
 	
-//	print("Received pieceType %u and bitPosition %u\n", pieceType, bitPosition);
-
+	// Create a mask for pieceType to get the bit at bitPosition.
 	const byte typeMask = (1 << bitPosition);
+	
+	// Isolate, then move that bit to position 0.
 	const byte isSet 	= (pieceType & typeMask) >> bitPosition;
-//	const offset off 	= (isSet ^ 1) << 6;
+
+	// Multiply 11111111 11111111 11111111 11111111 11111111 11111111 11111111 11111111
+	// by the value of that isolated bit.
 	const bitboard mask64 = ~0ULL;
-
-//	print("Calculated typeMask %u, isSet %u, off %u\n", typeMask, isSet, off);
-
-//	print("Mask before shifting\n");
-//	printBB(mask64);
-//	print("\n");
-
 	const bitboard result = mask64 * isSet;
 
-//	print("Mask after shifting\n");
-//	printBB(result);
-//	print("\n");
-
-	return result;
-	
-//	return ~((~0ULL) << (((pieceType & (1 << bitPosition)) >> bitPosition) << 6));
+	return result;	
 }
 
-
+//
+// Will AND each field in qb with bb
+//
 void andBBMask(quadboard* const qb, const bitboard bb) {
 
 	qb->type2 &= bb; 	
@@ -228,6 +213,10 @@ void andBBMask(quadboard* const qb, const bitboard bb) {
 	qb->team  &= bb; 
 }    
 
+//
+// Will OR each field in qb with the corresponding field in mask
+// and place the result in qb.
+//
 void orQBMask(quadboard* const qb, const quadboard* const mask) {
 
 	qb->type2 |= mask->type2; 
@@ -236,6 +225,10 @@ void orQBMask(quadboard* const qb, const quadboard* const mask) {
 	qb->team  |= mask->team; 
 }    
 
+//
+// Will XOR each field in qb with the corresponding field in mask
+// and place the result in qb.
+//
 void xorQBMask(quadboard* const qb, const quadboard* const mask) {
 
 	qb->type2 ^= mask->type2; 
@@ -244,6 +237,9 @@ void xorQBMask(quadboard* const qb, const quadboard* const mask) {
 	qb->team  ^= mask->team; 
 }    
 
+//
+// Will NOT each field in qb and place the result in qb.
+//
 void notQB(quadboard* const qb) {
 
 	qb->type2 = ~qb->type2; 
@@ -252,6 +248,15 @@ void notQB(quadboard* const qb) {
 	qb->team  = ~qb->team; 
 }    
 
+//
+// Will set each 64bit field in mask to either all 1's or 0's
+// depending on how each corresponding bit is set in pieceType
+//
+// mask->type0 .... bit 3 in pieceType
+// mask->type1 .... bit 2 in pieceType
+// mask->type2 .... bit 1 in pieceType
+// mask->team  .... bit 0 in pieceType
+//
 void setQuadMask(quadboard* const mask, const byte pieceType) {
 
 	mask->type0 = get64Mask(pieceType, 3);
@@ -265,27 +270,32 @@ void setQuadMask(quadboard* const mask, const byte pieceType) {
 //
 void addPieces(quadboard* const qb, const bitboard pieces, const byte pieceType) {
 
+	// Create a mask based on pieceType.
 	quadboard mask;
 	setQuadMask(&mask, pieceType);
 
+	// Apply pieces to mask to set each field to either = pieces or be all 0's.
 	andBBMask(&mask, pieces);
+	
+	// Add to existing QB.
 	orQBMask(qb, &mask);
 }
 
 bitboard getPieces(quadboard qb, const byte pieceType) {
 	
+	// Create a mask based on pieceType.
 	quadboard mask;
 	setQuadMask(&mask, pieceType);
+
+	// For our purposes, we actually need inverted mask.
 	notQB(&mask);
+	
+	// If we were after 1's then we will be XORing them with zeros (because of invert)
+	// If we were after 0's then we will be XORing them with ones.
 	xorQBMask(&qb, &mask);
+	
+	// Our requested values are all now 1's, so AND the lot together.
 	return qb.type2 & qb.type1 & qb.type0 & qb.team;
-/*	
-	return (get64Mask(pieceType, 3) ^ qb.type0)
-		 & (get64Mask(pieceType, 2) ^ qb.type1)
-		 & (get64Mask(pieceType, 1) ^ qb.type2)
-		 & (get64Mask(pieceType, 0) ^ qb.team)
-	;
-*/ 
 }
 
 void resetSquares(quadboard* const qb, const bitboard squares) {
@@ -296,6 +306,8 @@ void resetSquares(quadboard* const qb, const bitboard squares) {
 }
 
 bitboard moveBitValue(const bitboard field, const bitboard from, const bitboard to) {
+	// An alternative to shifting back to bit 0 is to popcount, but only if there's
+	// only one possible bit already set.
 	return (populationCount(field & from) * ~0ULL) & to;
 }
 
@@ -304,17 +316,11 @@ void moveSquare(quadboard* const qb, const bitboard from, const bitboard to) {
 	// Write 0000 to target square.
 	resetSquares(qb, to);
 
+	// This could be done better, but at least it's correct.
 	byte pieceType = getType(*qb, trailingBit_Bitboard(from));
 	byte pieceTeam = getTeam(*qb, trailingBit_Bitboard(from));
-//	print("Derived pieceType %u\n",pieceType|pieceTeam);
 	addPieces(qb,to,pieceType|pieceTeam);
-	
-	// Set appropriate 1's to target square.
-//	qb->type0 = moveBitValue(qb->type0, from, to);
-//	qb->type1 = moveBitValue(qb->type1, from, to);
-//	qb->type2 = moveBitValue(qb->type2, from, to);
-//	qb->team  = moveBitValue(qb->team,  from, to);
-	
+		
 	// Write 0000 to source square.
 	resetSquares(qb, from);
 }
@@ -324,8 +330,7 @@ bitboard getAllPieces(const quadboard qb) {
 }
 
 bitboard getTeamPieces(const quadboard qb, const byte team) {
-	const bitboard teamMask = (~0ULL * team) ^ qb.team;
-		
+	const bitboard teamMask = (~0ULL * team) ^ qb.team;		
 	return (~teamMask) & getAllPieces(qb);
 }
 
