@@ -1,3 +1,25 @@
-gcc -std=c11 -Wall -pedantic -Winline -march=native -Ofast -fomit-frame-pointer -flto -fuse-linker-plugin -fwhole-program $* bbchess.c
-#clang -std=c99 -Wall -pedantic -march=native -O2 -fomit-frame-pointer $* bbchess.c
+#!/bin/bash
 
+# I try to support both gcc and clang
+COMPILER="gcc"
+
+# We use anonymous nested structs.
+LANGUAGE="-std=c11"
+
+# Common sense.  Even warnings are treated as SERIOUS BUSINESS.
+WARNINGS="-Wall -pedantic"
+
+# We need to go fast
+TARGET_ARCH="-march=native"
+
+# We need to go even faster
+OPTIMISE_clang="-O3 -flto"
+OPTIMISE_gcc="-Ofast -flto -fuse-linker-plugin"
+OPTIMISE_VAR="OPTIMISE_$COMPILER"
+
+# Our "main" file.
+INPUT="bbchess.c"
+
+echo $COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $INPUT
+
+$COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $INPUT
