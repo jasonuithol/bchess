@@ -27,18 +27,18 @@ typedef struct {
     bitboard to;
     byte promoteTo;
     board resultingBoard;
-    
+
 } analysisMove;
 
 
 #define ANALYSIS_SIZE (100)
 
 typedef struct {
-    
+
     analysisMove items[ANALYSIS_SIZE];
     byte ix;
-    
-} analysisList; 
+
+} analysisList;
 
 
 void clearBoard(board* const b) {
@@ -67,9 +67,9 @@ inline byte determineEndOfGameState(const board* const b) {
 // * Pawns get promoted.
 // * Illegal board positions (involving check) are thrown out.
 //
-inline byte spawnLeafBoard(const board* const old, 
-                    board* const new, 
-                    const analysisMove* const move) {
+inline byte spawnLeafBoard( const board* const old,
+                            board* const new,
+                            const analysisMove* const move) {
 
 
     quadboard* const qb = &(new->quad);
@@ -90,7 +90,7 @@ inline byte spawnLeafBoard(const board* const old,
         return BOARD_NOT_LEGAL;
     }
 
-    
+
     //
     // Pawn promotion followup (takes the chosen promotion and applies it)
     //
@@ -129,20 +129,20 @@ inline byte spawnLeafBoard(const board* const old,
 // The vast, vast majority of leaf boards never get spawnXXXBoard called on them,
 // only the Chosen Ones do. Use spawnLeafBoard for leaf boards.
 //
-inline byte spawnFullBoard(const board* const old, 
-                    board* const new, 
-                    const analysisMove* const move) {
+inline byte spawnFullBoard( const board* const old,
+                            board* const new,
+                            const analysisMove* const move) {
 
 
     // First, spawn a leaf board, it will have all the tidying up and illegal position checks.
     if (spawnLeafBoard(old, new, move) == BOARD_NOT_LEGAL) {
-        
+
         // Board was found to be illegal, abort and notify caller.
         return BOARD_NOT_LEGAL;
     }
-    
+
     //
-    // To see if it's still possible to castle in the future, 
+    // To see if it's still possible to castle in the future,
     // we track whether the relevant pieces have moved.
     //
     switch(move->from) {
@@ -162,61 +162,61 @@ inline byte spawnFullBoard(const board* const old,
     // NOTE: FOR LEAF BOARDS, THIS IS A NEEDLESS COST !!!!!
     //
     new->currentCastlingRights = new->piecesMoved;
-    
+
     char rank = new->whosTurn ? '8' : '1';
 
     //
     // KINGSIDE
     //
-                                            
-    // Check if squares are occupied.   
+
+    // Check if squares are occupied.
     if (allPieces & (toBitboard('f',rank) | toBitboard('g',rank) ) ) {
 
-        new->currentCastlingRights |= new->whosTurn 
-                                        ? BLACK_KINGSIDE_CASTLE_MOVED 
+        new->currentCastlingRights |= new->whosTurn
+                                        ? BLACK_KINGSIDE_CASTLE_MOVED
                                         : WHITE_KINGSIDE_CASTLE_MOVED;
     }
     else {
-        
+
         // Check if squares are attacked
         for (char file = 'e'; file < 'h'; file++) {
-            
+
             if (isSquareAttacked(new->quad, toBitboard(file,rank), new->whosTurn)) {
-                
-                new->currentCastlingRights |= new->whosTurn 
-                                                ? BLACK_KINGSIDE_CASTLE_MOVED 
+
+                new->currentCastlingRights |= new->whosTurn
+                                                ? BLACK_KINGSIDE_CASTLE_MOVED
                                                 : WHITE_KINGSIDE_CASTLE_MOVED;
                 break;
             }
         }
-        
+
     }
 
     //
     // QUEENSIDE
     //
-                                            
+
     // Check if squares are occupied.
     if (allPieces & (toBitboard('b',rank) | toBitboard('c',rank) | toBitboard('d',rank) ) ) {
 
-        new->currentCastlingRights |= new->whosTurn 
-                                        ? BLACK_QUEENSIDE_CASTLE_MOVED 
+        new->currentCastlingRights |= new->whosTurn
+                                        ? BLACK_QUEENSIDE_CASTLE_MOVED
                                         : WHITE_QUEENSIDE_CASTLE_MOVED;
     }
     else {
-        
+
         // Check if squares are attacked
         for (char file = 'a'; file < 'e'; file++) {
-            
+
             if (isSquareAttacked(new->quad, toBitboard(file,rank), new->whosTurn)) {
-                
-                new->currentCastlingRights |= new->whosTurn 
-                                                ? BLACK_QUEENSIDE_CASTLE_MOVED 
+
+                new->currentCastlingRights |= new->whosTurn
+                                                ? BLACK_QUEENSIDE_CASTLE_MOVED
                                                 : WHITE_QUEENSIDE_CASTLE_MOVED;
                 break;
             }
         }
-        
+
     }
 
     // Board passed the illegal check state test earlier, so board is legal.
@@ -224,20 +224,20 @@ inline byte spawnFullBoard(const board* const old,
 
 }
 
-void addMoveIfLegal(    analysisList* const list, 
-                        const board* const old, 
+void addMoveIfLegal(    analysisList* const list,
+                        const board* const old,
                         const analysisMove* const move,
                         const byte leafMode) {
 
     if (list->ix < ANALYSIS_SIZE) {
-        
+
         analysisMove* const next = &(list->items[list->ix]);
-        
+
         next->from      = move->from;
         next->to        = move->to;
-        next->promoteTo = move->promoteTo;     
-        
-        const byte legality = leafMode 
+        next->promoteTo = move->promoteTo;
+
+        const byte legality = leafMode
                             ? spawnLeafBoard(old, &(next->resultingBoard), move)
                             : spawnFullBoard(old, &(next->resultingBoard), move);
 
@@ -245,11 +245,10 @@ void addMoveIfLegal(    analysisList* const list,
             // Keep this board.
             list->ix++;
         }
-        
+
         return;
     }
     else {
         error("\nMaximum analysis moves size exceeded.\n");
     }
 }
-

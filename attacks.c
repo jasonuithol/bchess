@@ -1,5 +1,5 @@
 //
-// Note: 
+// Note:
 //
 // WHITE == UP   == 0
 // BLACK == DOWN == 1
@@ -23,69 +23,69 @@
 
 #define queenAttacks    (nw  | n   | ne | w  )
 #define bishopAttacks   (nw  | ne            )
-#define rookAttacks     (n   | w             )    
+#define rookAttacks     (n   | w             )
 #define kingAttacks     (nw  | n   | ne | w  )
 #define knightAttacks   (nww | nnw |nne | nee)
 #define pawnAttacks     (ne  | nw            )
 
-typedef bitboard (*funcApplyAttack)(const attackContext* const ac, 
+typedef bitboard (*funcApplyAttack)(const attackContext* const ac,
                                     const directionalVector* const dc);
 
 typedef struct {
-    
+
     funcApplyAttack applier;
 
     bitboard positiveVectors;
     bitboard negativeVectors;
-    
+
     byte pieceType;
 
 } vectorsContext;
 
-inline bitboard singlePieceAttacks_Directional(const attackContext* const ac, 
-                                        const funcApplyAttack applier,
-                                        const bitboard directionalVectors,
-                                        const byte direction) {
+inline bitboard singlePieceAttacks_Directional( const attackContext* const ac,
+                                                const funcApplyAttack applier,
+                                                const bitboard directionalVectors,
+                                                const byte direction) {
 
     bitboard attacks = 0ULL;
 
     // Create a new vector scratchlist.
     iterator vectors = newIterator(directionalVectors);
     vectors = getNextItem(vectors);
-        
+
     // Iterating over the vectors (if there are any, or any left)
-    while (vectors.item) { 
-        
+    while (vectors.item) {
+
         // Apply the vector;
         const directionalVector dc = { vectors.item, direction };
         attacks |= applier(ac, &dc);
-        
+
         // Fetch the next vector (if any left).
-        vectors = getNextItem(vectors); 
-    } 
-    
+        vectors = getNextItem(vectors);
+    }
+
     return attacks;
 }
 
-inline bitboard singlePieceAttacks(const attackContext* const ac, 
-                            const vectorsContext* const vc) {
+inline bitboard singlePieceAttacks( const attackContext* const ac,
+                                    const vectorsContext* const vc) {
 
     return
-    
+
         // Apply any positive (UP) vectors.
-        singlePieceAttacks_Directional( ac, 
-                                        vc->applier, 
-                                        vc->positiveVectors, 
+        singlePieceAttacks_Directional( ac,
+                                        vc->applier,
+                                        vc->positiveVectors,
                                         DIRECTION_UP    )
         |
-        
+
         // Apply any negative (DOWN) vectors.
-        singlePieceAttacks_Directional( ac, 
-                                        vc->applier, 
-                                        vc->negativeVectors, 
+        singlePieceAttacks_Directional( ac,
+                                        vc->applier,
+                                        vc->negativeVectors,
                                         DIRECTION_DOWN  )
         ;
-        
+
 }
 
 const vectorsContext pieceVectorContexts[2][7] = {
@@ -94,7 +94,7 @@ const vectorsContext pieceVectorContexts[2][7] = {
     // IMPORTANT: Order of elements determines order of execution and therefore
     //            has major impact on pipelining and branch prediction.
     //
-    
+
     // WHITE
     {
         { applySingleAttackVector,  pawnAttacks,    0               , PAWN      },
@@ -102,9 +102,9 @@ const vectorsContext pieceVectorContexts[2][7] = {
         { applySingleAttackVector,  knightAttacks,  knightAttacks   , KNIGHT    },
         { applySlidingAttackVector, rookAttacks,    rookAttacks     , ROOK      },
         { applySlidingAttackVector, bishopAttacks,  bishopAttacks   , BISHOP    },
-        { applySlidingAttackVector, queenAttacks,   queenAttacks    , QUEEN     }           
+        { applySlidingAttackVector, queenAttacks,   queenAttacks    , QUEEN     }
     },
-    
+
     // BLACK
     {
         { applySingleAttackVector,  0,              pawnAttacks     , PAWN      },
@@ -126,7 +126,7 @@ inline byte isSquareAttacked(const quadboard qb, const bitboard square, const by
         getTeamPieces(qb, attackingTeam),
         getTeamPieces(qb, askingTeam)
     };
-    
+
     for (byte i = 0; i < 6; i++) {
 
         // Choose the vector context for the appropriate piece type (i).
@@ -147,4 +147,3 @@ inline byte isSquareAttacked(const quadboard qb, const bitboard square, const by
     // Couldn't find any attackers.
     return 0;
 }
-
