@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # I try to support both gcc and clang
-COMPILER="gcc"
+COMPILER="clang"
 
 # We use anonymous nested structs.
 LANGUAGE="-std=c11"

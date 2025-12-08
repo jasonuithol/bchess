@@ -259,7 +259,7 @@ byte isSquareAttacked(const quadboard qb, const bitboard square, const byte aski
 }
 
 /*
-inline bitboard findAttackingPieces(const quadboard qb, const bitboard square, const pieceType, const attackingTeam) {
+bitboard findAttackingPieces(const quadboard qb, const bitboard square, const pieceType, const attackingTeam) {
 
     const bitboard pieces = getPieces(qb, pieceType|attackingTeam);
     
