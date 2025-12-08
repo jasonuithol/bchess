@@ -4,15 +4,14 @@
 //
 // An algorithm for a computer chess player is implemented here.
 //
-
-
+// Now with ALPHA-BETA PRUNING for dramatic speedup!
 //
 // Recursively search for the best move and set "bestMove" to point to it.
-// Search depth set by "numMoves"
+// Search depth set by "aiStrength"
 //
-scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth) {
+scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta) {
                 
-    // Start by assuming the worst for us (or the best for the opponent), and see if we can do better than that.
+    // Start by assuming the worst for us (or the best for the opponent)
     scoreType bestScore = (b->whosTurn == scoringTeam ? -9999 : 9999);
     
     analysisList moveList;
@@ -26,8 +25,8 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
         // Do leaf analysis
         generateLegalMoveList(b, &moveList, 1);         
     }
-
-    // Checkmate/stalemate detection for AI.  Game over decision made elsewhere.
+    
+    // Checkmate/stalemate detection for AI. Game over decision made elsewhere.
     if (moveList.ix == 0) {
         
         if (depth == 0) {
@@ -40,12 +39,11 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
     
     for (byte ix = 0; ix < moveList.ix; ix++) {
         //
-        // Assess the move [from]->[to] on board b to depth numMoves-1.
+        // Assess the move [from]->[to] on board b to depth aiStrength.
         //
         // We do this by looking at the resulting board and then seeing what score
-        // we get when we follow all the moves from then on down to numMoves -1
-        // and see if any of those leaf level boards has a higher best score
-        // than what we have now.
+        // we get when we follow all the moves from then on and see if any of 
+        // those leaf level boards has a higher best score than what we have now.
         //
         const analysisMove* move = &(moveList.items[ix]);
         analysisMove dummyMove;
@@ -58,25 +56,49 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
         }
         else {
             score = depth < aiStrength
-                    ? getBestMove(&dummyMove, loopDetect, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1)
+                    ? getBestMove(&dummyMove, loopDetect, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1, alpha, beta)
                     : analyseLeafNonTerminal(move->resultingBoard.quad, scoringTeam);
         }
         
         //
         // Update bestscore to be the best score.
         //
-        // If it's our turn, get the highest (MAX), if it's their turn, get the lowest (MIN)
+        // If it's our turn (MAX node), get the highest score
+        // If it's their turn (MIN node), get the lowest score
         //
-        if ((b->whosTurn == scoringTeam) ? (score > bestScore) : (score < bestScore)) {
+        if (b->whosTurn == scoringTeam) {
+            // MAX node - we're trying to maximize
+            if (score > bestScore) {
+                bestScore = score;
+                // Only useful at depth == 0
+                memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
+            }
             
-            bestScore = score;
-            // Literally only useful at depth == 0;
-            memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
+            // Alpha-beta pruning for MAX node
+            alpha = (score > alpha) ? score : alpha;
+            if (beta <= alpha) {
+                // Beta cutoff: opponent won't let us get here
+                break; // Prune remaining moves
+            }
         }
-
+        else {
+            // MIN node - opponent is trying to minimize
+            if (score < bestScore) {
+                bestScore = score;
+                // Only useful at depth == 0
+                memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
+            }
+            
+            // Alpha-beta pruning for MIN node
+            beta = (score < beta) ? score : beta;
+            if (beta <= alpha) {
+                // Alpha cutoff: we won't let opponent get here
+                break; // Prune remaining moves
+            }
+        }
                 
     } // for ix
-
+    
     // Return our rating of the move now living in bestMove.
     return bestScore;
 }

@@ -2,21 +2,23 @@
 // Ask an AI agent to make a move.
 //
 void aiMove(const board* const current, board* const next, const board* const loopDetectPtr, const int turnNumber) {
-
     const time_t startTime = time(NULL);
     
     nodesCalculated = 0;
     analysisMove bestmove;
-    scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 3, 0);
-
+    
+    // Initialize alpha-beta window to widest possible range
+    scoreType alpha = -9999;
+    scoreType beta = 9999;
+    
+    scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 3, 0, alpha, beta);
+    
     print("\n");
     makeMove(current, next, &bestmove);
-
     const time_t finishTime = time(NULL);
     const double timetaken = difftime(finishTime, startTime);
     
     print("===== ai move for %s\n", current->whosTurn ? "BLACK" : "WHITE");
-
     print("Move chosen: ");
     byte mover = trailingBit_Bitboard(bestmove.from);
     printPieceUnicode(getType(current->quad,mover), current->whosTurn, UNICODESET_SOLID);
@@ -32,12 +34,10 @@ void aiMove(const board* const current, board* const next, const board* const lo
     }
     
     printMove(bestmove);
-
     if (isKingChecked(next->quad, next->whosTurn)) {
         print(" >>> CHECK <<<");
     }
     print(" (score: %d, nodes: %d)\n", (int)score, (int)nodesCalculated);
     print("Ai Move Time Taken: %f, processing speed %f\n", timetaken, nodesCalculated / timetaken);
-
     printQBUnicode(next->quad); 
 }
