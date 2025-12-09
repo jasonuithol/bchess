@@ -4,12 +4,12 @@
 //
 // An algorithm for a computer chess player is implemented here.
 //
-// Now with ALPHA-BETA PRUNING for dramatic speedup!
+// Now with ALPHA-BETA PRUNING and MOVE ORDERING for massive speedup!
 //
 // Recursively search for the best move and set "bestMove" to point to it.
 // Search depth set by "aiStrength"
 //
-scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta) {
+scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta, const bitboard pvFrom, const bitboard pvTo) {
                 
     // Start by assuming the worst for us (or the best for the opponent)
     scoreType bestScore = (b->whosTurn == scoringTeam ? -9999 : 9999);
@@ -37,6 +37,15 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
         }
     }
     
+    // ========================================
+    // MOVE ORDERING - Sort moves before searching
+    // ========================================
+    sortMoves(&moveList, &b->quad, depth, pvFrom, pvTo);
+    
+    // Track best move from this position for PV
+    bitboard localPvFrom = 0;
+    bitboard localPvTo = 0;
+    
     for (byte ix = 0; ix < moveList.ix; ix++) {
         //
         // Assess the move [from]->[to] on board b to depth aiStrength.
@@ -56,7 +65,7 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
         }
         else {
             score = depth < aiStrength
-                    ? getBestMove(&dummyMove, loopDetect, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1, alpha, beta)
+                    ? getBestMove(&dummyMove, loopDetect, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1, alpha, beta, localPvFrom, localPvTo)
                     : analyseLeafNonTerminal(move->resultingBoard.quad, scoringTeam);
         }
         
@@ -70,30 +79,64 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
             // MAX node - we're trying to maximize
             if (score > bestScore) {
                 bestScore = score;
+                // Track PV for next iteration
+                localPvFrom = move->from;
+                localPvTo = move->to;
                 // Only useful at depth == 0
                 memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
             }
             
             // Alpha-beta pruning for MAX node
-            alpha = (score > alpha) ? score : alpha;
-            if (beta <= alpha) {
+            if (score > alpha) {
+                alpha = score;
+                
                 // Beta cutoff: opponent won't let us get here
-                break; // Prune remaining moves
+                if (beta <= alpha) {
+                    // Store this as a killer move (if not a capture)
+                    bitboard capturedPiece = getAllPieces(b->quad) & move->to;
+                    if (!capturedPiece) {
+                        addKiller(move->from, move->to, depth);
+                        
+                        // Update history heuristic
+                        offset fromSquare = trailingBit_Bitboard(move->from);
+                        byte pieceType = getType(b->quad, fromSquare);
+                        updateHistory(pieceType, move->to, depth);
+                    }
+                    
+                    break; // Prune remaining moves
+                }
             }
         }
         else {
             // MIN node - opponent is trying to minimize
             if (score < bestScore) {
                 bestScore = score;
+                // Track PV for next iteration
+                localPvFrom = move->from;
+                localPvTo = move->to;
                 // Only useful at depth == 0
                 memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
             }
             
             // Alpha-beta pruning for MIN node
-            beta = (score < beta) ? score : beta;
-            if (beta <= alpha) {
+            if (score < beta) {
+                beta = score;
+                
                 // Alpha cutoff: we won't let opponent get here
-                break; // Prune remaining moves
+                if (beta <= alpha) {
+                    // Store this as a killer move (if not a capture)
+                    bitboard capturedPiece = getAllPieces(b->quad) & move->to;
+                    if (!capturedPiece) {
+                        addKiller(move->from, move->to, depth);
+                        
+                        // Update history heuristic
+                        offset fromSquare = trailingBit_Bitboard(move->from);
+                        byte pieceType = getType(b->quad, fromSquare);
+                        updateHistory(pieceType, move->to, depth);
+                    }
+                    
+                    break; // Prune remaining moves
+                }
             }
         }
                 

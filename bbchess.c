@@ -13,6 +13,7 @@
 #include "umpire.c"
 #include "savegame.c"
 #include "aileaf.c"
+#include "moveordering.c"
 #include "ai2.c"
 #include "airoot.c"
 #include "human.c"

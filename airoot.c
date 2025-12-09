@@ -7,11 +7,20 @@ void aiMove(const board* const current, board* const next, const board* const lo
     nodesCalculated = 0;
     analysisMove bestmove;
     
+    // Clear killer moves and history at the start of each search
+    // (optional - you could keep them between moves for learning)
+    clearKillers();
+    // clearHistory(); // Uncomment to reset history each move
+    
     // Initialize alpha-beta window to widest possible range
     scoreType alpha = -9999;
     scoreType beta = 9999;
     
-    scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 3, 0, alpha, beta);
+    // No PV on first call
+    bitboard pvFrom = 0;
+    bitboard pvTo = 0;
+    
+    scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 6, 0, alpha, beta, pvFrom, pvTo);
     
     print("\n");
     makeMove(current, next, &bestmove);
