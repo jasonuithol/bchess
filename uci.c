@@ -107,24 +107,88 @@ void uciLoop(void) {
             initBoard(&currentBoard);
             historyIndex = 0;
             
+            // DEBUG: Send info about initial position
+            printf("info string Initial board: castling=%d piecesMoved=%d\n", 
+                   currentBoard.currentCastlingRights, currentBoard.piecesMoved);
+            
+            // Generate and count moves
+            analysisList moveList;
+            moveList.ix = 0;
+            generateLegalMoveList(&currentBoard, &moveList, 0);
+            
+            printf("info string Generated %d legal moves\n", moveList.ix);
+            
+            // Check for castling moves specifically
+            int castlingCount = 0;
+            for (byte i = 0; i < moveList.ix; i++) {
+                if (moveList.items[i].from == (1ULL << 3)) { // King on e1
+                    offset toSquare = trailingBit_Bitboard(moveList.items[i].to);
+                    if (toSquare == 1 || toSquare == 5) { // g1 or c1
+                        castlingCount++;
+                        char from[3], to[3];
+                        squareToUCI(moveList.items[i].from, from);
+                        squareToUCI(moveList.items[i].to, to);
+                        printf("info string Found castle move: %s%s\n", from, to);
+                    }
+                }
+            }
+            
+            if (castlingCount == 0) {
+                printf("info string WARNING: No castling moves generated!\n");
+            }
+            
+            fflush(stdout);
+            
+            // DEBUG: Log legal moves to file
+            FILE* debugFile = fopen("uci_debug.txt", "w");
+            if (debugFile) {
+                fprintf(debugFile, "=== POSITION STARTPOS ===\n");
+                fprintf(debugFile, "currentCastlingRights: %d\n", currentBoard.currentCastlingRights);
+                fprintf(debugFile, "piecesMoved: %d\n", currentBoard.piecesMoved);
+                
+                analysisList moveList;
+                moveList.ix = 0;
+                generateLegalMoveList(&currentBoard, &moveList, 0);
+                
+                fprintf(debugFile, "\nLegal moves (%d):\n", moveList.ix);
+                for (byte i = 0; i < moveList.ix; i++) {
+                    char from[3], to[3];
+                    squareToUCI(moveList.items[i].from, from);
+                    squareToUCI(moveList.items[i].to, to);
+                    fprintf(debugFile, "%s%s\n", from, to);
+                }
+                fclose(debugFile);
+            }
+            
             // Check for moves
             char* movesPtr = strstr(line, "moves");
             if (movesPtr) {
                 movesPtr += 6; // Skip "moves "
                 
+                printf("info string Applying moves: %s\n", movesPtr);
+                fflush(stdout);
+                
                 // Parse and apply each move
                 char* token = strtok(movesPtr, " ");
                 while (token != NULL) {
+                    printf("info string Processing move: %s\n", token);
+                    fflush(stdout);
+                    
                     // Parse move (e.g., "e2e4")
                     if (strlen(token) >= 4) {
                         bitboard from = uciToSquare(token);
                         bitboard to = uciToSquare(token + 2);
+                        
+                        printf("info string Parsed: from=%llu to=%llu\n", 
+                               (unsigned long long)from, (unsigned long long)to);
+                        fflush(stdout);
                         
                         // Find and apply this move
                         analysisList moveList;
                         moveList.ix = 0;
                         generateLegalMoveList(&currentBoard, &moveList, 0);
                         
+                        byte found = 0;
                         for (byte i = 0; i < moveList.ix; i++) {
                             if (moveList.items[i].from == from && moveList.items[i].to == to) {
                                 // Store in history
@@ -133,8 +197,16 @@ void uciLoop(void) {
                                 
                                 // Apply move
                                 currentBoard = moveList.items[i].resultingBoard;
+                                found = 1;
+                                printf("info string Move applied successfully\n");
+                                fflush(stdout);
                                 break;
                             }
+                        }
+                        
+                        if (!found) {
+                            printf("info string ERROR: Move not found in legal moves!\n");
+                            fflush(stdout);
                         }
                     }
                     token = strtok(NULL, " ");
@@ -188,6 +260,37 @@ void uciLoop(void) {
         // UCI command: "quit"
         else if (strcmp(line, "quit") == 0) {
             break;
+        }
+        
+        // DEBUG command: "d" - display board and legal moves
+        else if (strcmp(line, "d") == 0) {
+            printf("# Current position:\n");
+            printQB(currentBoard.quad);
+            printf("#\n");
+            printf("# Legal moves:\n");
+            
+            analysisList moveList;
+            moveList.ix = 0;
+            generateLegalMoveList(&currentBoard, &moveList, 0);
+            
+            for (byte i = 0; i < moveList.ix; i++) {
+                printf("# ");
+                printMoveUCI(&moveList.items[i], &currentBoard.quad);
+                printf("\n");
+            }
+            printf("# Total moves: %d\n", moveList.ix);
+            fflush(stdout);
+        }
+        
+        // DEBUG command: "perft X" - count moves at depth X
+        else if (strncmp(line, "perft", 5) == 0) {
+            int depth = 1;
+            sscanf(line, "perft %d", &depth);
+            
+            // Simple perft - just count legal moves at depth
+            printf("# Running perft to depth %d...\n", depth);
+            // TODO: implement recursive perft if needed
+            fflush(stdout);
         }
     }
 }
