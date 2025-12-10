@@ -415,10 +415,7 @@ void initBoard(board* const b) {
     addPieces(qb, 8ULL << (8 * 7), KING | BLACK);
 
     b->piecesMoved = 0;
-    b->currentCastlingRights = WHITE_KINGSIDE_CASTLE_MOVED
-                                | WHITE_QUEENSIDE_CASTLE_MOVED
-                                | BLACK_KINGSIDE_CASTLE_MOVED
-                                | BLACK_QUEENSIDE_CASTLE_MOVED;
+    b->currentCastlingRights = 0;
     b->whosTurn = WHITE;
 }
 

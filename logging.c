@@ -3,12 +3,12 @@
 int logging = 0;
 FILE* logFp;
 
-void openLog() {
+void openLog(void) {
     logFp = fopen("bchess.log", "a");
     logging = 1;
 }
 
-void closeLog() {
+void closeLog(void) {
     if (logging != 0) {
         fclose(logFp);
         logging = 0;

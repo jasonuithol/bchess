@@ -32,7 +32,7 @@ int inputMove(analysisMove* parsedMove) {
    return COMMAND_MOVE; 
 }
 
-int inputPawnPromotion() {
+int inputPawnPromotion(void) {
     
     char buffer[20];
     

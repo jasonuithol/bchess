@@ -20,7 +20,7 @@ nodesCalculatedType nodesCalculated;
 
 #define PULSE_SPIN_MAGNITUDE (17)
 
-void displaySpinningPulse() {
+void displaySpinningPulse(void) {
 
     const nodesCalculatedType wrapMask = (1 << (PULSE_SPIN_MAGNITUDE)) - 1;
 

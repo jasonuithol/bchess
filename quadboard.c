@@ -110,7 +110,7 @@ void printTeamColor(const byte team) {
     }
 }
 
-void printResetColors() {
+void printResetColors(void) {
     print("\033[49m\033[39m\033(B\033[m"); // TODO: Use terminfo/tput, no hardcoding plox
 }
 

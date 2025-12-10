@@ -18,7 +18,8 @@ OPTIMISE_gcc="-Ofast -flto -fuse-linker-plugin"
 OPTIMISE_VAR="OPTIMISE_$COMPILER"
 
 # Our "main" file.
-INPUT="bbchess.c"
+#INPUT="bbchess.c"
+INPUT="bchessuci.c"
 
 echo $COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $INPUT
 
