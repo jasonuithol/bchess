@@ -18,9 +18,16 @@ OPTIMISE_gcc="-Ofast -flto -fuse-linker-plugin"
 OPTIMISE_VAR="OPTIMISE_$COMPILER"
 
 # Our "main" file.
-#INPUT="bbchess.c"
-INPUT="bchessuci.c"
+#DEFAULT_MAIN_FILE="bbchess.c"
+DEFAULT_MAIN_FILE="bchessuci.c"
 
-echo $COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $INPUT
+if [ -n "$MAIN_FILE" ]; then
+    echo "Using MAIN_FILE=$MAIN_FILE"
+else
+    echo using default main file
+    MAIN_FILE=$DEFAULT_MAIN_FILE    
+fi
 
-$COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $INPUT
+echo $COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $MAIN_FILE
+
+$COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $MAIN_FILE

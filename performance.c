@@ -1,6 +1,6 @@
 #define PERF_ITERATIONS (1000000)
 
-double perftest_displaySpinningPulse() {
+double perftest_displaySpinningPulse(void) {
     time_t startTime = time(NULL);
     for (int i = 0; i < PERF_ITERATIONS; i++) {
         displaySpinningPulse();
@@ -9,7 +9,7 @@ double perftest_displaySpinningPulse() {
     return difftime(finishTime, startTime);
 } 
 
-double perftest_evaluateMaterial() {
+double perftest_evaluateMaterial(void) {
     board b;
     initBoard(&b);
     time_t startTime = time(NULL);
@@ -22,7 +22,7 @@ double perftest_evaluateMaterial() {
     return difftime(finishTime, startTime);
 } 
 
-double perftest_evaluateMobility_Empty() {
+double perftest_evaluateMobility_Empty(void) {
     board b;
     clearBoard(&b);
     time_t startTime = time(NULL);
@@ -35,7 +35,7 @@ double perftest_evaluateMobility_Empty() {
     return difftime(finishTime, startTime);
 } 
 
-double perftest_evaluateMobility_Initial() {
+double perftest_evaluateMobility_Initial(void) {
     board b;
     initBoard(&b);
     time_t startTime = time(NULL);
@@ -48,13 +48,37 @@ double perftest_evaluateMobility_Initial() {
     return difftime(finishTime, startTime);
 } 
 
-double perftest_getBestMove_Initial() {
+double perftest_getBestMove_Initial(void) {
     analysisMove bestMove;
     board b, loopDetect;    
     initBoard(&b);
     clearBoard(&loopDetect);
     time_t startTime = time(NULL);
-    if (getBestMove(&bestMove, &loopDetect, &b, 0, 4, 0) == 99) {
+
+    /*
+    scoreType getBestMove(
+        analysisMove* const bestMove, 
+        const board* const loopDetect, 
+        const board* const b, 
+        const byte scoringTeam, 
+        const depthType aiStrength, 
+        const depthType depth, 
+        scoreType alpha, 
+        scoreType beta, 
+        const bitboard pvFrom, 
+        const bitboard pvTo
+    )
+    */
+
+    // Initialize alpha-beta window to widest possible range
+    scoreType alpha = -9999;
+    scoreType beta = 9999;
+    
+    // No PV on first call
+    bitboard pvFrom = 0;
+    bitboard pvTo = 0;
+
+    if (getBestMove(&bestMove, &loopDetect, &b, 0, 4, 0, alpha, beta, pvFrom, pvTo) == 99) {
         print("99 !!!!!\n");
     }
     else {
@@ -65,7 +89,7 @@ double perftest_getBestMove_Initial() {
     return difftime(finishTime, startTime);
 }
 
-double perftest_generateLegalMoveList_LeafMode() {
+double perftest_generateLegalMoveList_LeafMode(void) {
     board b;     
     initBoard(&b);
     time_t startTime = time(NULL);
@@ -83,7 +107,7 @@ double perftest_generateLegalMoveList_LeafMode() {
     return difftime(finishTime, startTime);
 }
 
-double perftest_isSquareAttacked() {
+double perftest_isSquareAttacked(void) {
     board b;    
     initBoard(&b);
     time_t startTime = time(NULL);
@@ -97,7 +121,7 @@ double perftest_isSquareAttacked() {
 }
 
 
-void runPerformanceSuite() {
+void runPerformanceSuite(void) {
 
     double a1 = perftest_displaySpinningPulse();
     printf("perftest_displaySpinningPulse: %f\n", a1); fflush(stdout);
