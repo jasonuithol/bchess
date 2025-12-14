@@ -172,6 +172,10 @@ byte spawnFullBoard(const board* const old,
     //
     // KINGSIDE
     //
+
+    // 
+    // BUG: Castling rights don't recognise occupied squares properly.
+    //
                                             
     // Check if squares are occupied.
     if ( (enemies|friends) & (toBitboard('f',rank) | toBitboard('g',rank) ) ) {
