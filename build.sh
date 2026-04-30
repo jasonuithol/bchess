@@ -6,8 +6,9 @@ if ! command -v "$COMPILER" >/dev/null 2>&1; then
     COMPILER="gcc"
 fi
 
-# We use anonymous nested structs.
-LANGUAGE="-std=c11"
+# We use anonymous nested structs. _POSIX_C_SOURCE exposes clock_gettime
+# under -std=c11 (which would otherwise hide POSIX-only declarations).
+LANGUAGE="-std=c11 -D_POSIX_C_SOURCE=200809L"
 
 # Common sense.  Even warnings are treated as SERIOUS BUSINESS.
 WARNINGS="-Wall -pedantic"

@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "uci.h"
 #include "ai2.h"
@@ -230,30 +231,78 @@ void uciLoop(void) {
         
         // UCI command: "go"
         else if (strncmp(line, "go", 2) == 0) {
-            // Parse go parameters (depth, time, etc.)
-            // For now, use fixed depth
-            depthType depth = 4;  // Default depth
-            
-            // Look for "depth X" in the command
-            char* depthPtr = strstr(line, "depth");
-            if (depthPtr) {
-                sscanf(depthPtr, "depth %hhu", &depth);
+
+            // Parse parameters. Recognized: depth, wtime, btime, winc, binc,
+            // movetime, movestogo. Unknown tokens are skipped.
+            int depthLimit = 64;
+            int wtime = 0, btime = 0, winc = 0, binc = 0;
+            int movetime = 0, movestogo = 30;
+            int gotTimeBudget = 0;
+
+            // strtok mutates the buffer; we're done with it after this branch.
+            char* tok = strtok(line, " ");
+            while (tok) {
+                if (strcmp(tok, "depth") == 0) {
+                    tok = strtok(NULL, " ");
+                    if (tok) depthLimit = atoi(tok);
+                } else if (strcmp(tok, "wtime") == 0) {
+                    tok = strtok(NULL, " ");
+                    if (tok) { wtime = atoi(tok); gotTimeBudget = 1; }
+                } else if (strcmp(tok, "btime") == 0) {
+                    tok = strtok(NULL, " ");
+                    if (tok) { btime = atoi(tok); gotTimeBudget = 1; }
+                } else if (strcmp(tok, "winc") == 0) {
+                    tok = strtok(NULL, " ");
+                    if (tok) winc = atoi(tok);
+                } else if (strcmp(tok, "binc") == 0) {
+                    tok = strtok(NULL, " ");
+                    if (tok) binc = atoi(tok);
+                } else if (strcmp(tok, "movetime") == 0) {
+                    tok = strtok(NULL, " ");
+                    if (tok) { movetime = atoi(tok); gotTimeBudget = 1; }
+                } else if (strcmp(tok, "movestogo") == 0) {
+                    tok = strtok(NULL, " ");
+                    if (tok) movestogo = atoi(tok);
+                }
+                tok = strtok(NULL, " ");
             }
-            
+
+            // Compute the per-move time budget (in ms). If neither movetime
+            // nor wtime/btime was given, only the depth limit applies.
+            long budgetMs = -1;
+            if (movetime > 0) {
+                budgetMs = movetime;
+            } else if (gotTimeBudget) {
+                int myTime = currentBoard.whosTurn == WHITE ? wtime : btime;
+                int myInc  = currentBoard.whosTurn == WHITE ? winc  : binc;
+                if (movestogo <= 0) movestogo = 30;
+                budgetMs = myTime / movestogo + myInc / 2;
+            }
+            // Reserve a small safety margin so we don't lose on time.
+            if (budgetMs > 50) {
+                budgetMs -= 20;
+            } else if (budgetMs > 0) {
+                budgetMs /= 2;
+            }
+
             // Search for best move
             nodesCalculated = 0;
             ttInit();
             ttNewSearch();
             analysisMove bestMove;
-            
+
             // Get loop detection board
             board* loopDetect = &history[(historyIndex - 4 + 5) % 5];
-            
-            // Iterative deepening: search depth 1, 2, ..., target.
-            // Each iteration fills the TT and killer tables so the next
-            // iteration has strong move ordering.
+
+            // Iterative deepening with optional time bail-out. Don't start
+            // a new iteration if we've already used 40% of the budget —
+            // each iteration typically takes 3-5x its predecessor, so
+            // pushing further usually overruns.
+            struct timespec t0, t1;
+            clock_gettime(CLOCK_MONOTONIC, &t0);
             scoreType score = 0;
-            for (depthType d = 1; d <= depth; d++) {
+            int finalDepth = 1;
+            for (depthType d = 1; d <= depthLimit; d++) {
                 score = getBestMove(
                     &bestMove,
                     loopDetect,
@@ -264,11 +313,20 @@ void uciLoop(void) {
                     -9999,
                     9999
                 );
-                printf("info depth %d score cp %d nodes %u\n",
-                       d, (int)score, (unsigned int)nodesCalculated);
+                clock_gettime(CLOCK_MONOTONIC, &t1);
+                long elapsedMs = (t1.tv_sec - t0.tv_sec) * 1000L
+                               + (t1.tv_nsec - t0.tv_nsec) / 1000000L;
+                long nps = elapsedMs > 0 ? ((long)nodesCalculated * 1000L) / elapsedMs : 0;
+                printf("info depth %d score cp %d nodes %u nps %ld time %ld\n",
+                       d, (int)score, (unsigned int)nodesCalculated, nps, elapsedMs);
                 fflush(stdout);
+                finalDepth = d;
+                if (budgetMs > 0 && elapsedMs * 5 >= budgetMs * 2) {
+                    break;
+                }
             }
-            
+            (void)finalDepth;
+
             // Output best move
             printf("bestmove ");
             printMoveUCI(&bestMove, &currentBoard.quad);
