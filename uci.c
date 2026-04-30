@@ -71,14 +71,18 @@ void uciLoop(void) {
     char line[4096];
     board currentBoard;
     initBoard(&currentBoard);
-    
+
     // For move history (to detect loops)
     board history[5];
     for (int i = 0; i < 5; i++) {
         history[i] = currentBoard;
     }
     int historyIndex = 0;
-    
+
+    // Verbose debug output is off by default. Toggle with
+    //   setoption name Debug value true
+    int debugMode = 0;
+
     printf("# bchess UCI engine\n");
     fflush(stdout);
     
@@ -90,9 +94,15 @@ void uciLoop(void) {
         if (strcmp(line, "uci") == 0) {
             printf("id name bchess\n");
             printf("id author Jason Uithol\n");
-            // Options can go here
+            printf("option name Debug type check default false\n");
             printf("uciok\n");
             fflush(stdout);
+        }
+        // UCI command: setoption name Debug value true|false
+        else if (strncmp(line, "setoption", 9) == 0) {
+            if (strstr(line, "name Debug")) {
+                debugMode = (strstr(line, "value true") != NULL);
+            }
         }
         
         // UCI command: "isready"
@@ -116,96 +126,37 @@ void uciLoop(void) {
         else if (strncmp(line, "position startpos", 17) == 0) {
             initBoard(&currentBoard);
             historyIndex = 0;
-            
-            // DEBUG: Send info about initial position
-            printf("info string Initial board: castling=%d piecesMoved=%d\n", 
-                   currentBoard.currentCastlingRights, currentBoard.piecesMoved);
-            
-            // Generate and count moves
-            analysisList moveList;
-            moveList.ix = 0;
-            generateLegalMoveList(&currentBoard, &moveList, 0);
-            
-            printf("info string Generated %d legal moves\n", moveList.ix);
-            
-            // Check for castling moves specifically
-            int castlingCount = 0;
-            for (byte i = 0; i < moveList.ix; i++) {
-                if (moveList.items[i].from == (1ULL << 3)) { // King on e1
-                    offset toSquare = trailingBit_Bitboard(moveList.items[i].to);
-                    if (toSquare == 1 || toSquare == 5) { // g1 or c1
-                        castlingCount++;
-                        char from[3], to[3];
-                        squareToUCI(moveList.items[i].from, from);
-                        squareToUCI(moveList.items[i].to, to);
-                        printf("info string Found castle move: %s%s\n", from, to);
-                    }
-                }
-            }
-            
-            if (castlingCount == 0) {
-                printf("info string WARNING: No castling moves generated!\n");
-            }
-            
-            fflush(stdout);
-            
-            // DEBUG: Log legal moves to file
-            FILE* debugFile = fopen("uci_debug.txt", "w");
-            if (debugFile) {
-                fprintf(debugFile, "=== POSITION STARTPOS ===\n");
-                fprintf(debugFile, "currentCastlingRights: %d\n", currentBoard.currentCastlingRights);
-                fprintf(debugFile, "piecesMoved: %d\n", currentBoard.piecesMoved);
-                
+
+            if (debugMode) {
                 analysisList moveList;
                 moveList.ix = 0;
                 generateLegalMoveList(&currentBoard, &moveList, 0);
-                
-                fprintf(debugFile, "\nLegal moves (%d):\n", moveList.ix);
-                for (byte i = 0; i < moveList.ix; i++) {
-                    char from[3], to[3];
-                    squareToUCI(moveList.items[i].from, from);
-                    squareToUCI(moveList.items[i].to, to);
-                    fprintf(debugFile, "%s%s\n", from, to);
-                }
-                fclose(debugFile);
+                printf("info string startpos: %d legal moves, castling=%d\n",
+                       moveList.ix, currentBoard.currentCastlingRights);
+                fflush(stdout);
             }
-            
-            // Check for moves
+
+            // Apply trailing "moves ..." sequence if present.
             char* movesPtr = strstr(line, "moves");
             if (movesPtr) {
-                movesPtr += 6; // Skip "moves "
-                
-                printf("info string Applying moves: %s\n", movesPtr);
-                fflush(stdout);
-                
-                // Parse and apply each move
+                movesPtr += 6;
+
                 char* token = strtok(movesPtr, " ");
                 while (token != NULL) {
-                    printf("info string Processing move: %s\n", token);
-                    fflush(stdout);
-                    
-                    // Parse move (e.g., "e2e4")
                     if (strlen(token) >= 4) {
                         bitboard from = uciToSquare(token);
-                        bitboard to = uciToSquare(token + 2);
-                        
-                        printf("info string Parsed: from=%llu to=%llu\n", 
-                               (unsigned long long)from, (unsigned long long)to);
-                        fflush(stdout);
-                        
-                        // Find and apply this move
+                        bitboard to   = uciToSquare(token + 2);
+
                         analysisList moveList;
                         moveList.ix = 0;
                         generateLegalMoveList(&currentBoard, &moveList, 0);
-                        
+
                         byte found = 0;
                         for (byte i = 0; i < moveList.ix; i++) {
                             if (moveList.items[i].from == from && moveList.items[i].to == to) {
-                                // Store in history
                                 history[historyIndex % 5] = currentBoard;
                                 historyIndex++;
-                                
-                                // Apply move into a fresh board, then commit.
+
                                 board nextBoard;
                                 spawnFullBoard(&currentBoard, &nextBoard,
                                                moveList.items[i].from,
@@ -213,14 +164,12 @@ void uciLoop(void) {
                                                moveList.items[i].promoteTo);
                                 currentBoard = nextBoard;
                                 found = 1;
-                                printf("info string Move applied successfully\n");
-                                fflush(stdout);
                                 break;
                             }
                         }
-                        
-                        if (!found) {
-                            printf("info string ERROR: Move not found in legal moves!\n");
+
+                        if (!found && debugMode) {
+                            printf("info string ERROR: move %s not found in legal list\n", token);
                             fflush(stdout);
                         }
                     }
