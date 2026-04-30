@@ -20,10 +20,10 @@ void aiMove(const board* const current, board* const next, const board* const lo
     nodesCalculated = 0;
     analysisMove bestmove;
 
-    // Clear killer moves and history at the start of each search
-    // (optional - you could keep them between moves for learning)
-    clearKillers();
-    // clearHistory(); // Uncomment to reset history each move
+    // Killers and history persist across moves: a killer at depth N
+    // from the previous search is often still a killer at depth N this
+    // turn, and history weights only get more accurate with reuse.
+    // ttNewSearch() handles TT invalidation separately.
 
     ttInit();
     ttNewSearch();
