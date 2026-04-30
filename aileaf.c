@@ -1,3 +1,12 @@
+#include <stdio.h>
+
+#include "aileaf.h"
+#include "attacks.h"
+#include "bitboard.h"
+#include "iterator.h"
+#include "logging.h"
+#include "quadboard.h"
+#include "umpire.h"
 
 #define SCORE_PAWN          (1)
 #define SCORE_KNIGHT        (4)
@@ -5,9 +14,6 @@
 #define SCORE_ROOK          (14)
 #define SCORE_QUEEN         (21)
 //#define SCORE_KING_CHECK  (10)
-
-typedef uint32_t nodesCalculatedType;
-typedef uint8_t depthType;
 
 //
 // Animates a little spinner to show that we are still alive.
@@ -76,14 +82,14 @@ scoreType evaluateMaterial(const quadboard qb, const byte team) {
 //           has than it's opponent.
 //
 
-typedef bitboard (getterFuncPtr)(const quadboard, const byte); 
-typedef bitboard (generatorFuncPtr)(const bitboard, const bitboard, const bitboard); 
+typedef bitboard (getterFuncPtr)(const quadboard, const byte);
+typedef bitboard (generatorFuncPtr)(const bitboard, const bitboard, const bitboard);
 
-scoreType countMoves(   const quadboard qb, 
-                        generatorFuncPtr generator, 
-                        const bitboard friends, 
-                        const bitboard enemies, 
-                        const byte pieceType) {
+static scoreType countMoves(const quadboard qb,
+                            generatorFuncPtr generator,
+                            const bitboard friends,
+                            const bitboard enemies,
+                            const byte pieceType) {
     
     scoreType subscore = 0;
     

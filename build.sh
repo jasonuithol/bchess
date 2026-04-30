@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # I try to support both gcc and clang
-COMPILER="clang"
+COMPILER="${COMPILER:-clang}"
+if ! command -v "$COMPILER" >/dev/null 2>&1; then
+    COMPILER="gcc"
+fi
 
 # We use anonymous nested structs.
 LANGUAGE="-std=c11"
@@ -18,16 +21,24 @@ OPTIMISE_gcc="-Ofast -flto -fuse-linker-plugin"
 OPTIMISE_VAR="OPTIMISE_$COMPILER"
 
 # Our "main" file.
-#DEFAULT_MAIN_FILE="bbchess.c"
 DEFAULT_MAIN_FILE="bchessuci.c"
 
 if [ -n "$MAIN_FILE" ]; then
     echo "Using MAIN_FILE=$MAIN_FILE"
 else
     echo using default main file
-    MAIN_FILE=$DEFAULT_MAIN_FILE    
+    MAIN_FILE=$DEFAULT_MAIN_FILE
 fi
 
-echo $COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $MAIN_FILE
+# All non-main translation units. The main wrapper (bbchess.c or bchessuci.c)
+# is supplied by $MAIN_FILE; it provides main() and pulls in headers only.
+SOURCES="logging.c bitboard.c iterator.c quadboard.c attacks.c umpire.c savegame.c aileaf.c moveordering.c ai2.c airoot.c human.c uci.c"
 
-$COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $MAIN_FILE
+# Test/perf TUs are only included when BUILD_TESTING is in the args.
+if [[ " $* " == *" -DBUILD_TESTING "* ]]; then
+    SOURCES="$SOURCES test.c performance.c"
+fi
+
+echo $COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $MAIN_FILE $SOURCES
+
+$COMPILER $LANGUAGE $WARNINGS $TARGET_ARCH ${!OPTIMISE_VAR} $* $MAIN_FILE $SOURCES

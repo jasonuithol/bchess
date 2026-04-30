@@ -16,19 +16,19 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "logging.c"
-#include "bitboard.c"
-#include "iterator.c"
-#include "quadboard.c"
-#include "attacks.c"
-#include "umpire.c"
-#include "savegame.c"
-#include "aileaf.c"
-#include "moveordering.c"
-#include "ai2.c"
-#include "airoot.c"
-#include "human.c"
-#include "uci.c"
+#include "logging.h"
+#include "bitboard.h"
+#include "iterator.h"
+#include "quadboard.h"
+#include "attacks.h"
+#include "umpire.h"
+#include "savegame.h"
+#include "aileaf.h"
+#include "moveordering.h"
+#include "ai2.h"
+#include "airoot.h"
+#include "human.h"
+#include "uci.h"
 
 int main(void) {
     // Run in UCI mode - no terminal graphics, just text protocol

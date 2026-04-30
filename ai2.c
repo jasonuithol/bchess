@@ -9,6 +9,17 @@
 // Recursively search for the best move and set "bestMove" to point to it.
 // Search depth set by "aiStrength"
 //
+
+#include <string.h>
+
+#include "ai2.h"
+#include "aileaf.h"
+#include "bitboard.h"
+#include "logging.h"
+#include "moveordering.h"
+#include "quadboard.h"
+#include "umpire.h"
+
 scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta) {
 
     // Start by assuming the worst for us (or the best for the opponent)

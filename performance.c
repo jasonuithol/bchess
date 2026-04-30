@@ -1,6 +1,18 @@
+#include <stdio.h>
+#include <time.h>
+
+#include "performance.h"
+#include "ai2.h"
+#include "aileaf.h"
+#include "attacks.h"
+#include "bitboard.h"
+#include "logging.h"
+#include "quadboard.h"
+#include "umpire.h"
+
 #define PERF_ITERATIONS (1000000)
 
-double perftest_displaySpinningPulse(void) {
+static double perftest_displaySpinningPulse(void) {
     time_t startTime = time(NULL);
     for (int i = 0; i < PERF_ITERATIONS; i++) {
         displaySpinningPulse();
@@ -9,7 +21,7 @@ double perftest_displaySpinningPulse(void) {
     return difftime(finishTime, startTime);
 } 
 
-double perftest_evaluateMaterial(void) {
+static double perftest_evaluateMaterial(void) {
     board b;
     initBoard(&b);
     time_t startTime = time(NULL);
@@ -22,7 +34,7 @@ double perftest_evaluateMaterial(void) {
     return difftime(finishTime, startTime);
 } 
 
-double perftest_evaluateMobility_Empty(void) {
+static double perftest_evaluateMobility_Empty(void) {
     board b;
     clearBoard(&b);
     time_t startTime = time(NULL);
@@ -35,7 +47,7 @@ double perftest_evaluateMobility_Empty(void) {
     return difftime(finishTime, startTime);
 } 
 
-double perftest_evaluateMobility_Initial(void) {
+static double perftest_evaluateMobility_Initial(void) {
     board b;
     initBoard(&b);
     time_t startTime = time(NULL);
@@ -48,7 +60,7 @@ double perftest_evaluateMobility_Initial(void) {
     return difftime(finishTime, startTime);
 } 
 
-double perftest_getBestMove_Initial(void) {
+static double perftest_getBestMove_Initial(void) {
     analysisMove bestMove;
     board b, loopDetect;    
     initBoard(&b);
@@ -83,7 +95,7 @@ double perftest_getBestMove_Initial(void) {
     return difftime(finishTime, startTime);
 }
 
-double perftest_generateLegalMoveList_LeafMode(void) {
+static double perftest_generateLegalMoveList_LeafMode(void) {
     board b;     
     initBoard(&b);
     time_t startTime = time(NULL);
@@ -101,7 +113,7 @@ double perftest_generateLegalMoveList_LeafMode(void) {
     return difftime(finishTime, startTime);
 }
 
-double perftest_isSquareAttacked(void) {
+static double perftest_isSquareAttacked(void) {
     board b;    
     initBoard(&b);
     time_t startTime = time(NULL);

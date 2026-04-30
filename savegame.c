@@ -1,17 +1,10 @@
+#include <stdio.h>
+
+#include "savegame.h"
+#include "logging.h"
+#include "umpire.h"
+
 #define SAVEFILE ("bchess.save")
-
-typedef struct {
-
-    int turn;
-
-    board boards[5];
-    
-    byte current;
-    byte next;
-    byte loopDetectIx;
-    byte loopCount;
-    
-} gameContext;
 
 void newGame(gameContext* game) {
 

@@ -1,39 +1,11 @@
-#define BOARD_LEGAL     (1)
-#define BOARD_NOT_LEGAL (0)
+#include <string.h>
 
-#define BOARD_NORMAL    (0)
-#define BOARD_CHECKMATE (1)
-#define BOARD_STALEMATE (2)
-
-
-typedef struct { // 35 bytes
-    quadboard quad;
-    byte currentCastlingRights;     // Used to check castling ability for CURRENT move only.
-    byte piecesMoved;               // Used to check castling ability for all future moves.
-    byte whosTurn;                  // 0 = WHITE, 1 = BLACK.
-} board;
-
-typedef int16_t scoreType;
-
-typedef struct {
-
-    bitboard from;
-    bitboard to;
-    scoreType score;
-    byte promoteTo;
-    board resultingBoard;
-    
-} analysisMove;
-
-
-#define ANALYSIS_SIZE (255)
-
-typedef struct {
-    
-    analysisMove items[ANALYSIS_SIZE];
-    byte ix;
-    
-} analysisList; 
+#include "umpire.h"
+#include "attacks.h"
+#include "bitboard.h"
+#include "iterator.h"
+#include "logging.h"
+#include "quadboard.h"
 
 
 void clearBoard(board* const b) {

@@ -1,0 +1,56 @@
+#ifndef UMPIRE_H
+#define UMPIRE_H
+
+#include <stdint.h>
+
+#include "bitboard.h"
+#include "quadboard.h"
+
+#define BOARD_LEGAL     (1)
+#define BOARD_NOT_LEGAL (0)
+
+#define BOARD_NORMAL    (0)
+#define BOARD_CHECKMATE (1)
+#define BOARD_STALEMATE (2)
+
+typedef struct {
+    quadboard quad;
+    byte currentCastlingRights;
+    byte piecesMoved;
+    byte whosTurn;
+} board;
+
+typedef int16_t scoreType;
+
+typedef struct {
+    bitboard from;
+    bitboard to;
+    scoreType score;
+    byte promoteTo;
+    board resultingBoard;
+} analysisMove;
+
+#define ANALYSIS_SIZE (255)
+
+typedef struct {
+    analysisMove items[ANALYSIS_SIZE];
+    byte ix;
+} analysisList;
+
+void clearBoard(board* const b);
+byte isPawnPromotable(const bitboard piece);
+byte isKingChecked(const quadboard qb, byte team);
+byte determineEndOfGameState(const board* const b);
+void computeCurrentCastlingRights(board* const b);
+byte spawnLeafBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const byte promoteTo);
+byte spawnFullBoard(const board* const old, board* const new, const bitboard from, const bitboard to, const byte promoteTo);
+byte addMoveIfLegal(analysisList* const list, const board* const old, const bitboard from, const bitboard to, const byte promoteTo, const byte leafMode);
+void generateLegalMoveList(const board* const b, analysisList* const moveList, const byte leafMode);
+void printMove(const analysisMove move);
+void printMoveList(const analysisList* const moveList);
+void printAllowedMoves(const board* const b);
+byte makeMove(const board* const old, board* const new, const analysisMove* const move);
+byte detectCheckmate(const board* const b);
+void initBoard(board* const b);
+
+#endif

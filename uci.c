@@ -13,8 +13,16 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "uci.h"
+#include "ai2.h"
+#include "aileaf.h"
+#include "bitboard.h"
+#include "moveordering.h"
+#include "quadboard.h"
+#include "umpire.h"
+
 // Convert bitboard square to UCI notation (e.g., e2, e4)
-void squareToUCI(bitboard square, char* output) {
+static void squareToUCI(bitboard square, char* output) {
     offset sq = trailingBit_Bitboard(square);
     int file = 7 - (sq % 8);  // 0-7, where 0 is 'h' and 7 is 'a'
     int rank = sq / 8;         // 0-7, where 0 is rank 1
@@ -25,7 +33,7 @@ void squareToUCI(bitboard square, char* output) {
 }
 
 // Convert UCI notation to bitboard square
-bitboard uciToSquare(const char* uci) {
+static bitboard uciToSquare(const char* uci) {
     int file = uci[0] - 'a';  // 0-7
     int rank = uci[1] - '1';  // 0-7
     
@@ -34,7 +42,7 @@ bitboard uciToSquare(const char* uci) {
 }
 
 // Print a move in UCI format (e.g., "e2e4" or "e7e8q" for promotion)
-void printMoveUCI(const analysisMove* move, const quadboard* board) {
+static void printMoveUCI(const analysisMove* move, const quadboard* board) {
     char from[3], to[3];
     squareToUCI(move->from, from);
     squareToUCI(move->to, to);

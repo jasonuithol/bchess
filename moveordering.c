@@ -9,6 +9,16 @@
 //
 // ==================================================================
 
+#include <stdlib.h>
+#include <string.h>
+
+#include "moveordering.h"
+#include "aileaf.h"
+#include "attacks.h"
+#include "bitboard.h"
+#include "quadboard.h"
+#include "umpire.h"
+
 // Move ordering scores - higher = search first
 #define SCORE_HASH_MOVE         900000
 #define SCORE_WINNING_CAPTURE   800000  // Base score, add MVV-LVA

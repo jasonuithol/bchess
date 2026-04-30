@@ -1,20 +1,8 @@
-// ==================================================================
-//
-// bitboard.c
-//
-// Author:      Jason Uithol
-// Copyright:   2016
-//
-// State Use: N/A
-//
-// ==================================================================
+#include <stdint.h>
+#include <stdio.h>
 
-typedef uint8_t  byte;
-typedef uint8_t  offset;
-typedef int16_t  relativeOffset;
-
-typedef uint64_t bitboard;
-
+#include "bitboard.h"
+#include "logging.h"
 
 // Up and down go swapsies.
 bitboard flipBoardVert(bitboard b) {
@@ -24,18 +12,18 @@ bitboard flipBoardVert(bitboard b) {
 void printBB(const bitboard b) {
 
     for (int i = 63; i >= 0; i--) {
-        
+
         byte bit;
 
         // Mask, then shift down to equal 1 (or 0).
         bit = (b & (1ULL << i)) >> i;
-        
+
         printf("%u", bit);
 
         if (i % 8 == 0) { // We just printed at the end of the line, so CR LF plox.
             printf("\n");
         }
-        
+
     }
 }
 
@@ -58,7 +46,3 @@ offset getRank(const bitboard b) {
 void printSquare(bitboard square) {
     print("%c%c", (7 - getFile(square)) + 'a', getRank(square) + '1');
 }
-
-#define toBitboard(file,rank) (1ULL << ((7 - (file - 'a')) + ((rank - '1') * 8)))
-
-

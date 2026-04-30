@@ -1,3 +1,15 @@
+#include <time.h>
+
+#include "airoot.h"
+#include "ai2.h"
+#include "aileaf.h"
+#include "attacks.h"
+#include "bitboard.h"
+#include "logging.h"
+#include "moveordering.h"
+#include "quadboard.h"
+#include "umpire.h"
+
 //
 // Ask an AI agent to make a move.
 //

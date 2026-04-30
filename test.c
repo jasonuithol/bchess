@@ -1,3 +1,13 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "test.h"
+#include "attacks.h"
+#include "bitboard.h"
+#include "logging.h"
+#include "quadboard.h"
+#include "umpire.h"
+
 void testSuite(void) {
     
     board b;
@@ -119,8 +129,8 @@ void testSuite(void) {
     print("allowed queen moves\n");
     printBB(generateQueenMoves(1ULL << 35, enemies, friends)); 
     print("Allowed west moves\n");
-    printBB(applySlidingAttackVector(1ULL << 35, w, enemies, friends, DIRECTION_UP));
+    printBB(applySlidingAttackVector(1ULL << 35, (1ULL << 1), enemies, friends, DIRECTION_UP));
     print("Allowed east moves\n");
-    printBB(applySlidingAttackVector(1ULL << 35, w, enemies, friends, DIRECTION_DOWN));
+    printBB(applySlidingAttackVector(1ULL << 35, (1ULL << 1), enemies, friends, DIRECTION_DOWN));
     
 }

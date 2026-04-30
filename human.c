@@ -2,14 +2,25 @@
 // Ask a human agent to make a move.
 //
 
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+
+#include "human.h"
+#include "attacks.h"
+#include "bitboard.h"
+#include "logging.h"
+#include "quadboard.h"
+#include "umpire.h"
+
 #define COMMAND_MOVE (0)
 #define COMMAND_PRINTMOVES (1)
 #define COMMAND_UNDO (2)
 #define COMMAND_LOGGING (3)
 
-board undoBoard;
+static board undoBoard;
 
-int inputMove(analysisMove* parsedMove) {
+static int inputMove(analysisMove* parsedMove) {
     
    char buffer[20];
     
@@ -32,7 +43,7 @@ int inputMove(analysisMove* parsedMove) {
    return COMMAND_MOVE; 
 }
 
-int inputPawnPromotion(void) {
+static int inputPawnPromotion(void) {
     
     char buffer[20];
     

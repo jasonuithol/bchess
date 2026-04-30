@@ -10,22 +10,22 @@
 #include <windows.h>
 #endif
 
-#include "logging.c"
-#include "bitboard.c"
-#include "iterator.c"
-#include "quadboard.c"
-#include "attacks.c"
-#include "umpire.c"
-#include "savegame.c"
-#include "aileaf.c"
-#include "moveordering.c"
-#include "ai2.c"
-#include "airoot.c"
-#include "human.c"
+#include "logging.h"
+#include "bitboard.h"
+#include "iterator.h"
+#include "quadboard.h"
+#include "attacks.h"
+#include "umpire.h"
+#include "savegame.h"
+#include "aileaf.h"
+#include "moveordering.h"
+#include "ai2.h"
+#include "airoot.h"
+#include "human.h"
 
 #ifdef BUILD_TESTING
-#include "test.c"
-#include "performance.c"
+#include "test.h"
+#include "performance.h"
 
 void diagnostics(void) {
     board b;
