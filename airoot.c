@@ -15,12 +15,8 @@ void aiMove(const board* const current, board* const next, const board* const lo
     // Initialize alpha-beta window to widest possible range
     scoreType alpha = -9999;
     scoreType beta = 9999;
-    
-    // No PV on first call
-    bitboard pvFrom = 0;
-    bitboard pvTo = 0;
-    
-    scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 6, 0, alpha, beta, pvFrom, pvTo);
+
+    scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 6, 0, alpha, beta);
     
     print("\n");
     makeMove(current, next, &bestmove);

@@ -9,43 +9,39 @@
 // Recursively search for the best move and set "bestMove" to point to it.
 // Search depth set by "aiStrength"
 //
-scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta, const bitboard pvFrom, const bitboard pvTo) {
-                
+scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta) {
+
     // Start by assuming the worst for us (or the best for the opponent)
     scoreType bestScore = (b->whosTurn == scoringTeam ? -9999 : 9999);
-    
+
     analysisList moveList;
     moveList.ix = 0; // MANDATORY
-    
+
     if (depth < aiStrength) {
         // Do non-leaf analysis
-        generateLegalMoveList(b, &moveList, 0);         
-    } 
+        generateLegalMoveList(b, &moveList, 0);
+    }
     else {
         // Do leaf analysis
-        generateLegalMoveList(b, &moveList, 1);         
+        generateLegalMoveList(b, &moveList, 1);
     }
-    
+
     // Checkmate/stalemate detection for AI. Game over decision made elsewhere.
     if (moveList.ix == 0) {
-        
+
         if (depth == 0) {
             error("OOOPSSSS !!!! I've been asked to move when the game has finished !!!\n");
-        } 
+        }
         else {
             return analyseLeafTerminal(b, scoringTeam, depth);
         }
     }
-    
+
     // ========================================
     // MOVE ORDERING - Sort moves before searching
     // ========================================
-    sortMoves(&moveList, &b->quad, depth, pvFrom, pvTo);
-    
-    // Track best move from this position for PV
-    bitboard localPvFrom = 0;
-    bitboard localPvTo = 0;
-    
+    sortMoves(&moveList, &b->quad, depth);
+
     for (byte ix = 0; ix < moveList.ix; ix++) {
         //
         // Assess the move [from]->[to] on board b to depth aiStrength.
@@ -65,7 +61,7 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
         }
         else {
             score = depth < aiStrength
-                    ? getBestMove(&dummyMove, loopDetect, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1, alpha, beta, localPvFrom, localPvTo)
+                    ? getBestMove(&dummyMove, loopDetect, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1, alpha, beta)
                     : analyseLeafNonTerminal(move->resultingBoard.quad, scoringTeam);
         }
         
@@ -79,9 +75,6 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
             // MAX node - we're trying to maximize
             if (score > bestScore) {
                 bestScore = score;
-                // Track PV for next iteration
-                localPvFrom = move->from;
-                localPvTo = move->to;
                 // Only useful at depth == 0
                 memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
             }
@@ -111,9 +104,6 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
             // MIN node - opponent is trying to minimize
             if (score < bestScore) {
                 bestScore = score;
-                // Track PV for next iteration
-                localPvFrom = move->from;
-                localPvTo = move->to;
                 // Only useful at depth == 0
                 memcpy((void*)bestMove, (void*)move, sizeof(analysisMove));
             }

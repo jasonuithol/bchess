@@ -234,16 +234,14 @@ void uciLoop(void) {
             board* loopDetect = &history[(historyIndex - 4 + 5) % 5];
             
             scoreType score = getBestMove(
-                &bestMove, 
+                &bestMove,
                 loopDetect,
-                &currentBoard, 
-                currentBoard.whosTurn, 
-                depth, 
-                0, 
-                -9999, 
-                9999, 
-                0, 
-                0
+                &currentBoard,
+                currentBoard.whosTurn,
+                depth,
+                0,
+                -9999,
+                9999
             );
             
             // Output info

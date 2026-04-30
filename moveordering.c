@@ -10,7 +10,6 @@
 // ==================================================================
 
 // Move ordering scores - higher = search first
-#define SCORE_PV_MOVE           1000000
 #define SCORE_HASH_MOVE         900000
 #define SCORE_WINNING_CAPTURE   800000  // Base score, add MVV-LVA
 #define SCORE_KILLER_PRIMARY    700000
@@ -129,13 +128,8 @@ byte isKiller(const bitboard from, const bitboard to, const depthType depth) {
 }
 
 // Score a move for ordering purposes
-int scoreMove(const analysisMove* move, const quadboard* prevBoard, const depthType depth, const bitboard pvFrom, const bitboard pvTo) {
-    
-    // 1. PV move from previous iteration (or passed in)
-    if (move->from == pvFrom && move->to == pvTo) {
-        return SCORE_PV_MOVE;
-    }
-    
+int scoreMove(const analysisMove* move, const quadboard* prevBoard, const depthType depth) {
+
     // Check if this is a capture
     bitboard capturedPiece = getAllPieces(*prevBoard) & move->to;
     
@@ -203,20 +197,20 @@ int compareScoredMoves(const void* a, const void* b) {
 }
 
 // Sort moves by their scores
-void sortMoves(analysisList* moveList, const quadboard* prevBoard, const depthType depth, const bitboard pvFrom, const bitboard pvTo) {
-    
+void sortMoves(analysisList* moveList, const quadboard* prevBoard, const depthType depth) {
+
     if (moveList->ix <= 1) {
         // No point sorting 0 or 1 moves
         return;
     }
-    
+
     // Create array of scored moves
     scoredMove scoredMoves[256]; // Max possible moves
-    
+
     // Score each move
     for (byte i = 0; i < moveList->ix; i++) {
         scoredMoves[i].move = moveList->items[i];
-        scoredMoves[i].score = scoreMove(&moveList->items[i], prevBoard, depth, pvFrom, pvTo);
+        scoredMoves[i].score = scoreMove(&moveList->items[i], prevBoard, depth);
     }
     
     // Sort using qsort

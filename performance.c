@@ -57,28 +57,22 @@ double perftest_getBestMove_Initial(void) {
 
     /*
     scoreType getBestMove(
-        analysisMove* const bestMove, 
-        const board* const loopDetect, 
-        const board* const b, 
-        const byte scoringTeam, 
-        const depthType aiStrength, 
-        const depthType depth, 
-        scoreType alpha, 
-        scoreType beta, 
-        const bitboard pvFrom, 
-        const bitboard pvTo
+        analysisMove* const bestMove,
+        const board* const loopDetect,
+        const board* const b,
+        const byte scoringTeam,
+        const depthType aiStrength,
+        const depthType depth,
+        scoreType alpha,
+        scoreType beta
     )
     */
 
     // Initialize alpha-beta window to widest possible range
     scoreType alpha = -9999;
     scoreType beta = 9999;
-    
-    // No PV on first call
-    bitboard pvFrom = 0;
-    bitboard pvTo = 0;
 
-    if (getBestMove(&bestMove, &loopDetect, &b, 0, 4, 0, alpha, beta, pvFrom, pvTo) == 99) {
+    if (getBestMove(&bestMove, &loopDetect, &b, 0, 4, 0, alpha, beta) == 99) {
         print("99 !!!!!\n");
     }
     else {
