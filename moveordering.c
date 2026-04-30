@@ -138,7 +138,12 @@ byte isKiller(const bitboard from, const bitboard to, const depthType depth) {
 }
 
 // Score a move for ordering purposes
-int scoreMove(const analysisMove* move, const quadboard* prevBoard, const depthType depth) {
+int scoreMove(const analysisMove* move, const quadboard* prevBoard, const depthType depth, bitboard hashFrom, bitboard hashTo) {
+
+    // 1. Hash move from the transposition table — try this first.
+    if (hashFrom != 0 && move->from == hashFrom && move->to == hashTo) {
+        return SCORE_HASH_MOVE;
+    }
 
     // Check if this is a capture
     bitboard capturedPiece = getAllPieces(*prevBoard) & move->to;
@@ -207,7 +212,7 @@ int compareScoredMoves(const void* a, const void* b) {
 }
 
 // Sort moves by their scores
-void sortMoves(analysisList* moveList, const quadboard* prevBoard, const depthType depth) {
+void sortMoves(analysisList* moveList, const quadboard* prevBoard, const depthType depth, bitboard hashFrom, bitboard hashTo) {
 
     if (moveList->ix <= 1) {
         // No point sorting 0 or 1 moves
@@ -220,7 +225,7 @@ void sortMoves(analysisList* moveList, const quadboard* prevBoard, const depthTy
     // Score each move
     for (byte i = 0; i < moveList->ix; i++) {
         scoredMoves[i].move = moveList->items[i];
-        scoredMoves[i].score = scoreMove(&moveList->items[i], prevBoard, depth);
+        scoredMoves[i].score = scoreMove(&moveList->items[i], prevBoard, depth, hashFrom, hashTo);
     }
     
     // Sort using qsort

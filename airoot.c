@@ -8,6 +8,7 @@
 #include "logging.h"
 #include "moveordering.h"
 #include "quadboard.h"
+#include "tt.h"
 #include "umpire.h"
 
 //
@@ -18,11 +19,14 @@ void aiMove(const board* const current, board* const next, const board* const lo
     
     nodesCalculated = 0;
     analysisMove bestmove;
-    
+
     // Clear killer moves and history at the start of each search
     // (optional - you could keep them between moves for learning)
     clearKillers();
     // clearHistory(); // Uncomment to reset history each move
+
+    ttInit();
+    ttNewSearch();
     
     // Initialize alpha-beta window to widest possible range
     scoreType alpha = -9999;

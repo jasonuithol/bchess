@@ -19,6 +19,7 @@
 #include "bitboard.h"
 #include "moveordering.h"
 #include "quadboard.h"
+#include "tt.h"
 #include "umpire.h"
 
 // Convert bitboard square to UCI notation (e.g., e2, e4)
@@ -236,6 +237,8 @@ void uciLoop(void) {
             
             // Search for best move
             nodesCalculated = 0;
+            ttInit();
+            ttNewSearch();
             analysisMove bestMove;
             
             // Get loop detection board

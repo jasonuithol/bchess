@@ -32,7 +32,7 @@ fi
 
 # All non-main translation units. The main wrapper (bbchess.c or bchessuci.c)
 # is supplied by $MAIN_FILE; it provides main() and pulls in headers only.
-SOURCES="logging.c bitboard.c iterator.c quadboard.c attacks.c umpire.c savegame.c aileaf.c moveordering.c ai2.c airoot.c human.c uci.c"
+SOURCES="logging.c bitboard.c iterator.c quadboard.c attacks.c umpire.c savegame.c aileaf.c moveordering.c tt.c ai2.c airoot.c human.c uci.c"
 
 # Test/perf TUs are only included when BUILD_TESTING is in the args.
 if [[ " $* " == *" -DBUILD_TESTING "* ]]; then
