@@ -213,13 +213,15 @@ byte spawnFullBoard(const board* const old,
     }
     else {
         
-        // Check if squares are attacked
-        for (char file = 'a'; file < 'e'; file++) {
-            
+        // Check if squares are attacked.
+        // King path for queenside is e -> d -> c. Castling out of, through,
+        // or into check is illegal, so all three must be unattacked.
+        for (char file = 'c'; file <= 'e'; file++) {
+
             if (isSquareAttacked(new->quad, toBitboard(file,rank), new->whosTurn)) {
-                
-                new->currentCastlingRights |= new->whosTurn 
-                                                ? BLACK_QUEENSIDE_CASTLE_MOVED 
+
+                new->currentCastlingRights |= new->whosTurn
+                                                ? BLACK_QUEENSIDE_CASTLE_MOVED
                                                 : WHITE_QUEENSIDE_CASTLE_MOVED;
                 break;
             }
