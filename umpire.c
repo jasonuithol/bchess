@@ -150,10 +150,10 @@ byte spawnFullBoard(const board* const old,
     //
     switch(from) {
         case toBitboard('a','1'): new->piecesMoved |= WHITE_QUEENSIDE_CASTLE_MOVED; break;
-        case toBitboard('d','1'): new->piecesMoved |= WHITE_KING_MOVED;             break;
+        case toBitboard('e','1'): new->piecesMoved |= WHITE_KING_MOVED;             break;
         case toBitboard('h','1'): new->piecesMoved |= WHITE_KINGSIDE_CASTLE_MOVED;  break;
         case toBitboard('a','8'): new->piecesMoved |= BLACK_QUEENSIDE_CASTLE_MOVED; break;
-        case toBitboard('d','8'): new->piecesMoved |= BLACK_KING_MOVED;             break;
+        case toBitboard('e','8'): new->piecesMoved |= BLACK_KING_MOVED;             break;
         case toBitboard('h','8'): new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED;  break;
     }
 
