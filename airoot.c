@@ -28,11 +28,14 @@ void aiMove(const board* const current, board* const next, const board* const lo
     ttInit();
     ttNewSearch();
     
-    // Initialize alpha-beta window to widest possible range
-    scoreType alpha = -9999;
-    scoreType beta = 9999;
-
-    scoreType score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, 6, 0, alpha, beta);
+    // Iterative deepening from depth 1 up to the target. Earlier iterations
+    // populate the TT and killer tables so deeper iterations get strong
+    // move ordering, more than paying back the cost of the shallow searches.
+    const depthType maxDepth = 6;
+    scoreType score = 0;
+    for (depthType d = 1; d <= maxDepth; d++) {
+        score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, d, 0, -9999, 9999);
+    }
     
     print("\n");
     makeMove(current, next, &bestmove);

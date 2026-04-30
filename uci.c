@@ -244,20 +244,25 @@ void uciLoop(void) {
             // Get loop detection board
             board* loopDetect = &history[(historyIndex - 4 + 5) % 5];
             
-            scoreType score = getBestMove(
-                &bestMove,
-                loopDetect,
-                &currentBoard,
-                currentBoard.whosTurn,
-                depth,
-                0,
-                -9999,
-                9999
-            );
-            
-            // Output info
-            printf("info depth %d score cp %d nodes %u\n", 
-                   depth, (int)score, (unsigned int)nodesCalculated);
+            // Iterative deepening: search depth 1, 2, ..., target.
+            // Each iteration fills the TT and killer tables so the next
+            // iteration has strong move ordering.
+            scoreType score = 0;
+            for (depthType d = 1; d <= depth; d++) {
+                score = getBestMove(
+                    &bestMove,
+                    loopDetect,
+                    &currentBoard,
+                    currentBoard.whosTurn,
+                    d,
+                    0,
+                    -9999,
+                    9999
+                );
+                printf("info depth %d score cp %d nodes %u\n",
+                       d, (int)score, (unsigned int)nodesCalculated);
+                fflush(stdout);
+            }
             
             // Output best move
             printf("bestmove ");
