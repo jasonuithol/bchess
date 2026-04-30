@@ -130,22 +130,77 @@ byte spawnLeafBoard(const board* const old,
 // The vast, vast majority of leaf boards never get spawnXXXBoard called on them,
 // only the Chosen Ones do. Use spawnLeafBoard for leaf boards.
 //
-byte spawnFullBoard(const board* const old, 
-                    board* const new, 
-                    const bitboard from, 
-                    const bitboard to, 
+//
+// Compute the castling-rights overlay for the team about to move (b->whosTurn).
+//
+// piecesMoved is the persistent "this rook/king has moved" bitset. On top of
+// that we layer transient reasons castling is unavailable right now: pieces
+// in the way between king and rook, or any square in the king's path being
+// attacked. The result is what generateKingMoves consults to decide whether
+// to emit O-O / O-O-O for the current player.
+//
+void computeCurrentCastlingRights(board* const b) {
+
+    const byte team = b->whosTurn;
+    const bitboard occupied = getAllPieces(b->quad);
+    const char rank = team ? '8' : '1';
+
+    b->currentCastlingRights = b->piecesMoved;
+
+    const byte kingsideMask  = team ? BLACK_KINGSIDE_CASTLE_MOVED  : WHITE_KINGSIDE_CASTLE_MOVED;
+    const byte queensideMask = team ? BLACK_QUEENSIDE_CASTLE_MOVED : WHITE_QUEENSIDE_CASTLE_MOVED;
+
+    //
+    // KINGSIDE: f and g must be empty; e, f, g must be unattacked
+    // (king cannot castle out of, through, or into check).
+    //
+    if (occupied & (toBitboard('f',rank) | toBitboard('g',rank))) {
+        b->currentCastlingRights |= kingsideMask;
+    }
+    else {
+        for (char file = 'e'; file <= 'g'; file++) {
+            if (isSquareAttacked(b->quad, toBitboard(file,rank), team)) {
+                b->currentCastlingRights |= kingsideMask;
+                break;
+            }
+        }
+    }
+
+    //
+    // QUEENSIDE: b, c, d must be empty; c, d, e must be unattacked.
+    // (b is on the rook's path but not the king's, so it's an occupancy
+    // check only.)
+    //
+    if (occupied & (toBitboard('b',rank) | toBitboard('c',rank) | toBitboard('d',rank))) {
+        b->currentCastlingRights |= queensideMask;
+    }
+    else {
+        for (char file = 'c'; file <= 'e'; file++) {
+            if (isSquareAttacked(b->quad, toBitboard(file,rank), team)) {
+                b->currentCastlingRights |= queensideMask;
+                break;
+            }
+        }
+    }
+}
+
+
+byte spawnFullBoard(const board* const old,
+                    board* const new,
+                    const bitboard from,
+                    const bitboard to,
                     const byte promoteTo) {
 
 
     // First, spawn a leaf board, it will have all the tidying up and illegal position checks.
     if (spawnLeafBoard(old, new, from, to, promoteTo) == BOARD_NOT_LEGAL) {
-        
+
         // Board was found to be illegal, abort and notify caller.
         return BOARD_NOT_LEGAL;
     }
-    
+
     //
-    // To see if it's still possible to castle in the future, 
+    // To see if it's still possible to castle in the future,
     // we track whether the relevant pieces have moved.
     //
     switch(from) {
@@ -157,77 +212,8 @@ byte spawnFullBoard(const board* const old,
         case toBitboard('h','8'): new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED;  break;
     }
 
-    const bitboard enemies = getTeamPieces(new->quad, old->whosTurn);
-    const bitboard friends = getTeamPieces(new->quad, new->whosTurn);
-
-    //
-    // We need this for checking to see if in the next move, a castling move is allowed
-    //
-    // NOTE: FOR LEAF BOARDS, THIS IS A NEEDLESS COST !!!!!
-    //
-    new->currentCastlingRights = new->piecesMoved;
-    
-    const char rank = new->whosTurn ? '8' : '1';
-
-    //
-    // KINGSIDE
-    //
-
-    // 
-    // BUG: Castling rights don't recognise occupied squares properly.
-    //
-                                            
-    // Check if squares are occupied.
-    if ( (enemies|friends) & (toBitboard('f',rank) | toBitboard('g',rank) ) ) {
-
-        new->currentCastlingRights |= new->whosTurn 
-                                        ? BLACK_KINGSIDE_CASTLE_MOVED 
-                                        : WHITE_KINGSIDE_CASTLE_MOVED;
-    }
-    else {
-        
-        // Check if squares are attacked
-        for (char file = 'e'; file < 'h'; file++) {
-            
-            if (isSquareAttacked(new->quad, toBitboard(file,rank), new->whosTurn)) {
-                
-                new->currentCastlingRights |= new->whosTurn 
-                                                ? BLACK_KINGSIDE_CASTLE_MOVED 
-                                                : WHITE_KINGSIDE_CASTLE_MOVED;
-                break;
-            }
-        }
-        
-    }
-
-    //
-    // QUEENSIDE
-    //
-                                            
-    // Check if squares are occupied.
-    if ( (enemies|friends) & (toBitboard('b',rank) | toBitboard('c',rank) | toBitboard('d',rank) ) ) {
-
-        new->currentCastlingRights |= new->whosTurn 
-                                        ? BLACK_QUEENSIDE_CASTLE_MOVED 
-                                        : WHITE_QUEENSIDE_CASTLE_MOVED;
-    }
-    else {
-        
-        // Check if squares are attacked.
-        // King path for queenside is e -> d -> c. Castling out of, through,
-        // or into check is illegal, so all three must be unattacked.
-        for (char file = 'c'; file <= 'e'; file++) {
-
-            if (isSquareAttacked(new->quad, toBitboard(file,rank), new->whosTurn)) {
-
-                new->currentCastlingRights |= new->whosTurn
-                                                ? BLACK_QUEENSIDE_CASTLE_MOVED
-                                                : WHITE_QUEENSIDE_CASTLE_MOVED;
-                break;
-            }
-        }
-        
-    }
+    // Compute castling rights for the team that is now to move.
+    computeCurrentCastlingRights(new);
 
     // Board passed the illegal check state test earlier, so board is legal.
     return BOARD_LEGAL;
@@ -421,7 +407,10 @@ void initBoard(board* const b) {
     addPieces(qb, 8ULL << (8 * 7), KING | BLACK);
 
     b->piecesMoved = 0;
-    b->currentCastlingRights = 0;
     b->whosTurn = WHITE;
+
+    // Compute the castling-rights overlay for the first move so that
+    // generateKingMoves doesn't offer castling through occupied squares.
+    computeCurrentCastlingRights(b);
 }
 
