@@ -40,7 +40,7 @@ void load(gameContext* game) {
     }
     else {
         
-        if (fread(game, sizeof(gameContext), 1, f) == -1) {
+        if (fread(game, sizeof(gameContext), 1, f) != 1) {
             print("Unable to load existing saved game, creating a new game.\n");
             newGame(game);
         }
@@ -61,7 +61,7 @@ void save(gameContext* game) {
     }
     else {
         
-        if (fwrite(game, sizeof(gameContext), 1, f) == -1) {
+        if (fwrite(game, sizeof(gameContext), 1, f) != 1) {
             print("Unable to write to opened save file, ignoring.\n");
         }
         
