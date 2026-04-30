@@ -73,27 +73,39 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
     bitboard bestFromHere = 0;
     bitboard bestToHere   = 0;
 
+    const byte willRecurse = (depth < aiStrength);
+
     for (byte ix = 0; ix < moveList.ix; ix++) {
         //
         // Assess the move [from]->[to] on board b to depth aiStrength.
         //
-        // We do this by looking at the resulting board and then seeing what score
-        // we get when we follow all the moves from then on and see if any of
-        // those leaf level boards has a higher best score than what we have now.
+        // We do this by spawning the resulting board, seeing what score
+        // we get when we follow all the moves from then on, and checking
+        // if any of those leaf level boards has a higher best score than
+        // what we have now.
         //
         const analysisMove* move = &(moveList.items[ix]);
         analysisMove dummyMove;
         scoreType score;
 
-        if (areEqualQB(loopDetect->quad, move->resultingBoard.quad)) {
+        // Spawn the resulting board locally. Non-leaf descendants need
+        // the castling-rights overlay; leaf-level only needs piece state.
+        board newBoard;
+        if (willRecurse) {
+            spawnFullBoard(b, &newBoard, move->from, move->to, move->promoteTo);
+        } else {
+            spawnLeafBoard(b, &newBoard, move->from, move->to, move->promoteTo);
+        }
+
+        if (areEqualQB(loopDetect->quad, newBoard.quad)) {
 
             // If a loop is detected, don't recurse, just score very badly
             score = (b->whosTurn == scoringTeam) ? (-9998 + aiStrength + 1) : (9999 - aiStrength - 1);
         }
         else {
-            score = depth < aiStrength
-                    ? getBestMove(&dummyMove, loopDetect, &(move->resultingBoard), scoringTeam, aiStrength, depth + 1, alpha, beta)
-                    : analyseLeafNonTerminal(move->resultingBoard.quad, scoringTeam);
+            score = willRecurse
+                    ? getBestMove(&dummyMove, loopDetect, &newBoard, scoringTeam, aiStrength, depth + 1, alpha, beta)
+                    : analyseLeafNonTerminal(newBoard.quad, scoringTeam);
         }
 
         //

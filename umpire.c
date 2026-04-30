@@ -202,25 +202,26 @@ byte addMoveIfLegal(    analysisList* const list,
                         const byte leafMode) {
 
     if (list->ix < ANALYSIS_SIZE) {
-        
-        analysisMove* const next = &(list->items[list->ix]);
-        
-        next->from      = from;
-        next->to        = to;
-        next->score     = 0;
-        next->promoteTo = promoteTo;       
-        
-        const byte legality = leafMode 
-                            ? spawnLeafBoard(old, &(next->resultingBoard), from, to, promoteTo)
-                            : spawnFullBoard(old, &(next->resultingBoard), from, to, promoteTo);
+
+        // Spawn into a stack-local scratch only to test legality. The move
+        // is recorded by from/to/promoteTo; the resulting board is recomputed
+        // by the search when needed.
+        board scratch;
+        const byte legality = leafMode
+                            ? spawnLeafBoard(old, &scratch, from, to, promoteTo)
+                            : spawnFullBoard(old, &scratch, from, to, promoteTo);
 
         if (legality == BOARD_LEGAL) {
-            // Keep this board.
+            analysisMove* const next = &(list->items[list->ix]);
+            next->from      = from;
+            next->to        = to;
+            next->score     = 0;
+            next->promoteTo = promoteTo;
             list->ix++;
         }
-        
+
         //
-        // Tell caller what happened re legality 
+        // Tell caller what happened re legality
         // (illegal implies that move was thrown out)
         //
         return legality;

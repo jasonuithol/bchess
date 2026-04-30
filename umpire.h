@@ -27,7 +27,6 @@ typedef struct {
     bitboard to;
     scoreType score;
     byte promoteTo;
-    board resultingBoard;
 } analysisMove;
 
 #define ANALYSIS_SIZE (255)

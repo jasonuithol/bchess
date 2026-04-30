@@ -204,8 +204,13 @@ void uciLoop(void) {
                                 history[historyIndex % 5] = currentBoard;
                                 historyIndex++;
                                 
-                                // Apply move
-                                currentBoard = moveList.items[i].resultingBoard;
+                                // Apply move into a fresh board, then commit.
+                                board nextBoard;
+                                spawnFullBoard(&currentBoard, &nextBoard,
+                                               moveList.items[i].from,
+                                               moveList.items[i].to,
+                                               moveList.items[i].promoteTo);
+                                currentBoard = nextBoard;
                                 found = 1;
                                 printf("info string Move applied successfully\n");
                                 fflush(stdout);

@@ -183,11 +183,6 @@ int scoreMove(const analysisMove* move, const quadboard* prevBoard, const depthT
         return SCORE_KILLER_SECONDARY;
     }
     
-    // 4. Checks - prioritize forcing moves
-    if (isKingChecked(move->resultingBoard.quad, move->resultingBoard.whosTurn)) {
-        return SCORE_CHECK;
-    }
-    
     // 5. History heuristic for quiet moves
     offset fromSquare = trailingBit_Bitboard(move->from);
     byte pieceType = getType(*prevBoard, fromSquare);
