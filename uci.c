@@ -72,6 +72,10 @@ void uciLoop(void) {
     board currentBoard;
     initBoard(&currentBoard);
 
+    // Spinner output is for humans watching a TUI. In UCI mode it gets
+    // wedged into the "bestmove" line and breaks GUIs/match runners.
+    suppressSpinnerOutput = 1;
+
     // For move history (to detect loops)
     board history[5];
     for (int i = 0; i < 5; i++) {

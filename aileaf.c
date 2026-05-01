@@ -23,6 +23,7 @@
 //
 
 nodesCalculatedType nodesCalculated;
+int suppressSpinnerOutput = 0;
 
 #define PULSE_SPIN_MAGNITUDE (17)
 
@@ -30,7 +31,11 @@ void displaySpinningPulse(void) {
 
     const nodesCalculatedType wrapMask = (1 << (PULSE_SPIN_MAGNITUDE)) - 1;
 
-    nodesCalculated++; 
+    nodesCalculated++;
+
+    if (suppressSpinnerOutput) {
+        return;
+    }
 
     switch (nodesCalculated & wrapMask) {
         case 0:

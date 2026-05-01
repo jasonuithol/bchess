@@ -12,6 +12,11 @@ typedef uint8_t depthType;
 
 extern nodesCalculatedType nodesCalculated;
 
+// When non-zero, displaySpinningPulse skips its terminal animation.
+// UCI mode sets this so the spinner doesn't end up wedged into the
+// "bestmove" line that GUIs/match runners parse.
+extern int suppressSpinnerOutput;
+
 void displaySpinningPulse(void);
 scoreType evaluateMaterial(const quadboard qb, const byte team);
 scoreType evaluateMobility(const quadboard qb, const byte team);
