@@ -77,11 +77,19 @@ typedef struct {
     killerMove secondary;
 } killerMoves;
 
-static killerMoves killers[MAX_KILLER_PLY];
+// Thread-local: each search thread has its own killer and history tables.
+// Sharing them would race on every cutoff. Per-thread tables also let
+// helper threads in lazy-SMP diverge naturally — they each build up their
+// own ordering preferences, which is exactly the kind of variation that
+// makes lazy SMP work. Main-thread tables persist across moves (TLS for
+// the main thread is alive for the whole process); worker threads are
+// recreated each search, so they start fresh, which is fine — killers
+// re-learn quickly.
+static _Thread_local killerMoves killers[MAX_KILLER_PLY];
 
 // History heuristic - [piece][to_square]
 // Tracks how often a move causes a cutoff
-static int historyTable[16][64];
+static _Thread_local int historyTable[16][64];
 
 void clearKillers(void) {
     memset(killers, 0, sizeof(killers));
