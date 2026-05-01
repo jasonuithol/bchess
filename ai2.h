@@ -34,4 +34,10 @@ scoreType getBestMove(analysisMove* const bestMove,
                       scoreType beta,
                       const byte nullAllowed);
 
+// Trip the abort flag without arming a deadline. Used by the lazy-SMP
+// coordinator to ask helper threads to stop ASAP once the main thread's
+// own iterative-deepening loop has decided we're done (40% bailout,
+// depth limit reached, etc., not just time deadline).
+void requestSearchAbort(void);
+
 #endif

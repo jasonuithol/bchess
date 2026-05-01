@@ -9,6 +9,7 @@
 //
 // ==================================================================
 
+#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -125,6 +126,40 @@ void pollSearchInput(void) {
             p = (int)(nl - stdinBuf) + 1;
         }
     }
+}
+
+// Lazy-SMP helper-thread context. Each helper runs its own iterative-
+// deepening loop, populating the shared TT until the main thread sets
+// searchAborted. Helpers don't emit "info" lines (would interleave with
+// main thread's output) and don't directly contribute to the bestmove
+// returned to the GUI — they're TT workhorses. The main thread's
+// search benefits from their pre-populated entries.
+typedef struct {
+    board*       startBoard;     // helpers each get their own copy; mutated in place
+    const board* loopDetect;
+    byte         scoringTeam;
+    depthType    depthLimit;
+} helperContext;
+
+static void* helperSearchEntry(void* arg) {
+    const helperContext* const ctx = (const helperContext*)arg;
+    analysisMove dummyMove;
+
+    for (depthType d = 1; d <= ctx->depthLimit; d++) {
+        if (searchAborted) break;
+        getBestMove(
+            &dummyMove,
+            ctx->loopDetect,
+            ctx->startBoard,
+            ctx->scoringTeam,
+            d,
+            0,
+            -9999,
+            9999,
+            1            // null-move allowed at root of helper search
+        );
+    }
+    return NULL;
 }
 
 // Convert bitboard square to UCI notation (e.g., e2, e4)
@@ -322,6 +357,11 @@ void uciLoop(void) {
     //   setoption name Debug value true
     int debugMode = 0;
 
+    // Lazy-SMP thread count. Capped at MAX_HELPER_THREADS+1 (the +1 is
+    // the main thread itself). Default 1 (single-threaded).
+    int threadCount = 1;
+    enum { MAX_HELPER_THREADS = 31 };
+
     // Stay quiet until the GUI sends "uci" — some GUIs are picky about
     // pre-handshake chatter.
 
@@ -332,13 +372,23 @@ void uciLoop(void) {
             printf("id name bchess\n");
             printf("id author Jason Uithol\n");
             printf("option name Debug type check default false\n");
+            printf("option name Threads type spin default 1 min 1 max %d\n",
+                   MAX_HELPER_THREADS + 1);
             printf("uciok\n");
             fflush(stdout);
         }
-        // UCI command: setoption name Debug value true|false
+        // UCI command: setoption name <Name> [value <V>]
         else if (strncmp(line, "setoption", 9) == 0) {
             if (strstr(line, "name Debug")) {
                 debugMode = (strstr(line, "value true") != NULL);
+            } else if (strstr(line, "name Threads")) {
+                const char* v = strstr(line, "value");
+                if (v) {
+                    int n = atoi(v + 5);
+                    if (n < 1) n = 1;
+                    if (n > MAX_HELPER_THREADS + 1) n = MAX_HELPER_THREADS + 1;
+                    threadCount = n;
+                }
             }
         }
         
@@ -581,6 +631,25 @@ void uciLoop(void) {
             // completed iteration to fall back on.
             clearSearchDeadline();
 
+            // Lazy SMP: spawn N-1 helper threads that share the TT and
+            // run their own iterative-deepening loops. The main thread
+            // benefits from their TT entries; their wallclock cost is
+            // hidden behind separate cores. Each helper gets its own
+            // board copy because make/unmake mutates b in place — sharing
+            // currentBoard across threads would race the search.
+            const int nHelpers = threadCount - 1;
+            pthread_t helperThreads[MAX_HELPER_THREADS];
+            helperContext helperCtxs[MAX_HELPER_THREADS];
+            board       helperBoards[MAX_HELPER_THREADS];
+            for (int t = 0; t < nHelpers; t++) {
+                helperBoards[t] = currentBoard;
+                helperCtxs[t].startBoard  = &helperBoards[t];
+                helperCtxs[t].loopDetect  = loopDetect;
+                helperCtxs[t].scoringTeam = currentBoard.whosTurn;
+                helperCtxs[t].depthLimit  = depthLimit;
+                pthread_create(&helperThreads[t], NULL, helperSearchEntry, &helperCtxs[t]);
+            }
+
             scoreType score = 0;
             const scoreType ASPIRATION_WINDOW = 30;
             for (depthType d = 1; d <= depthLimit; d++) {
@@ -665,6 +734,12 @@ void uciLoop(void) {
                         setSearchDeadlineMs(t0Ms + budgetMs);
                     }
                 }
+            }
+
+            // Tell the helpers to wrap up and reap them.
+            requestSearchAbort();
+            for (int t = 0; t < nHelpers; t++) {
+                pthread_join(helperThreads[t], NULL);
             }
 
             clearSearchDeadline();
