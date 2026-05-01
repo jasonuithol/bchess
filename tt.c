@@ -38,7 +38,12 @@ static uint64_t zobCastle[256];
 static uint64_t zobEnPassant[9];
 static int zobInitDone = 0;
 
-#define TT_SIZE_LOG2 20
+// 2^21 entries × 32 bytes = 64 MB. The 7800X3D's 96 MB L3 swallows it
+// whole and leaves ~30 MB for the rest of the engine's working set,
+// so the TT effectively never misses cache. (The previous 1 M-entry
+// table was 32 MB, comfortably L3-resident but materially smaller hit
+// rate and visible search-time wins on going up.)
+#define TT_SIZE_LOG2 21
 #define TT_SIZE      (1ULL << TT_SIZE_LOG2)
 #define TT_MASK      (TT_SIZE - 1)
 
