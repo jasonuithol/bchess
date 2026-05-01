@@ -35,90 +35,6 @@ void clearSearchDeadline(void) {
     searchAborted = 0;
 }
 
-// ----- Quiescence search ---------------------------------------------
-//
-// Standard quiescence triggers on captures, because in a material eval
-// captures are the events that move the score. bchess's eval is pure
-// mobility (myLegalMoves - theirLegalMoves), so the eval-correct
-// trigger is "did the score change a lot from one ply to the next?",
-// regardless of whether a capture happened. A pin or fork can swing
-// mobility just as much as a queen capture in a material engine.
-//
-// At a regular leaf we compare the just-played child position's
-// static eval to the parent's static eval. If the absolute delta is
-// at or above QUIESCENCE_THRESHOLD we extend by another ply and let
-// the side to move at the child search for a neutralising response.
-// We cap recursion at QUIESCENCE_MAX_DEPTH so a sequence of swings
-// can't run forever.
-//
-// Tuning these is a measurement problem; the values below are first
-// guesses based on observed mobility-score ranges in real games.
-//
-#define QUIESCENCE_THRESHOLD 30
-#define QUIESCENCE_MAX_DEPTH 4
-
-static scoreType quiescenceSearch(
-    const board* const b,
-    const byte scoringTeam,
-    scoreType alpha,
-    scoreType beta,
-    const scoreType parentEval,
-    const depthType currentDepth,
-    const depthType qDepthRemaining
-) {
-
-    // Static eval at this position.
-    const scoreType currentEval = analyseLeafNonTerminal(b->quad, scoringTeam);
-
-    // Stand pat: if the swing from the parent is small, or we've burned
-    // the quiescence budget, or the search has been aborted, stop here.
-    scoreType delta = currentEval - parentEval;
-    if (delta < 0) delta = -delta;
-    if (delta < QUIESCENCE_THRESHOLD || qDepthRemaining == 0 || searchAborted) {
-        return currentEval;
-    }
-
-    // Tactical swing detected: explore moves to see if the side to move
-    // can neutralise (or amplify) it. Note we look at *all* legal moves,
-    // not just captures — the whole point of this design is that for a
-    // mobility eval, non-capture responses (blockades, counter-pins,
-    // king walks) are genuine neutralisers.
-    analysisList moveList;
-    moveList.ix = 0;
-    generateLegalMoveList(b, &moveList, 1);
-
-    if (moveList.ix == 0) {
-        return analyseLeafTerminal(b, scoringTeam, currentDepth);
-    }
-
-    scoreType bestScore = (b->whosTurn == scoringTeam) ? -9999 : 9999;
-
-    for (byte ix = 0; ix < moveList.ix; ix++) {
-        const analysisMove* const move = &moveList.items[ix];
-        board newBoard;
-        spawnLeafBoard(b, &newBoard, move->from, move->to, move->promoteTo);
-
-        const scoreType score = quiescenceSearch(
-            &newBoard, scoringTeam,
-            alpha, beta,
-            currentEval, currentDepth + 1, qDepthRemaining - 1
-        );
-
-        if (searchAborted) return currentEval;
-
-        if (b->whosTurn == scoringTeam) {
-            if (score > bestScore) bestScore = score;
-            if (score > alpha)     alpha = score;
-        } else {
-            if (score < bestScore) bestScore = score;
-            if (score < beta)      beta = score;
-        }
-        if (beta <= alpha) break;
-    }
-
-    return bestScore;
-}
-
 // Check whether the configured deadline has passed. Gated by a counter
 // because clock_gettime, even via vDSO, would be wasteful at every node
 // visit of a million-nps search. Once the flag flips we stop calling
@@ -201,12 +117,6 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
 
     const byte willRecurse = (depth < aiStrength);
 
-    // For quiescence: when this is the level whose children get leaf-
-    // evaluated, we need the static eval of *this* position so each
-    // child can compute its delta against it. Computing it once here
-    // is cheaper than re-computing per child.
-    const scoreType staticEval = willRecurse ? 0 : analyseLeafNonTerminal(b->quad, scoringTeam);
-
     for (byte ix = 0; ix < moveList.ix; ix++) {
         //
         // Assess the move [from]->[to] on board b to depth aiStrength.
@@ -237,8 +147,7 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
         else {
             score = willRecurse
                     ? getBestMove(&dummyMove, loopDetect, &newBoard, scoringTeam, aiStrength, depth + 1, alpha, beta)
-                    : quiescenceSearch(&newBoard, scoringTeam, alpha, beta,
-                                       staticEval, depth + 1, QUIESCENCE_MAX_DEPTH);
+                    : analyseLeafNonTerminal(newBoard.quad, scoringTeam);
         }
 
         // If the recursive call tripped the deadline, the score it
