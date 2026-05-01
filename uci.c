@@ -243,6 +243,9 @@ void uciLoop(void) {
             ttInit();
             ttNewSearch();
             analysisMove bestMove;
+            analysisMove prevBestMove;
+            scoreType prevScore = 0;
+            int havePrev = 0;
 
             // Get loop detection board
             board* loopDetect = &history[(historyIndex - 4 + 5) % 5];
@@ -250,11 +253,20 @@ void uciLoop(void) {
             // Iterative deepening with optional time bail-out. Don't start
             // a new iteration if we've already used 40% of the budget —
             // each iteration typically takes 3-5x its predecessor, so
-            // pushing further usually overruns.
+            // pushing further usually overruns. The deadline below is a
+            // safety net for the case where an iteration that did start
+            // explodes mid-search.
             struct timespec t0, t1;
             clock_gettime(CLOCK_MONOTONIC, &t0);
+            const long t0Ms = t0.tv_sec * 1000L + t0.tv_nsec / 1000000L;
+
+            // Iteration 1 always runs to completion (cheap, and we need
+            // *some* legal move to emit even on a pathologically tight
+            // budget). The hard deadline is armed only after we have a
+            // completed iteration to fall back on.
+            clearSearchDeadline();
+
             scoreType score = 0;
-            int finalDepth = 1;
             for (depthType d = 1; d <= depthLimit; d++) {
                 score = getBestMove(
                     &bestMove,
@@ -266,6 +278,22 @@ void uciLoop(void) {
                     -9999,
                     9999
                 );
+
+                if (searchAborted) {
+                    // Iteration d>=2 exceeded the budget. bestMove is
+                    // partial garbage; fall back to the last completed
+                    // iteration's result.
+                    if (havePrev) {
+                        bestMove = prevBestMove;
+                        score    = prevScore;
+                    }
+                    break;
+                }
+
+                prevBestMove = bestMove;
+                prevScore    = score;
+                havePrev     = 1;
+
                 clock_gettime(CLOCK_MONOTONIC, &t1);
                 long elapsedMs = (t1.tv_sec - t0.tv_sec) * 1000L
                                + (t1.tv_nsec - t0.tv_nsec) / 1000000L;
@@ -273,12 +301,18 @@ void uciLoop(void) {
                 printf("info depth %d score cp %d nodes %u nps %ld time %ld\n",
                        d, (int)score, (unsigned int)nodesCalculated, nps, elapsedMs);
                 fflush(stdout);
-                finalDepth = d;
+
                 if (budgetMs > 0 && elapsedMs * 5 >= budgetMs * 2) {
                     break;
                 }
+
+                // Arm the deadline once we have a result to fall back on.
+                if (budgetMs > 0) {
+                    setSearchDeadlineMs(t0Ms + budgetMs);
+                }
             }
-            (void)finalDepth;
+
+            clearSearchDeadline();
 
             // Output best move
             printf("bestmove ");

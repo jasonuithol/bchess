@@ -4,6 +4,17 @@
 #include "umpire.h"
 #include "aileaf.h"
 
+// When the search detects that the configured deadline has passed it
+// flips this flag and unwinds. Callers must check it after getBestMove
+// returns and discard the result if it is set (the partially-explored
+// iteration cannot be trusted).
+extern volatile int searchAborted;
+
+// Arm an abort deadline expressed in absolute CLOCK_MONOTONIC ms.
+// Pass 0 (or call clearSearchDeadline) to disable time-based aborts.
+void setSearchDeadlineMs(long absoluteMs);
+void clearSearchDeadline(void);
+
 scoreType getBestMove(analysisMove* const bestMove,
                       const board* const loopDetect,
                       const board* const b,

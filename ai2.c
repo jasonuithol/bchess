@@ -11,6 +11,7 @@
 //
 
 #include <string.h>
+#include <time.h>
 
 #include "ai2.h"
 #include "aileaf.h"
@@ -21,7 +22,48 @@
 #include "tt.h"
 #include "umpire.h"
 
+volatile int searchAborted = 0;
+static long searchDeadlineMs = 0;  // 0 disables the deadline.
+
+void setSearchDeadlineMs(long absoluteMs) {
+    searchDeadlineMs = absoluteMs;
+    searchAborted = 0;
+}
+
+void clearSearchDeadline(void) {
+    searchDeadlineMs = 0;
+    searchAborted = 0;
+}
+
+// Check whether the configured deadline has passed. Gated by a counter
+// because clock_gettime, even via vDSO, would be wasteful at every node
+// visit of a million-nps search. Once the flag flips we stop calling
+// the clock entirely.
+static int isPastDeadline(void) {
+    if (searchAborted) return 1;
+    if (searchDeadlineMs <= 0) return 0;
+
+    static unsigned int callCounter = 0;
+    if ((++callCounter & 0xFFF) != 0) return 0;
+
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    const long nowMs = now.tv_sec * 1000L + now.tv_nsec / 1000000L;
+    if (nowMs >= searchDeadlineMs) {
+        searchAborted = 1;
+        return 1;
+    }
+    return 0;
+}
+
 scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta) {
+
+    // Bail before doing any work if the deadline has already fired.
+    // The returned score is meaningless; the root caller will discard
+    // the entire iteration when it sees searchAborted set.
+    if (isPastDeadline()) {
+        return 0;
+    }
 
     // Capture original window for TT bound classification at the end.
     const scoreType alphaOrig = alpha;
@@ -106,6 +148,13 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
             score = willRecurse
                     ? getBestMove(&dummyMove, loopDetect, &newBoard, scoringTeam, aiStrength, depth + 1, alpha, beta)
                     : analyseLeafNonTerminal(newBoard.quad, scoringTeam);
+        }
+
+        // If the recursive call tripped the deadline, the score it
+        // returned is uninitialised garbage. Stop iterating and let the
+        // caller throw the whole iteration away.
+        if (searchAborted) {
+            return 0;
         }
 
         //
@@ -196,7 +245,11 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
     else {
         bound = TT_EXACT;
     }
-    ttStore(hash, depthRemaining, bestScore, bound, bestFromHere, bestToHere);
+    // Don't pollute the TT with scores from an aborted iteration; they
+    // were computed against an incomplete move list.
+    if (!searchAborted) {
+        ttStore(hash, depthRemaining, bestScore, bound, bestFromHere, bestToHere);
+    }
 
     // Return our rating of the move now living in bestMove.
     return bestScore;
