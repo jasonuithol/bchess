@@ -17,6 +17,7 @@
 //
 // ==================================================================
 
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,14 +48,22 @@ static int zobInitDone = 0;
 #define TT_SIZE      (1ULL << TT_SIZE_LOG2)
 #define TT_MASK      (TT_SIZE - 1)
 
+// Lazy-SMP TT: multiple search threads will read and write this concurrently.
+// We don't take locks. Instead, ttStore writes the key field LAST with release
+// ordering, and ttProbe reads it FIRST with acquire ordering, so any thread
+// that sees a freshly-written key has also seen the data fields associated
+// with it. Stale or torn entries from a tight race can still happen — they
+// surface as occasional wrong scores or wrong best-move suggestions, both of
+// which the search re-validates (addMoveIfLegal checks legality, and a wrong
+// score just hurts ordering, not correctness).
 typedef struct {
-    uint64_t  key;
-    bitboard  bestFrom;
-    bitboard  bestTo;
-    scoreType score;
-    uint8_t   depth;       // remaining depth at time of store
-    uint8_t   bound;       // ttBound
-    uint8_t   generation;
+    _Atomic uint64_t key;
+    bitboard         bestFrom;
+    bitboard         bestTo;
+    scoreType        score;
+    uint8_t          depth;       // remaining depth at time of store
+    uint8_t          bound;       // ttBound
+    uint8_t          generation;
 } ttEntry;
 
 static ttEntry* tt = NULL;
@@ -157,8 +166,12 @@ ttResult ttProbe(uint64_t key, depthType depthRemaining, scoreType alpha, scoreT
 
     if (!tt) return r;
 
-    const ttEntry* e = &tt[key & TT_MASK];
-    if (e->key != key || e->bound == TT_NONE) {
+    ttEntry* e = &tt[key & TT_MASK];
+
+    // Acquire-load the key first; if it matches, the data fields written
+    // by the corresponding release-store in ttStore are visible.
+    const uint64_t storedKey = atomic_load_explicit(&e->key, memory_order_acquire);
+    if (storedKey != key || e->bound == TT_NONE) {
         return r;
     }
 
@@ -208,17 +221,23 @@ void ttStore(uint64_t key,
     ttEntry* e = &tt[key & TT_MASK];
 
     // Replace policy: always overwrite stale generations; otherwise prefer
-    // the entry searched to greater depth.
+    // the entry searched to greater depth. Reads of generation/depth are
+    // best-effort under contention; a slightly-suboptimal replacement is
+    // harmless.
+    const uint64_t existingKey = atomic_load_explicit(&e->key, memory_order_relaxed);
     if (e->generation != ttGen
-        || e->key == key
+        || existingKey == key
         || depthRemaining >= e->depth) {
 
-        e->key = key;
+        // Write data fields first, key last with release ordering. This
+        // pairs with the acquire-load in ttProbe so a probe that observes
+        // this key also observes these data fields.
         e->depth = depthRemaining;
         e->score = score;
         e->bound = (uint8_t)bound;
         e->bestFrom = bestFrom;
         e->bestTo = bestTo;
         e->generation = ttGen;
+        atomic_store_explicit(&e->key, key, memory_order_release);
     }
 }
