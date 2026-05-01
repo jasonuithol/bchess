@@ -449,17 +449,36 @@ void uciLoop(void) {
             clearSearchDeadline();
 
             scoreType score = 0;
+            const scoreType ASPIRATION_WINDOW = 30;
             for (depthType d = 1; d <= depthLimit; d++) {
+
+                // Aspiration window: from iteration 2 onward, narrow
+                // (alpha, beta) around the previous iteration's score.
+                // Most iterations stay close to the previous score, so
+                // the tighter window produces extra alpha-beta cutoffs.
+                // If the score lands outside the window we re-search
+                // with the full ±9999 range to get the real value.
+                scoreType alpha = -9999;
+                scoreType beta  =  9999;
+                if (havePrev) {
+                    alpha = prevScore - ASPIRATION_WINDOW;
+                    beta  = prevScore + ASPIRATION_WINDOW;
+                }
+
                 score = getBestMove(
-                    &bestMove,
-                    loopDetect,
-                    &currentBoard,
-                    currentBoard.whosTurn,
-                    d,
-                    0,
-                    -9999,
-                    9999
+                    &bestMove, loopDetect, &currentBoard,
+                    currentBoard.whosTurn, d, 0, alpha, beta
                 );
+
+                // Fail-low / fail-high: re-search with the wide window.
+                // (Skip the re-search if the deadline already fired —
+                // there's no time left to spend on it.)
+                if (!searchAborted && havePrev && (score <= alpha || score >= beta)) {
+                    score = getBestMove(
+                        &bestMove, loopDetect, &currentBoard,
+                        currentBoard.whosTurn, d, 0, -9999, 9999
+                    );
+                }
 
                 if (searchAborted) {
                     // Iteration d>=2 exceeded the budget. bestMove is
