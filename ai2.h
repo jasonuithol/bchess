@@ -15,6 +15,10 @@ extern volatile int searchAborted;
 void setSearchDeadlineMs(long absoluteMs);
 void clearSearchDeadline(void);
 
+// Trip the abort flag manually — used when the GUI sends "stop" while
+// the search is running.
+void requestSearchAbort(void);
+
 scoreType getBestMove(analysisMove* const bestMove,
                       const board* const loopDetect,
                       const board* const b,

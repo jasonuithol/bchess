@@ -35,16 +35,30 @@ void clearSearchDeadline(void) {
     searchAborted = 0;
 }
 
+void requestSearchAbort(void) {
+    searchAborted = 1;
+}
+
+// Forward-declared from uci.c. Drains stdin for "stop" / "ponderhit"
+// so the search responds to them mid-iteration instead of only at the
+// iteration boundary. Always linked together with this file.
+extern void pollSearchInput(void);
+
 // Check whether the configured deadline has passed. Gated by a counter
 // because clock_gettime, even via vDSO, would be wasteful at every node
-// visit of a million-nps search. Once the flag flips we stop calling
-// the clock entirely.
+// visit of a million-nps search. We piggy-back the rate-limited tick
+// to also poll stdin so the GUI's "stop" gets noticed promptly even
+// when no deadline is armed (e.g. during pondering).
 static int isPastDeadline(void) {
     if (searchAborted) return 1;
-    if (searchDeadlineMs <= 0) return 0;
 
     static unsigned int callCounter = 0;
     if ((++callCounter & 0xFFF) != 0) return 0;
+
+    pollSearchInput();
+    if (searchAborted) return 1;
+
+    if (searchDeadlineMs <= 0) return 0;
 
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);

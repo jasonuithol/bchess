@@ -13,6 +13,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
+#include <sys/select.h>
 
 #include "uci.h"
 #include "ai2.h"
@@ -23,6 +25,107 @@
 #include "quadboard.h"
 #include "tt.h"
 #include "umpire.h"
+
+// ---- Custom stdin line buffer --------------------------------------
+// We need to be able to peek for "stop" / "ponderhit" while the search
+// is running. Stdio's fgets and a search-time poll can't share stdin —
+// only one consumer can drain the descriptor. So we own the input
+// stream end-to-end via raw read(2) and our own line buffer; both the
+// main UCI loop and the search-time poller draw from it.
+//
+// pollSearchInput consumes stop / ponderhit lines and sets the
+// corresponding flags; everything else is left in the buffer for the
+// main UCI loop to fetch via stdinReadLine after the search returns.
+
+static char stdinBuf[8192];
+static int  stdinBufLen = 0;
+static volatile int ponderhitReceived = 0;
+
+// Top up the buffer with whatever stdin has available right now (no
+// blocking). Returns -1 on EOF, 0 if nothing pending, positive on read.
+static int stdinPoll(void) {
+    fd_set rfds;
+    struct timeval tv = {0, 0};
+    FD_ZERO(&rfds);
+    FD_SET(STDIN_FILENO, &rfds);
+    if (select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv) <= 0) return 0;
+
+    int avail = (int)sizeof(stdinBuf) - stdinBufLen - 1;
+    if (avail <= 0) return 0;
+    ssize_t n = read(STDIN_FILENO, stdinBuf + stdinBufLen, (size_t)avail);
+    if (n <= 0) return -1;
+    stdinBufLen += (int)n;
+    stdinBuf[stdinBufLen] = '\0';
+    return (int)n;
+}
+
+// Block until a complete line is available; copy it (sans trailing
+// CR/LF) into `out` and return 1. Return 0 on EOF.
+static int stdinReadLine(char* out, size_t outSize) {
+    while (1) {
+        char* nl = memchr(stdinBuf, '\n', (size_t)stdinBufLen);
+        if (nl) {
+            size_t lineLen = (size_t)(nl - stdinBuf);
+            if (lineLen > 0 && stdinBuf[lineLen - 1] == '\r') lineLen--;
+            if (lineLen >= outSize) lineLen = outSize - 1;
+            memcpy(out, stdinBuf, lineLen);
+            out[lineLen] = '\0';
+
+            size_t consumed = (size_t)(nl - stdinBuf) + 1;
+            stdinBufLen -= (int)consumed;
+            memmove(stdinBuf, stdinBuf + consumed, (size_t)stdinBufLen);
+            stdinBuf[stdinBufLen] = '\0';
+            return 1;
+        }
+        // No complete line yet — block on read.
+        ssize_t n = read(STDIN_FILENO, stdinBuf + stdinBufLen,
+                         sizeof(stdinBuf) - (size_t)stdinBufLen - 1);
+        if (n <= 0) return 0;
+        stdinBufLen += (int)n;
+        stdinBuf[stdinBufLen] = '\0';
+    }
+}
+
+// During search: drain whatever's pending on stdin into the buffer,
+// then walk through complete lines. Consume "stop" / "ponderhit" lines
+// and act on them; leave every other line in place for the main UCI
+// loop to read after the search returns.
+//
+// Non-static because ai2.c calls this from its rate-limited deadline
+// check, so "stop" gets picked up mid-iteration too.
+void pollSearchInput(void) {
+    stdinPoll();
+
+    int p = 0;
+    while (p < stdinBufLen) {
+        char* nl = memchr(stdinBuf + p, '\n', (size_t)(stdinBufLen - p));
+        if (!nl) break;
+
+        size_t lineLen = (size_t)(nl - (stdinBuf + p));
+        if (lineLen > 0 && stdinBuf[p + lineLen - 1] == '\r') lineLen--;
+
+        char tmp[64];
+        const size_t copyLen = lineLen < sizeof(tmp) - 1 ? lineLen : sizeof(tmp) - 1;
+        memcpy(tmp, stdinBuf + p, copyLen);
+        tmp[copyLen] = '\0';
+
+        const int isStop      = strcmp(tmp, "stop")      == 0;
+        const int isPonderhit = strcmp(tmp, "ponderhit") == 0;
+        if (isStop || isPonderhit) {
+            if (isStop)      requestSearchAbort();
+            if (isPonderhit) ponderhitReceived = 1;
+            // Splice this line out of the buffer.
+            const int afterLine = (int)(nl - stdinBuf) + 1;
+            memmove(stdinBuf + p, stdinBuf + afterLine, (size_t)(stdinBufLen - afterLine));
+            stdinBufLen -= (afterLine - p);
+            stdinBuf[stdinBufLen] = '\0';
+            // Stay at the same p — the next line has slid into place.
+        } else {
+            // Skip past this line; leave it for main loop.
+            p = (int)(nl - stdinBuf) + 1;
+        }
+    }
+}
 
 // Convert bitboard square to UCI notation (e.g., e2, e4)
 static void squareToUCI(bitboard square, char* output) {
@@ -39,9 +142,23 @@ static void squareToUCI(bitboard square, char* output) {
 static bitboard uciToSquare(const char* uci) {
     int file = uci[0] - 'a';  // 0-7
     int rank = uci[1] - '1';  // 0-7
-    
+
     offset sq = rank * 8 + (7 - file);
     return 1ULL << sq;
+}
+
+// Parse the optional 5th character of a UCI move (e.g. "e7e8q") into a
+// promotion piece type. Returns 0 if the move doesn't carry a promotion
+// suffix at all.
+static byte uciPromotion(const char* token) {
+    if (strlen(token) < 5) return 0;
+    switch (token[4]) {
+        case 'q': return QUEEN;
+        case 'r': return ROOK;
+        case 'b': return BISHOP;
+        case 'n': return KNIGHT;
+    }
+    return 0;
 }
 
 // Recursively count leaf nodes at depth N from board b. Standard chess
@@ -159,26 +276,28 @@ static int parseFen(const char* fen, board* b) {
     return 1;
 }
 
-// Print a move in UCI format (e.g., "e2e4" or "e7e8q" for promotion)
+// Print a move in UCI format (e.g., "e2e4" or "e7e8q" for promotion).
+// Promotion suffix reflects move->promoteTo so under-promotion to N/B/R
+// is faithfully reported back to the GUI, not silently rewritten as
+// queen.
 static void printMoveUCI(const analysisMove* move, const quadboard* board) {
     char from[3], to[3];
     squareToUCI(move->from, from);
     squareToUCI(move->to, to);
-    
-    // Check for pawn promotion
-    offset fromSquare = trailingBit_Bitboard(move->from);
-    byte pieceType = getType(*board, fromSquare);
-    
-    if (pieceType == PAWN) {
-        int toRank = trailingBit_Bitboard(move->to) / 8;
-        if (toRank == 0 || toRank == 7) {
-            // Promotion - UCI format: e7e8q
-            // For now, always promote to queen
-            printf("%s%sq", from, to);
-            return;
+
+    if (move->promoteTo) {
+        char p = '?';
+        switch (move->promoteTo) {
+            case QUEEN:  p = 'q'; break;
+            case ROOK:   p = 'r'; break;
+            case BISHOP: p = 'b'; break;
+            case KNIGHT: p = 'n'; break;
         }
+        printf("%s%s%c", from, to, p);
+        return;
     }
-    
+
+    (void)board; // pieceType lookup no longer needed: promoteTo is canonical.
     printf("%s%s", from, to);
 }
 
@@ -203,12 +322,10 @@ void uciLoop(void) {
     //   setoption name Debug value true
     int debugMode = 0;
 
-    printf("# bchess UCI engine\n");
-    fflush(stdout);
-    
-    while (fgets(line, sizeof(line), stdin)) {
-        // Remove newline
-        line[strcspn(line, "\r\n")] = 0;
+    // Stay quiet until the GUI sends "uci" — some GUIs are picky about
+    // pre-handshake chatter.
+
+    while (stdinReadLine(line, sizeof(line))) {
         
         // UCI command: "uci"
         if (strcmp(line, "uci") == 0) {
@@ -271,8 +388,9 @@ void uciLoop(void) {
                 char* token = strtok(movesPtr, " ");
                 while (token != NULL) {
                     if (strlen(token) >= 4) {
-                        bitboard from = uciToSquare(token);
-                        bitboard to   = uciToSquare(token + 2);
+                        bitboard from   = uciToSquare(token);
+                        bitboard to     = uciToSquare(token + 2);
+                        byte promoteTo  = uciPromotion(token);
 
                         analysisList moveList;
                         moveList.ix = 0;
@@ -280,7 +398,16 @@ void uciLoop(void) {
 
                         byte found = 0;
                         for (byte i = 0; i < moveList.ix; i++) {
-                            if (moveList.items[i].from == from && moveList.items[i].to == to) {
+                            // Match all three of (from, to, promoteTo).
+                            // For non-promotion moves both promoteTo
+                            // values are 0, so this still works. For
+                            // promotion moves an under-promotion suffix
+                            // ('r'/'b'/'n') now correctly picks the
+                            // matching variant instead of falling
+                            // through to the always-first queen entry.
+                            if (moveList.items[i].from      == from
+                                && moveList.items[i].to     == to
+                                && moveList.items[i].promoteTo == promoteTo) {
                                 history[historyIndex % 5] = currentBoard;
                                 historyIndex++;
 
@@ -367,6 +494,12 @@ void uciLoop(void) {
         // UCI command: "go"
         else if (strncmp(line, "go", 2) == 0) {
 
+            // Detect "ponder" before strtok mangles the buffer. If
+            // present, we run the search but withhold "bestmove" until
+            // the GUI sends "stop" or "ponderhit".
+            int isPondering = (strstr(line, " ponder") != NULL);
+            ponderhitReceived = 0;
+
             // Parse parameters. Recognized: depth, wtime, btime, winc, binc,
             // movetime, movestogo. Unknown tokens are skipped.
             int depthLimit = 64;
@@ -452,6 +585,25 @@ void uciLoop(void) {
             const scoreType ASPIRATION_WINDOW = 30;
             for (depthType d = 1; d <= depthLimit; d++) {
 
+                // Drain stop / ponderhit from stdin before starting
+                // this iteration. (Mid-iteration stops still get
+                // picked up via the same flag, which the search-time
+                // deadline check tests.)
+                pollSearchInput();
+                if (ponderhitReceived) {
+                    // Opponent played the predicted move; switch from
+                    // pondering to a real timed search. Time spent
+                    // pondering doesn't count, so reset the clock.
+                    ponderhitReceived = 0;
+                    isPondering = 0;
+                    clock_gettime(CLOCK_MONOTONIC, &t0);
+                }
+                if (searchAborted) {
+                    // Stop received before we even started — bail.
+                    if (havePrev) { bestMove = prevBestMove; score = prevScore; }
+                    break;
+                }
+
                 // Aspiration window: from iteration 2 onward, narrow
                 // (alpha, beta) around the previous iteration's score.
                 // Most iterations stay close to the previous score, so
@@ -481,9 +633,9 @@ void uciLoop(void) {
                 }
 
                 if (searchAborted) {
-                    // Iteration d>=2 exceeded the budget. bestMove is
-                    // partial garbage; fall back to the last completed
-                    // iteration's result.
+                    // Iteration exceeded the budget OR a "stop" arrived
+                    // mid-search. bestMove is partial garbage; fall
+                    // back to the last completed iteration's result.
                     if (havePrev) {
                         bestMove = prevBestMove;
                         score    = prevScore;
@@ -503,17 +655,35 @@ void uciLoop(void) {
                        d, (int)score, (unsigned int)nodesCalculated, nps, elapsedMs);
                 fflush(stdout);
 
-                if (budgetMs > 0 && elapsedMs * 5 >= budgetMs * 2) {
-                    break;
-                }
-
-                // Arm the deadline once we have a result to fall back on.
-                if (budgetMs > 0) {
-                    setSearchDeadlineMs(t0Ms + budgetMs);
+                // Time-based stopping rules apply only when we're
+                // actually on the clock — pondering runs uncapped.
+                if (!isPondering) {
+                    if (budgetMs > 0 && elapsedMs * 5 >= budgetMs * 2) {
+                        break;
+                    }
+                    if (budgetMs > 0) {
+                        setSearchDeadlineMs(t0Ms + budgetMs);
+                    }
                 }
             }
 
             clearSearchDeadline();
+
+            // If we exited the ID loop while still in ponder mode (e.g.
+            // depth limit reached), block until the GUI tells us what
+            // to do — we're not allowed to send "bestmove" yet. Lines
+            // other than stop / ponderhit are unexpected during ponder
+            // and discarded.
+            while (isPondering && !searchAborted && !ponderhitReceived) {
+                char waitLine[256];
+                if (!stdinReadLine(waitLine, sizeof(waitLine))) break;
+                if (strcmp(waitLine, "stop") == 0) {
+                    requestSearchAbort();
+                } else if (strcmp(waitLine, "ponderhit") == 0) {
+                    ponderhitReceived = 1;
+                }
+            }
+            ponderhitReceived = 0;
 
             // Output best move
             printf("bestmove ");
