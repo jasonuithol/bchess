@@ -15,6 +15,10 @@
 
 typedef struct {
     quadboard quad;
+    // The square an en-passant capturing pawn would LAND on (the empty
+    // square the just-moved opponent pawn skipped over). 0 if no e.p.
+    // is available — i.e., the previous move wasn't a pawn double-push.
+    bitboard enPassantTarget;
     byte currentCastlingRights;
     byte piecesMoved;
     byte whosTurn;

@@ -31,6 +31,6 @@ bitboard generateBishopMoves(const bitboard piece, const bitboard enemies, const
 bitboard generateRookMoves(const bitboard piece, const bitboard enemies, const bitboard friends);
 bitboard generateKnightMoves(const bitboard piece, const bitboard enemies, const bitboard friends);
 bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const bitboard currentCastlingRights, const byte team);
-bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team);
+bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team, const bitboard enPassantTarget);
 
 #endif

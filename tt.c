@@ -31,6 +31,11 @@
 static uint64_t zobPiece[64][14];
 static uint64_t zobSide;
 static uint64_t zobCastle[256];
+// One key per en-passant file (a..h) plus a "no e.p." key. We hash by
+// file rather than by full square because two same-position-different-
+// e.p.-rank entries can't collide: the rank is implied by the side to
+// move (rank 3 if white, rank 6 if black).
+static uint64_t zobEnPassant[9];
 static int zobInitDone = 0;
 
 #define TT_SIZE_LOG2 20
@@ -69,6 +74,9 @@ static void zobInit(void) {
     for (int i = 0; i < 256; i++) {
         zobCastle[i] = splitmix64(&state);
     }
+    for (int i = 0; i < 9; i++) {
+        zobEnPassant[i] = splitmix64(&state);
+    }
     zobInitDone = 1;
 }
 
@@ -88,6 +96,12 @@ uint64_t computeZobristHash(const board* const b) {
         h ^= zobSide;
     }
     h ^= zobCastle[b->piecesMoved];
+    if (b->enPassantTarget) {
+        const offset epFile = trailingBit_Bitboard(b->enPassantTarget) % 8;
+        h ^= zobEnPassant[epFile];
+    } else {
+        h ^= zobEnPassant[8];
+    }
     return h;
 }
 

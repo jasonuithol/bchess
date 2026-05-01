@@ -39,10 +39,10 @@ byte determineEndOfGameState(const board* const b) {
 // * Pawns get promoted.
 // * Illegal board positions (involving check) are thrown out.
 //
-byte spawnLeafBoard(const board* const old, 
-                    board* const new, 
-                    const bitboard from, 
-                    const bitboard to, 
+byte spawnLeafBoard(const board* const old,
+                    board* const new,
+                    const bitboard from,
+                    const bitboard to,
                     const byte promoteTo) {
 
 
@@ -51,11 +51,44 @@ byte spawnLeafBoard(const board* const old,
     // To create a new board from a current board, first copy the current board's content to the new one.
     memcpy((void*)new, (void*)old, sizeof(board));
 
+    // En-passant detection: a pawn moving onto old->enPassantTarget by
+    // a diagonal step is an e.p. capture, because that square is empty
+    // (no enemy on it) and yet the pawn is moving diagonally — the only
+    // way that can be legal is e.p. The captured pawn doesn't sit on
+    // the destination square; it sits on the same file as the
+    // destination but the same rank as the source. We have to clear it
+    // explicitly because moveSquare won't touch that square.
+    const byte movingIsPawn = (getPieces(old->quad, PAWN | old->whosTurn) & from) != 0;
+    if (movingIsPawn
+        && old->enPassantTarget != 0
+        && to == old->enPassantTarget
+        && getFile(from) != getFile(to)) {
+        const offset capturedFile = getFile(to);
+        const offset capturedRank = getRank(from);
+        const bitboard capturedSq = 1ULL << (capturedRank * 8 + capturedFile);
+        resetSquares(qb, capturedSq);
+    }
+
     // Now apply the change to the new board (i.e. move the piece from square "from" to square "to").
     moveSquare(qb, from, to);
 
     // Change the turn on the new board.  To get the team that just moved, use old->whosTurn.
     new->whosTurn = old->whosTurn ^ 1;
+
+    // Default: clear any e.p. opportunity. We re-set it below if this
+    // very move was a pawn double-push.
+    new->enPassantTarget = 0;
+    if (movingIsPawn) {
+        const offset fromRank = getRank(from);
+        const offset toRank   = getRank(to);
+        const int rankDelta = (int)toRank - (int)fromRank;
+        if (rankDelta == 2 || rankDelta == -2) {
+            // The square the pawn skipped over — the landing pad for an
+            // enemy e.p. capture on the next ply.
+            const offset skippedRank = (fromRank + toRank) / 2;
+            new->enPassantTarget = 1ULL << (skippedRank * 8 + getFile(to));
+        }
+    }
 
 
     // Now we can perform the legality check
@@ -193,6 +226,18 @@ byte spawnFullBoard(const board* const old,
         case toBitboard('h','8'): new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED;  break;
     }
 
+    // A rook can also leave a corner by being captured there. The
+    // from-square doesn't see this — the corner stays the to-square of
+    // the capturing piece — so we have to mark it explicitly. Without
+    // this, a side whose corner rook has been taken still thinks it
+    // can castle, and bchess generates illegal castling moves.
+    switch(to) {
+        case toBitboard('a','1'): new->piecesMoved |= WHITE_QUEENSIDE_CASTLE_MOVED; break;
+        case toBitboard('h','1'): new->piecesMoved |= WHITE_KINGSIDE_CASTLE_MOVED;  break;
+        case toBitboard('a','8'): new->piecesMoved |= BLACK_QUEENSIDE_CASTLE_MOVED; break;
+        case toBitboard('h','8'): new->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED;  break;
+    }
+
     // Compute castling rights for the team that is now to move.
     computeCurrentCastlingRights(new);
 
@@ -257,7 +302,7 @@ void generateLegalMoveList(const board* const b, analysisList* const moveList, c
             bitboard moves = 0ULL;
             
             switch(pieceType) {
-                case PAWN:   moves = generatePawnMoves(piece.item, enemies, friends, b->whosTurn);    break;
+                case PAWN:   moves = generatePawnMoves(piece.item, enemies, friends, b->whosTurn, b->enPassantTarget);    break;
                 case ROOK:   moves = generateRookMoves(piece.item, enemies, friends);    break;
                 case KNIGHT: moves = generateKnightMoves(piece.item, enemies, friends);  break;
                 case BISHOP: moves = generateBishopMoves(piece.item, enemies, friends);  break;
@@ -390,6 +435,7 @@ void initBoard(board* const b) {
 
     b->piecesMoved = 0;
     b->whosTurn = WHITE;
+    b->enPassantTarget = 0;
 
     // Compute the castling-rights overlay for the first move so that
     // generateKingMoves doesn't offer castling through occupied squares.

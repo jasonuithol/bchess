@@ -309,7 +309,7 @@ bitboard generateKingMoves(const bitboard piece, const bitboard enemies, const b
 //
 // Generate a map of psuedolegal moves one piece can make - PAWN
 //
-bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team) {
+bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const bitboard friends, const byte team, const bitboard enPassantTarget) {
 
 
     //
@@ -338,8 +338,10 @@ bitboard generatePawnMoves(const bitboard piece, const bitboard enemies, const b
                            applySingleAttackVector(piece, nw, friends, direction);
 
 
-    // Only squares with enemy pieces on them can be moved into diagonally.
-    takingMoves &= enemies;
+    // Only squares with enemy pieces on them can be moved into diagonally,
+    // OR the en-passant target square (where there's no enemy on the
+    // destination, but a pawn capturable via the e.p. rule sits adjacent).
+    takingMoves &= (enemies | enPassantTarget);
 
     // 1 square move
     bitboard nonTakingMoves = applySingleAttackVector(piece, n, friends, direction);

@@ -141,8 +141,20 @@ static int parseFen(const char* fen, board* b) {
         }
     }
 
-    // Remaining fields (en-passant target, halfmove, fullmove) are
-    // consumed but ignored.
+    if (*p == ' ') p++;
+
+    // Field 4: en-passant target square (e.g. "e3") or "-".
+    b->enPassantTarget = 0;
+    if (*p == '-') {
+        p++;
+    } else if (*p >= 'a' && *p <= 'h' && *(p+1) >= '1' && *(p+1) <= '8') {
+        const int file = *p - 'a';
+        const int rank = *(p+1) - '1';
+        b->enPassantTarget = 1ULL << (rank * 8 + (7 - file));
+        p += 2;
+    }
+
+    // Remaining fields (halfmove, fullmove) are consumed but ignored.
     computeCurrentCastlingRights(b);
     return 1;
 }
