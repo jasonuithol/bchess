@@ -76,14 +76,23 @@ byte spawnLeafBoard(const board* const old,
     //
     // Castling followup (moves the castle over the king).
     //
+    // Bit-layout reminder: within a rank the h-file is bit 0 and the
+    // a-file is bit 7, so the rook squares we want to act on are at
+    // (rank*8 + 0) for the h-rook and (rank*8 + 7) for the a-rook.
+    // The original code hardcoded rank 1, which meant every black
+    // castle silently overwrote whatever sat on d1/f1 with whatever
+    // sat on a1/h1 (e.g. a black O-O-O would clobber white's queen
+    // with white's a1 rook).
+    //
     if (getPieces(old->quad, KING | old->whosTurn) & from) {
+        const offset rankShift = getRank(from) * 8;
         if (getFile(from) - getFile(to) == 2) {
-            // Kingside castle detected
-            moveSquare(qb, 1ULL, 4ULL);
+            // Kingside castle: h-rook -> f-rook
+            moveSquare(qb, 1ULL << rankShift, 1ULL << (rankShift + 2));
         }
         else if (getFile(from) - getFile(to) == -2) {
-            // Queenside castle detected
-            moveSquare(qb, 128ULL, 16ULL);
+            // Queenside castle: a-rook -> d-rook
+            moveSquare(qb, 1ULL << (rankShift + 7), 1ULL << (rankShift + 4));
         }
     }
 
