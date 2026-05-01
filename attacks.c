@@ -5,6 +5,7 @@
 #include "iterator.h"
 #include "logging.h"
 #include "quadboard.h"
+#include "slider.h"
 
 // These are positive-only attack vectors for all pieces except KNIGHT.
 #define nw (1ULL << 9)
@@ -21,9 +22,13 @@
 #define castle (1ULL << 2)
 
 
-static const bitboard queenAttacks     = nw | n | ne | w;
-static const bitboard bishopAttacks    = nw | ne;
-static const bitboard rookAttacks      = n  | w;
+// Slider vector constants used to be consulted from generateRook/Bishop/
+// QueenMoves; those generators now go through PEXT lookup tables in
+// slider.c, so the constants are no longer referenced. Kept commented
+// for documentation:
+//   queenAttacks  = nw | n | ne | w;
+//   bishopAttacks = nw | ne;
+//   rookAttacks   = n  | w;
 static const bitboard kingAttacks      = nw | n | ne | w;
 static const bitboard knightAttacks    = nww | nnw |nne | nee;
 // Pawns are special.  Verrrry special.
@@ -198,17 +203,24 @@ byte isSquareAttacked(const quadboard qb, const bitboard square, const byte aski
 
     const bitboard enemies = getTeamPieces(qb, attackingTeam);
     const bitboard friends = getTeamPieces(qb, askingTeam);
+    const bitboard occ     = enemies | friends;
+    const offset   sq      = trailingBit_Bitboard(square);
 
-    const bitboard enemyQueens = getPieces(qb, QUEEN | attackingTeam );
+    const bitboard enemyQueens  = getPieces(qb, QUEEN  | attackingTeam);
     const bitboard enemyBishops = getPieces(qb, BISHOP | attackingTeam);
 
-    if ((enemyQueens|enemyBishops) & singlePieceAttacks(square, enemies, friends, bishopAttacks, ATTACKMODE_SLIDING)) {
+    // Same trick as in isSquareAttacked classically: cast a "ghost"
+    // bishop/rook from the queried square and see if any actual enemy
+    // bishop/queen/rook lands in its attack pattern. The PEXT lookup
+    // returns reaches-INCLUDING-blockers; that's correct here because
+    // we OR-AND against the actual enemy piece bitboards.
+    if ((enemyQueens | enemyBishops) & pextBishopAttacks(sq, occ)) {
         return 1;
     }
 
     const bitboard enemyRooks = getPieces(qb, ROOK | attackingTeam);
 
-    if ((enemyQueens|enemyRooks) & singlePieceAttacks(square, enemies, friends, rookAttacks, ATTACKMODE_SLIDING)) {
+    if ((enemyQueens | enemyRooks) & pextRookAttacks(sq, occ)) {
         return 1;
     }
 
@@ -251,14 +263,22 @@ byte isSquareAttacked(const quadboard qb, const bitboard square, const byte aski
 //
 
 
-bitboard generateQueenMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
-    return singlePieceAttacks(piece, enemies, friends, queenAttacks, ATTACKMODE_SLIDING);
+// Sliders go through the precomputed PEXT tables. Each call is a
+// PEXT instruction plus an L1/L2-resident table load — no ray-walking.
+// The table semantics: "every square the slider reaches given full
+// occupancy, INCLUDING the first blocker on each ray". We then mask
+// out friendly pieces here so callers don't have to.
+bitboard generateRookMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
+    const offset sq = trailingBit_Bitboard(piece);
+    return pextRookAttacks(sq, enemies | friends) & ~friends;
 }
 bitboard generateBishopMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
-    return singlePieceAttacks(piece, enemies, friends, bishopAttacks, ATTACKMODE_SLIDING);
+    const offset sq = trailingBit_Bitboard(piece);
+    return pextBishopAttacks(sq, enemies | friends) & ~friends;
 }
-bitboard generateRookMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
-    return singlePieceAttacks(piece, enemies, friends, rookAttacks, ATTACKMODE_SLIDING);
+bitboard generateQueenMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
+    const offset sq = trailingBit_Bitboard(piece);
+    return pextQueenAttacks(sq, enemies | friends) & ~friends;
 }
 bitboard generateKnightMoves(const bitboard piece, const bitboard enemies, const bitboard friends) {
     return singlePieceAttacks(piece, enemies, friends, knightAttacks, ATTACKMODE_SINGLE);
