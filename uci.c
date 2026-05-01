@@ -168,7 +168,11 @@ void uciLoop(void) {
                             }
                         }
 
-                        if (!found && debugMode) {
+                        // Always surface a rejected move. If we silently
+                        // skip it, side-to-move desyncs from the GUI and
+                        // every subsequent "go" generates moves for the
+                        // wrong colour.
+                        if (!found) {
                             printf("info string ERROR: move %s not found in legal list\n", token);
                             fflush(stdout);
                         }
