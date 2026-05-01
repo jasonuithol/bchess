@@ -17,6 +17,7 @@
 #include "uci.h"
 #include "ai2.h"
 #include "aileaf.h"
+#include "attacks.h"
 #include "bitboard.h"
 #include "moveordering.h"
 #include "quadboard.h"
@@ -41,6 +42,109 @@ static bitboard uciToSquare(const char* uci) {
     
     offset sq = rank * 8 + (7 - file);
     return 1ULL << sq;
+}
+
+// Recursively count leaf nodes at depth N from board b. Standard chess
+// "perft" benchmark, used to validate move generation: a regression
+// will almost always show up as a count mismatch.
+static uint64_t perftRec(board* b, int depth) {
+    if (depth == 0) return 1;
+
+    analysisList moveList;
+    moveList.ix = 0;
+    generateLegalMoveList(b, &moveList, 0);
+
+    if (depth == 1) {
+        // Cheap leaf: each legal move contributes exactly 1.
+        return (uint64_t)moveList.ix;
+    }
+
+    uint64_t nodes = 0;
+    for (byte i = 0; i < moveList.ix; i++) {
+        board next;
+        spawnFullBoard(b, &next,
+                       moveList.items[i].from,
+                       moveList.items[i].to,
+                       moveList.items[i].promoteTo);
+        nodes += perftRec(&next, depth - 1);
+    }
+    return nodes;
+}
+
+// Parse a FEN string into the supplied board. Returns 1 on success, 0 on
+// malformed input. bchess doesn't model en-passant or halfmove counters,
+// so those FEN fields are consumed and discarded.
+static int parseFen(const char* fen, board* b) {
+    clearBoard(b);
+
+    int sq_rank = 7;
+    int sq_file = 0;
+    const char* p = fen;
+
+    // Field 1: piece placement.
+    while (*p && *p != ' ') {
+        char c = *p++;
+        if (c == '/') {
+            sq_rank--;
+            sq_file = 0;
+            continue;
+        }
+        if (c >= '1' && c <= '8') {
+            sq_file += (c - '0');
+            continue;
+        }
+        if (sq_rank < 0 || sq_rank > 7 || sq_file < 0 || sq_file > 7) return 0;
+
+        byte team = (c >= 'a' && c <= 'z') ? BLACK : WHITE;
+        byte type = 0;
+        switch (c | 0x20) {  // tolower
+            case 'p': type = PAWN;   break;
+            case 'n': type = KNIGHT; break;
+            case 'b': type = BISHOP; break;
+            case 'r': type = ROOK;   break;
+            case 'q': type = QUEEN;  break;
+            case 'k': type = KING;   break;
+            default: return 0;
+        }
+        offset sq = sq_rank * 8 + (7 - sq_file);
+        addPieces(&b->quad, 1ULL << sq, type | team);
+        sq_file++;
+    }
+
+    if (*p == ' ') p++;
+
+    // Field 2: side to move.
+    if (*p == 'w') b->whosTurn = WHITE;
+    else if (*p == 'b') b->whosTurn = BLACK;
+    else return 0;
+    p++;
+    if (*p == ' ') p++;
+
+    // Field 3: castling rights. Translate to bchess's piecesMoved bitset
+    // (every right ABSENT means the corresponding piece "has moved").
+    b->piecesMoved = WHITE_KING_MOVED | WHITE_KINGSIDE_CASTLE_MOVED
+                   | WHITE_QUEENSIDE_CASTLE_MOVED
+                   | BLACK_KING_MOVED | BLACK_KINGSIDE_CASTLE_MOVED
+                   | BLACK_QUEENSIDE_CASTLE_MOVED;
+    if (*p == '-') {
+        p++;
+    } else {
+        while (*p && *p != ' ') {
+            switch (*p) {
+                case 'K': b->piecesMoved &= ~(WHITE_KING_MOVED | WHITE_KINGSIDE_CASTLE_MOVED); break;
+                case 'Q': b->piecesMoved &= ~(WHITE_KING_MOVED | WHITE_QUEENSIDE_CASTLE_MOVED); break;
+                case 'k': b->piecesMoved &= ~(BLACK_KING_MOVED | BLACK_KINGSIDE_CASTLE_MOVED); break;
+                case 'q': b->piecesMoved &= ~(BLACK_KING_MOVED | BLACK_QUEENSIDE_CASTLE_MOVED); break;
+                default: return 0;
+            }
+            p++;
+        }
+    }
+
+    // Remaining fields (en-passant target, halfmove, fullmove) are
+    // consumed but ignored.
+    computeCurrentCastlingRights(b);
+    return 1;
 }
 
 // Print a move in UCI format (e.g., "e2e4" or "e7e8q" for promotion)
@@ -126,6 +230,68 @@ void uciLoop(void) {
             }
         }
         
+        // UCI command: "position fen <fen> [moves ...]"
+        else if (strncmp(line, "position fen ", 13) == 0) {
+            // The FEN is everything from after "position fen " up to but
+            // not including the optional " moves ..." suffix.
+            char* movesPtr = strstr(line + 13, "moves");
+            if (movesPtr) {
+                // Temporarily nul-terminate the FEN.
+                char saved = *movesPtr;
+                *movesPtr = '\0';
+                if (!parseFen(line + 13, &currentBoard)) {
+                    printf("info string ERROR: failed to parse FEN\n");
+                    fflush(stdout);
+                }
+                *movesPtr = saved;
+            } else {
+                if (!parseFen(line + 13, &currentBoard)) {
+                    printf("info string ERROR: failed to parse FEN\n");
+                    fflush(stdout);
+                }
+            }
+            historyIndex = 0;
+
+            // Apply the same trailing "moves ..." suffix logic that the
+            // startpos branch uses.
+            if (movesPtr) {
+                movesPtr += 6;
+                char* token = strtok(movesPtr, " ");
+                while (token != NULL) {
+                    if (strlen(token) >= 4) {
+                        bitboard from = uciToSquare(token);
+                        bitboard to   = uciToSquare(token + 2);
+
+                        analysisList moveList;
+                        moveList.ix = 0;
+                        generateLegalMoveList(&currentBoard, &moveList, 0);
+
+                        byte found = 0;
+                        for (byte i = 0; i < moveList.ix; i++) {
+                            if (moveList.items[i].from == from && moveList.items[i].to == to) {
+                                history[historyIndex % 5] = currentBoard;
+                                historyIndex++;
+
+                                board nextBoard;
+                                spawnFullBoard(&currentBoard, &nextBoard,
+                                               moveList.items[i].from,
+                                               moveList.items[i].to,
+                                               moveList.items[i].promoteTo);
+                                currentBoard = nextBoard;
+                                found = 1;
+                                break;
+                            }
+                        }
+
+                        if (!found) {
+                            printf("info string ERROR: move %s not found in legal list\n", token);
+                            fflush(stdout);
+                        }
+                    }
+                    token = strtok(NULL, " ");
+                }
+            }
+        }
         // UCI command: "position startpos" or "position startpos moves e2e4 e7e5..."
         else if (strncmp(line, "position startpos", 17) == 0) {
             initBoard(&currentBoard);
@@ -374,14 +540,82 @@ void uciLoop(void) {
             fflush(stdout);
         }
         
-        // DEBUG command: "perft X" - count moves at depth X
+        // DEBUG command: "perft N" — count legal leaf nodes at depth N.
+        // Output mirrors the de-facto convention: per-move counts, blank
+        // line, then "Nodes searched: N".
         else if (strncmp(line, "perft", 5) == 0) {
             int depth = 1;
-            sscanf(line, "perft %d", &depth);
-            
-            // Simple perft - just count legal moves at depth
-            printf("# Running perft to depth %d...\n", depth);
-            // TODO: implement recursive perft if needed
+            if (sscanf(line, "perft %d", &depth) != 1 || depth < 0) depth = 1;
+
+            analysisList moveList;
+            moveList.ix = 0;
+            generateLegalMoveList(&currentBoard, &moveList, 0);
+
+            uint64_t total = 0;
+            for (byte i = 0; i < moveList.ix; i++) {
+                board next;
+                spawnFullBoard(&currentBoard, &next,
+                               moveList.items[i].from,
+                               moveList.items[i].to,
+                               moveList.items[i].promoteTo);
+                uint64_t sub = (depth <= 1) ? 1 : perftRec(&next, depth - 1);
+                total += sub;
+
+                printMoveUCI(&moveList.items[i], &currentBoard.quad);
+                printf(": %llu\n", (unsigned long long)sub);
+            }
+            printf("\nNodes searched: %llu\n", (unsigned long long)total);
+            fflush(stdout);
+        }
+
+        // DEBUG command: "bench" — run a fixed search at depth across a
+        // hardcoded corpus and emit a single summary "Nodes: N" line.
+        // The corpus is intentionally small so the whole run stays under
+        // a few seconds, and intentionally fixed so any regression in
+        // search behaviour shows up as a different node count.
+        else if (strcmp(line, "bench") == 0) {
+            static const char* const benchPositions[] = {
+                // Mid-opening, mid-middlegame, simplification, late
+                // endgame — covers the main eval regimes.
+                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+                "r2qk2r/ppp2ppp/2nb1n2/3pp3/3PP3/2NB1N2/PPP2PPP/R2QK2R w KQkq - 0 7",
+                "8/8/4k3/8/8/2K5/4P3/8 w - - 0 1",
+                "r3k2r/pp1q1ppp/2nbpn2/3p4/3P4/2NBPN2/PP1Q1PPP/R3K2R w KQkq - 0 9",
+            };
+            const int nPositions = (int)(sizeof(benchPositions) / sizeof(benchPositions[0]));
+            const int benchDepth = 6;
+
+            uint64_t totalNodes = 0;
+            board savedBoard = currentBoard;
+
+            for (int p = 0; p < nPositions; p++) {
+                if (!parseFen(benchPositions[p], &currentBoard)) {
+                    printf("# bench: failed to parse position %d\n", p);
+                    continue;
+                }
+
+                nodesCalculated = 0;
+                ttInit();
+                ttNewSearch();
+                clearSearchDeadline();
+
+                analysisMove bm;
+                scoreType score = 0;
+                for (depthType d = 1; d <= benchDepth; d++) {
+                    score = getBestMove(&bm, &currentBoard, &currentBoard,
+                                        currentBoard.whosTurn, d, 0, -9999, 9999);
+                }
+                totalNodes += nodesCalculated;
+
+                printf("# bench[%d]: depth=%d score=%d nodes=%u bestmove=",
+                       p, benchDepth, (int)score, (unsigned)nodesCalculated);
+                printMoveUCI(&bm, &currentBoard.quad);
+                printf("\n");
+            }
+
+            currentBoard = savedBoard;
+            printf("\nNodes: %llu\n", (unsigned long long)totalNodes);
             fflush(stdout);
         }
     }
