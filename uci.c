@@ -294,9 +294,33 @@ void uciLoop(void) {
         
         // DEBUG command: "d" - display board and legal moves
         else if (strcmp(line, "d") == 0) {
-            printf("# Current position:\n");
-            printQB(currentBoard.quad);
-            printf("#\n");
+            // printQB is broken (first newline fires before any rank
+            // completes), so draw the board ourselves with rank/file
+            // labels and standard piece letters.
+            printf("# Current position (%s to move):\n",
+                   currentBoard.whosTurn == WHITE ? "white" : "black");
+            for (int rank = 7; rank >= 0; rank--) {
+                printf("# %d ", rank + 1);
+                for (int file = 0; file < 8; file++) {
+                    offset sq = rank * 8 + (7 - file);
+                    byte type = getType(currentBoard.quad, sq);
+                    char c = '.';
+                    switch (type) {
+                        case PAWN:   c = 'P'; break;
+                        case ROOK:   c = 'R'; break;
+                        case KNIGHT: c = 'N'; break;
+                        case BISHOP: c = 'B'; break;
+                        case QUEEN:  c = 'Q'; break;
+                        case KING:   c = 'K'; break;
+                    }
+                    if (type && getTeam(currentBoard.quad, sq)) {
+                        c = c - 'A' + 'a';
+                    }
+                    printf("%c ", c);
+                }
+                printf("\n");
+            }
+            printf("#   a b c d e f g h\n");
             printf("# Legal moves:\n");
             
             analysisList moveList;
