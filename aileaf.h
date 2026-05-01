@@ -1,6 +1,7 @@
 #ifndef AILEAF_H
 #define AILEAF_H
 
+#include <stdatomic.h>
 #include <stdint.h>
 
 #include "bitboard.h"
@@ -10,7 +11,10 @@
 typedef uint32_t nodesCalculatedType;
 typedef uint8_t depthType;
 
-extern nodesCalculatedType nodesCalculated;
+// Atomic so multiple search threads can each contribute to the visit
+// count without racing. Relaxed ordering is enough — we only read it
+// after the search has finished, for the info-line node count.
+extern _Atomic nodesCalculatedType nodesCalculated;
 
 // When non-zero, displaySpinningPulse skips its terminal animation.
 // UCI mode sets this so the spinner doesn't end up wedged into the

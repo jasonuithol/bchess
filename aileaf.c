@@ -22,7 +22,7 @@
 // We don't want this going into the logs !!!!
 //
 
-nodesCalculatedType nodesCalculated;
+_Atomic nodesCalculatedType nodesCalculated;
 int suppressSpinnerOutput = 0;
 
 #define PULSE_SPIN_MAGNITUDE (17)
@@ -31,13 +31,16 @@ void displaySpinningPulse(void) {
 
     const nodesCalculatedType wrapMask = (1 << (PULSE_SPIN_MAGNITUDE)) - 1;
 
-    nodesCalculated++;
+    // Relaxed: we don't need ordering against other memory operations,
+    // just an atomic increment so the count is well-defined under SMP.
+    const nodesCalculatedType n =
+        atomic_fetch_add_explicit(&nodesCalculated, 1, memory_order_relaxed) + 1;
 
     if (suppressSpinnerOutput) {
         return;
     }
 
-    switch (nodesCalculated & wrapMask) {
+    switch (n & wrapMask) {
         case 0:
             printf("/\b");
             fflush(stdout);
