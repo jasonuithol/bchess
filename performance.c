@@ -84,7 +84,7 @@ static double perftest_getBestMove_Initial(void) {
     scoreType alpha = -9999;
     scoreType beta = 9999;
 
-    if (getBestMove(&bestMove, &loopDetect, &b, 0, 4, 0, alpha, beta) == 99) {
+    if (getBestMove(&bestMove, &loopDetect, &b, 0, 4, 0, alpha, beta, 1) == 99) {
         print("99 !!!!!\n");
     }
     else {

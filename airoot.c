@@ -39,7 +39,7 @@ void aiMove(const board* const current, board* const next, const board* const lo
     const depthType maxDepth = 6;
     scoreType score = 0;
     for (depthType d = 1; d <= maxDepth; d++) {
-        score = getBestMove(&bestmove, loopDetectPtr, &searchBoard, current->whosTurn, d, 0, -9999, 9999);
+        score = getBestMove(&bestmove, loopDetectPtr, &searchBoard, current->whosTurn, d, 0, -9999, 9999, 1);
     }
     
     print("\n");

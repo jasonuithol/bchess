@@ -19,6 +19,11 @@ void clearSearchDeadline(void);
 // the search is running.
 void requestSearchAbort(void);
 
+// nullAllowed=1 enables null-move pruning at this node. Recursive calls
+// from inside null-move pass 0 to prevent two passes in a row. Outside
+// callers can always pass 1; the depth>0 guard inside getBestMove
+// disables null-move at the root anyway (we need an actual best move
+// there, not just a score).
 scoreType getBestMove(analysisMove* const bestMove,
                       const board* const loopDetect,
                       board* const b,
@@ -26,6 +31,7 @@ scoreType getBestMove(analysisMove* const bestMove,
                       const depthType aiStrength,
                       const depthType depth,
                       scoreType alpha,
-                      scoreType beta);
+                      scoreType beta,
+                      const byte nullAllowed);
 
 #endif

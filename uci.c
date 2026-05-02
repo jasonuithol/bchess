@@ -619,7 +619,7 @@ void uciLoop(void) {
 
                 score = getBestMove(
                     &bestMove, loopDetect, &currentBoard,
-                    currentBoard.whosTurn, d, 0, alpha, beta
+                    currentBoard.whosTurn, d, 0, alpha, beta, 1
                 );
 
                 // Fail-low / fail-high: re-search with the wide window.
@@ -628,7 +628,7 @@ void uciLoop(void) {
                 if (!searchAborted && havePrev && (score <= alpha || score >= beta)) {
                     score = getBestMove(
                         &bestMove, loopDetect, &currentBoard,
-                        currentBoard.whosTurn, d, 0, -9999, 9999
+                        currentBoard.whosTurn, d, 0, -9999, 9999, 1
                     );
                 }
 
@@ -811,7 +811,7 @@ void uciLoop(void) {
                 clearBoard(&loopDetect);
                 for (depthType d = 1; d <= benchDepth; d++) {
                     score = getBestMove(&bm, &loopDetect, &currentBoard,
-                                        currentBoard.whosTurn, d, 0, -9999, 9999);
+                                        currentBoard.whosTurn, d, 0, -9999, 9999, 1);
                 }
                 totalNodes += nodesCalculated;
 

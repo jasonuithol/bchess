@@ -70,7 +70,7 @@ static int isPastDeadline(void) {
     return 0;
 }
 
-scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta) {
+scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta, const byte nullAllowed) {
 
     // Bail before doing any work if the deadline has already fired.
     // The returned score is meaningless; the root caller will discard
@@ -93,6 +93,78 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
     if (tte.usable && depth > 0) {
         // Non-root cut: caller doesn't need bestMove populated.
         return tte.score;
+    }
+
+    // ----------------------------------------------------------------
+    // Null-move pruning.
+    //
+    // Premise: if I "pass" my turn and the opponent's best response
+    // STILL leaves the position outside the alpha-beta window in my
+    // favour, then my actual best move (which is at least as good as
+    // passing) must also leave the window — prune without searching.
+    //
+    // Guards:
+    //   - nullAllowed: prevents two passes in a row (would expand the
+    //     tree without paying for itself).
+    //   - depth > 0: at the root we need a concrete bestMove, not just
+    //     a score; the regular search must run.
+    //   - depthRemaining >= 3: with reduction R=2, a smaller remaining
+    //     depth degenerates to a leaf eval and the pruning isn't worth
+    //     the call overhead.
+    //   - !isKingChecked: passing while in check is illegal — the king
+    //     is left attacked. We can't legally null-move here.
+    //   - Non-pawn material present: classic zugzwang guard. In KP
+    //     endgames every move can lose, so "passing is no worse than
+    //     moving" is a false premise. Skip null-move when the side to
+    //     move has only king + pawns.
+    // ----------------------------------------------------------------
+    if (nullAllowed
+        && depth > 0
+        && depthRemaining >= 3
+        && !isKingChecked(b->quad, b->whosTurn)) {
+
+        const bitboard nonPawnMaterial =
+              getPieces(b->quad, ROOK   | b->whosTurn)
+            | getPieces(b->quad, KNIGHT | b->whosTurn)
+            | getPieces(b->quad, BISHOP | b->whosTurn)
+            | getPieces(b->quad, QUEEN  | b->whosTurn);
+
+        if (nonPawnMaterial) {
+            const depthType R = 2;
+
+            // Apply null move. Save state to restore exactly. The ep
+            // opportunity expires after a pass (it's a one-ply window).
+            // Castling rights for the new mover need recomputing because
+            // the recursive call's move-gen reads them.
+            const bitboard prevEp             = b->enPassantTarget;
+            const byte     prevWhosTurn       = b->whosTurn;
+            const byte     prevCastlingRights = b->currentCastlingRights;
+            b->enPassantTarget = 0;
+            b->whosTurn       ^= 1;
+            computeCurrentCastlingRights(b);
+
+            analysisMove dummy;
+            const scoreType nullScore = getBestMove(
+                &dummy, loopDetect, b,
+                scoringTeam, aiStrength,
+                depth + 1 + R,
+                alpha, beta,
+                0);  // no nested null-move
+
+            // Revert.
+            b->enPassantTarget       = prevEp;
+            b->whosTurn              = prevWhosTurn;
+            b->currentCastlingRights = prevCastlingRights;
+
+            if (searchAborted) return 0;
+
+            // Cutoff direction follows fixed-perspective MAX/MIN logic.
+            if (b->whosTurn == scoringTeam) {
+                if (nullScore >= beta)  return beta;
+            } else {
+                if (nullScore <= alpha) return alpha;
+            }
+        }
     }
 
     // Start by assuming the worst for us (or the best for the opponent)
@@ -159,7 +231,7 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
             // position, so it needs castling rights computed. applyMove
             // skips that compute by default — we pay for it only here.
             computeCurrentCastlingRights(b);
-            score = getBestMove(&dummyMove, loopDetect, b, scoringTeam, aiStrength, depth + 1, alpha, beta);
+            score = getBestMove(&dummyMove, loopDetect, b, scoringTeam, aiStrength, depth + 1, alpha, beta, 1);
         }
         else {
             score = analyseLeafNonTerminal(b->quad, scoringTeam);
