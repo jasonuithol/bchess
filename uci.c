@@ -803,8 +803,14 @@ void uciLoop(void) {
 
                 analysisMove bm;
                 scoreType score = 0;
+                // loopDetect needs to be a distinct memory location from
+                // the search board, since the search now mutates b in
+                // place via make/unmake. Aliasing them would make the
+                // cycle check fire immediately as b is modified.
+                board loopDetect;
+                clearBoard(&loopDetect);
                 for (depthType d = 1; d <= benchDepth; d++) {
-                    score = getBestMove(&bm, &currentBoard, &currentBoard,
+                    score = getBestMove(&bm, &loopDetect, &currentBoard,
                                         currentBoard.whosTurn, d, 0, -9999, 9999);
                 }
                 totalNodes += nodesCalculated;

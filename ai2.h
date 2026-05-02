@@ -21,7 +21,7 @@ void requestSearchAbort(void);
 
 scoreType getBestMove(analysisMove* const bestMove,
                       const board* const loopDetect,
-                      const board* const b,
+                      board* const b,
                       const byte scoringTeam,
                       const depthType aiStrength,
                       const depthType depth,

@@ -1,3 +1,4 @@
+#include <string.h>
 #include <time.h>
 
 #include "airoot.h"
@@ -31,10 +32,14 @@ void aiMove(const board* const current, board* const next, const board* const lo
     // Iterative deepening from depth 1 up to the target. Earlier iterations
     // populate the TT and killer tables so deeper iterations get strong
     // move ordering, more than paying back the cost of the shallow searches.
+    // Copy `current` once so the search can mutate-and-restore in place
+    // without violating airoot's const promise to its callers.
+    board searchBoard;
+    memcpy((void*)&searchBoard, (const void*)current, sizeof(board));
     const depthType maxDepth = 6;
     scoreType score = 0;
     for (depthType d = 1; d <= maxDepth; d++) {
-        score = getBestMove(&bestmove, loopDetectPtr, current, current->whosTurn, d, 0, -9999, 9999);
+        score = getBestMove(&bestmove, loopDetectPtr, &searchBoard, current->whosTurn, d, 0, -9999, 9999);
     }
     
     print("\n");

@@ -70,7 +70,7 @@ static int isPastDeadline(void) {
     return 0;
 }
 
-scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, const board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta) {
+scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetect, board* const b, const byte scoringTeam, const depthType aiStrength, const depthType depth, scoreType alpha, scoreType beta) {
 
     // Bail before doing any work if the deadline has already fired.
     // The returned score is meaningless; the root caller will discard
@@ -144,25 +144,28 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
         analysisMove dummyMove;
         scoreType score;
 
-        // Spawn the resulting board locally. Non-leaf descendants need
-        // the castling-rights overlay; leaf-level only needs piece state.
-        board newBoard;
-        if (willRecurse) {
-            spawnFullBoard(b, &newBoard, move->from, move->to, move->promoteTo);
-        } else {
-            spawnLeafBoard(b, &newBoard, move->from, move->to, move->promoteTo);
-        }
+        // Mutate b in place; revert before the next iteration. No board
+        // copy at all; the same memory location is reused down the tree.
+        UndoInfo undo;
+        applyMove(b, move, &undo);
 
-        if (areEqualQB(loopDetect->quad, newBoard.quad)) {
+        if (areEqualQB(loopDetect->quad, b->quad)) {
 
             // If a loop is detected, don't recurse, just score very badly
-            score = (b->whosTurn == scoringTeam) ? (-9998 + aiStrength + 1) : (9999 - aiStrength - 1);
+            score = (undo.movedTeam == scoringTeam) ? (-9998 + aiStrength + 1) : (9999 - aiStrength - 1);
+        }
+        else if (willRecurse) {
+            // The recursive call will generate moves from the post-move
+            // position, so it needs castling rights computed. applyMove
+            // skips that compute by default — we pay for it only here.
+            computeCurrentCastlingRights(b);
+            score = getBestMove(&dummyMove, loopDetect, b, scoringTeam, aiStrength, depth + 1, alpha, beta);
         }
         else {
-            score = willRecurse
-                    ? getBestMove(&dummyMove, loopDetect, &newBoard, scoringTeam, aiStrength, depth + 1, alpha, beta)
-                    : analyseLeafNonTerminal(newBoard.quad, scoringTeam);
+            score = analyseLeafNonTerminal(b->quad, scoringTeam);
         }
+
+        revertMove(b, move, &undo);
 
         // If the recursive call tripped the deadline, the score it
         // returned is uninitialised garbage. Stop iterating and let the

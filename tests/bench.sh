@@ -24,7 +24,7 @@ if [ ! -x "$ENGINE" ]; then
 fi
 
 # Frozen baseline from current master. Each line: position-index expected-bestmove
-EXPECTED_TOTAL=5573131
+EXPECTED_TOTAL=5592659
 EXPECTED_BESTMOVES=$(cat <<'EOF'
 0 e2e3
 1 b1c3

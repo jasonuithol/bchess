@@ -248,45 +248,211 @@ byte spawnFullBoard(const board* const old,
 
                     
 
-byte addMoveIfLegal(    analysisList* const list, 
-                        const board* const old, 
-                        const bitboard from, 
-                        const bitboard to, 
-                        const byte promoteTo, 
+// In-place make. Mutates b; writes undo info to *undo. Together with
+// revertMove, replaces spawnFullBoard for the hot search/legality paths.
+//
+// Order matters: detect what kind of move this is from the OLD state
+// before any mutation, then apply piece movement, promotion, castle-rook
+// follow-up, piecesMoved updates, ep target, side flip, castling rights.
+void applyMove(board* const b, const analysisMove* const move, UndoInfo* const undo) {
+
+    quadboard* const qb = &(b->quad);
+    const byte mover    = b->whosTurn;
+    const bitboard from = move->from;
+    const bitboard to   = move->to;
+    const byte promoteTo = move->promoteTo;
+
+    // Pre-mutation classification. Both checks read the old state.
+    const byte movingIsPawn = (getPieces(*qb, PAWN | mover) & from) != 0;
+    const byte movingIsKing = (getPieces(*qb, KING | mover) & from) != 0;
+    const int  fileDelta    = (int)getFile(from) - (int)getFile(to);
+
+    // Save everything we're about to clobber.
+    undo->prevEnPassantTarget = b->enPassantTarget;
+    undo->prevCastlingRights  = b->currentCastlingRights;
+    undo->prevPiecesMoved     = b->piecesMoved;
+    undo->capturedSquare      = 0;
+    undo->capturedPiece       = 0;
+    undo->movedTeam           = mover;
+
+    // EP capture: pawn moves diagonally onto the ep target. The captured
+    // pawn is on the file of `to` and the rank of `from`, not on `to`
+    // itself — moveSquare won't touch it, so we have to clear it (and
+    // remember it for unmake).
+    if (movingIsPawn
+        && b->enPassantTarget != 0
+        && to == b->enPassantTarget
+        && getFile(from) != getFile(to)) {
+        const offset capSqOffset = getRank(from) * 8 + getFile(to);
+        const bitboard capturedSq = 1ULL << capSqOffset;
+        undo->capturedSquare = capturedSq;
+        undo->capturedPiece  = getType(*qb, capSqOffset) | getTeam(*qb, capSqOffset);
+        resetSquares(qb, capturedSq);
+    }
+    // Normal capture: there's an enemy piece sitting on `to`. moveSquare
+    // will wipe it as a side-effect, so we have to save its identity now.
+    else if (getAllPieces(*qb) & to) {
+        const offset toOffset = trailingBit_Bitboard(to);
+        undo->capturedSquare = to;
+        undo->capturedPiece  = getType(*qb, toOffset) | getTeam(*qb, toOffset);
+    }
+
+    // Apply the piece movement.
+    moveSquare(qb, from, to);
+
+    // Promotion: replace the just-moved pawn with the chosen piece.
+    if (promoteTo > 0) {
+        resetSquares(qb, to);
+        addPieces(qb, to, promoteTo | mover);
+    }
+
+    // Castling follow-up: if the king moved exactly two files, slide the
+    // matching rook to its post-castle square. Bit-layout is h=0..a=7
+    // within a rank, so kingside = file delta +2 (e->g), queenside = -2.
+    if (movingIsKing) {
+        const offset rankShift = getRank(from) * 8;
+        if (fileDelta == 2) {
+            moveSquare(qb, 1ULL << rankShift, 1ULL << (rankShift + 2));
+        }
+        else if (fileDelta == -2) {
+            moveSquare(qb, 1ULL << (rankShift + 7), 1ULL << (rankShift + 4));
+        }
+    }
+
+    // Castling-rights bookkeeping (persistent has-moved flags).
+    switch(from) {
+        case toBitboard('a','1'): b->piecesMoved |= WHITE_QUEENSIDE_CASTLE_MOVED; break;
+        case toBitboard('e','1'): b->piecesMoved |= WHITE_KING_MOVED;             break;
+        case toBitboard('h','1'): b->piecesMoved |= WHITE_KINGSIDE_CASTLE_MOVED;  break;
+        case toBitboard('a','8'): b->piecesMoved |= BLACK_QUEENSIDE_CASTLE_MOVED; break;
+        case toBitboard('e','8'): b->piecesMoved |= BLACK_KING_MOVED;             break;
+        case toBitboard('h','8'): b->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED;  break;
+    }
+    // Corner-rook captured: same flag, triggered by the to-square.
+    switch(to) {
+        case toBitboard('a','1'): b->piecesMoved |= WHITE_QUEENSIDE_CASTLE_MOVED; break;
+        case toBitboard('h','1'): b->piecesMoved |= WHITE_KINGSIDE_CASTLE_MOVED;  break;
+        case toBitboard('a','8'): b->piecesMoved |= BLACK_QUEENSIDE_CASTLE_MOVED; break;
+        case toBitboard('h','8'): b->piecesMoved |= BLACK_KINGSIDE_CASTLE_MOVED;  break;
+    }
+
+    // EP target: set only if THIS move was a pawn double-push.
+    b->enPassantTarget = 0;
+    if (movingIsPawn) {
+        const offset fromRank = getRank(from);
+        const offset toRank   = getRank(to);
+        const int rankDelta = (int)toRank - (int)fromRank;
+        if (rankDelta == 2 || rankDelta == -2) {
+            const offset skippedRank = (fromRank + toRank) / 2;
+            b->enPassantTarget = 1ULL << (skippedRank * 8 + getFile(to));
+        }
+    }
+
+    b->whosTurn = mover ^ 1;
+
+    // Note: we deliberately DON'T call computeCurrentCastlingRights
+    // here. It's only needed when the next move-generation pass will
+    // consult the rights — i.e. when the search is about to recurse.
+    // The legality probe in addMoveIfLegal and leaf-depth applyMove
+    // calls discard the post-move castling rights, so paying for them
+    // at every node would be pure waste (and was the dominant cost
+    // when applyMove computed them unconditionally). Search code that
+    // recurses calls computeCurrentCastlingRights explicitly.
+}
+
+
+// In-place unmake. Reverses applyMove using only undo + the move itself.
+// Symmetric pairing is a hard correctness requirement — perft will scream
+// if any state isn't perfectly restored.
+void revertMove(board* const b, const analysisMove* const move, const UndoInfo* const undo) {
+
+    quadboard* const qb = &(b->quad);
+    const byte mover    = undo->movedTeam;
+    const bitboard from = move->from;
+    const bitboard to   = move->to;
+    const byte promoteTo = move->promoteTo;
+
+    // After applyMove, the king is on `to` — that's how we re-detect a
+    // king move. Promotion can't yield a king, so this is unambiguous.
+    const byte movingIsKing = (getPieces(*qb, KING | mover) & to) != 0;
+    const int  fileDelta    = (int)getFile(from) - (int)getFile(to);
+
+    // Undo the castling rook BEFORE we move the king back, so the rook
+    // is on its original h/a square first and the subsequent moveSquare
+    // for the king doesn't trip over it.
+    if (movingIsKing) {
+        const offset rankShift = getRank(from) * 8;
+        if (fileDelta == 2) {
+            moveSquare(qb, 1ULL << (rankShift + 2), 1ULL << rankShift);
+        }
+        else if (fileDelta == -2) {
+            moveSquare(qb, 1ULL << (rankShift + 4), 1ULL << (rankShift + 7));
+        }
+    }
+
+    // Undo promotion: turn the promoted piece back into a pawn before
+    // we move it home.
+    if (promoteTo > 0) {
+        resetSquares(qb, to);
+        addPieces(qb, to, PAWN | mover);
+    }
+
+    // Move the piece back. moveSquare clears `from` first then writes
+    // `to`'s contents to `from`, so this works even if the captured
+    // piece's bits are still in the picture (they're not — see below).
+    moveSquare(qb, to, from);
+
+    // Restore captured piece. moveSquare(to, from) wiped `to` clean as
+    // part of moving the piece off it, so addPieces is safe (precondition
+    // of addPieces is that target squares are 0000).
+    if (undo->capturedPiece) {
+        addPieces(qb, undo->capturedSquare, undo->capturedPiece);
+    }
+
+    b->enPassantTarget       = undo->prevEnPassantTarget;
+    b->piecesMoved           = undo->prevPiecesMoved;
+    b->currentCastlingRights = undo->prevCastlingRights;
+    b->whosTurn              = mover;
+}
+
+
+byte addMoveIfLegal(    analysisList* const list,
+                        board* const old,
+                        const bitboard from,
+                        const bitboard to,
+                        const byte promoteTo,
                         const byte leafMode) {
+    (void)leafMode;  // legality is now state-independent of leaf vs full
 
     if (list->ix < ANALYSIS_SIZE) {
 
-        // Spawn into a stack-local scratch only to test legality. The move
-        // is recorded by from/to/promoteTo; the resulting board is recomputed
-        // by the search when needed.
-        board scratch;
-        const byte legality = leafMode
-                            ? spawnLeafBoard(old, &scratch, from, to, promoteTo)
-                            : spawnFullBoard(old, &scratch, from, to, promoteTo);
+        // Make/unmake to test legality: the move is illegal iff making
+        // it leaves the mover's king in check. No board copy required.
+        const analysisMove probe = { .from = from, .to = to, .score = 0, .promoteTo = promoteTo };
+        UndoInfo undo;
+        applyMove(old, &probe, &undo);
+        const byte legal = !isSquareAttacked(old->quad, getPieces(old->quad, KING | undo.movedTeam), undo.movedTeam);
+        revertMove(old, &probe, &undo);
 
-        if (legality == BOARD_LEGAL) {
+        if (legal) {
             analysisMove* const next = &(list->items[list->ix]);
             next->from      = from;
             next->to        = to;
             next->score     = 0;
             next->promoteTo = promoteTo;
             list->ix++;
+            return BOARD_LEGAL;
         }
-
-        //
-        // Tell caller what happened re legality
-        // (illegal implies that move was thrown out)
-        //
-        return legality;
+        return BOARD_NOT_LEGAL;
     }
     else {
         error("\nMaximum analysis moves size exceeded.\n");
+        return BOARD_NOT_LEGAL;
     }
 
 }
 
-void generateLegalMoveList(const board* const b, analysisList* const moveList, const byte leafMode) {
+void generateLegalMoveList(board* const b, analysisList* const moveList, const byte leafMode) {
     
     const bitboard friends = getTeamPieces(b->quad, b->whosTurn);
     const bitboard enemies = getTeamPieces(b->quad, b->whosTurn ^ 1);
@@ -376,7 +542,7 @@ void printMoveList(const analysisList* const moveList) {
     }
 }
 
-void printAllowedMoves(const board* const b) {
+void printAllowedMoves(board* const b) {
     analysisList moveList;
     moveList.ix = 0;
     generateLegalMoveList(b, &moveList, 0);
@@ -394,7 +560,7 @@ byte makeMove(const board* const old, board* const new, const analysisMove* cons
 //
 // After making a real move, call this to see if the game has ended
 //
-byte detectCheckmate(const board* const b) {
+byte detectCheckmate(board* const b) {
     analysisList moveList;
     moveList.ix = 0;
     generateLegalMoveList(b,&moveList,0);
