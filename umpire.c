@@ -6,6 +6,7 @@
 #include "iterator.h"
 #include "logging.h"
 #include "quadboard.h"
+#include "tt.h"  // zobPiece / zobSide / zobCastle / zobEnPassant for incremental hash
 
 
 void clearBoard(board* const b) {
@@ -241,6 +242,13 @@ byte spawnFullBoard(const board* const old,
     // Compute castling rights for the team that is now to move.
     computeCurrentCastlingRights(new);
 
+    // Cold path: recompute hash from scratch. spawnFullBoard / spawnLeafBoard
+    // are only used for moves actually played (uci position application,
+    // human-vs-engine, root-played move), not for search nodes — search
+    // goes through applyMove/revertMove which keeps hash incrementally. A
+    // one-shot 64-square scan per real move is fine.
+    new->hash = computeZobristHash(new);
+
     // Board passed the illegal check state test earlier, so board is legal.
     return BOARD_LEGAL;
 
@@ -253,27 +261,47 @@ byte spawnFullBoard(const board* const old,
 //
 // Order matters: detect what kind of move this is from the OLD state
 // before any mutation, then apply piece movement, promotion, castle-rook
-// follow-up, piecesMoved updates, ep target, side flip, castling rights.
-void applyMove(board* const b, const analysisMove* const move, UndoInfo* const undo) {
+// follow-up, piecesMoved updates, ep target, side flip. b->hash is
+// XOR-updated incrementally at each step; revertMove restores it from
+// undo->prevHash directly.
+void applyMove(board* const b, const analysisMove* const move, UndoInfo* const undo, byte updateHash) {
 
     quadboard* const qb = &(b->quad);
     const byte mover    = b->whosTurn;
     const bitboard from = move->from;
     const bitboard to   = move->to;
     const byte promoteTo = move->promoteTo;
+    const offset fromOffset = trailingBit_Bitboard(from);
+    const offset toOffset   = trailingBit_Bitboard(to);
 
-    // Pre-mutation classification. Both checks read the old state.
+    // Pre-mutation classification. Reads the old state.
     const byte movingIsPawn = (getPieces(*qb, PAWN | mover) & from) != 0;
     const byte movingIsKing = (getPieces(*qb, KING | mover) & from) != 0;
     const int  fileDelta    = (int)getFile(from) - (int)getFile(to);
+    const byte movingPiece  = updateHash ? (getType(*qb, fromOffset) | mover) : 0;
 
     // Save everything we're about to clobber.
     undo->prevEnPassantTarget = b->enPassantTarget;
     undo->prevCastlingRights  = b->currentCastlingRights;
     undo->prevPiecesMoved     = b->piecesMoved;
+    undo->prevHash            = b->hash;
     undo->capturedSquare      = 0;
     undo->capturedPiece       = 0;
     undo->movedTeam           = mover;
+
+    // Hash: pre-emptively XOR out the OLD castle and ep keys; we'll XOR
+    // the NEW ones in at the bottom once piecesMoved and enPassantTarget
+    // have settled. Keeping these at the boundary avoids an inner XOR
+    // at every piecesMoved-modifying switch case.
+    if (updateHash) {
+        b->hash ^= zobCastle[b->piecesMoved];
+        if (b->enPassantTarget) {
+            const offset epFile = trailingBit_Bitboard(b->enPassantTarget) % 8;
+            b->hash ^= zobEnPassant[epFile];
+        } else {
+            b->hash ^= zobEnPassant[8];
+        }
+    }
 
     // EP capture: pawn moves diagonally onto the ep target. The captured
     // pawn is on the file of `to` and the rank of `from`, not on `to`
@@ -285,23 +313,34 @@ void applyMove(board* const b, const analysisMove* const move, UndoInfo* const u
         && getFile(from) != getFile(to)) {
         const offset capSqOffset = getRank(from) * 8 + getFile(to);
         const bitboard capturedSq = 1ULL << capSqOffset;
+        const byte    capPiece    = getType(*qb, capSqOffset) | getTeam(*qb, capSqOffset);
         undo->capturedSquare = capturedSq;
-        undo->capturedPiece  = getType(*qb, capSqOffset) | getTeam(*qb, capSqOffset);
+        undo->capturedPiece  = capPiece;
+        if (updateHash) b->hash ^= zobPiece[capSqOffset][capPiece];
         resetSquares(qb, capturedSq);
     }
     // Normal capture: there's an enemy piece sitting on `to`. moveSquare
     // will wipe it as a side-effect, so we have to save its identity now.
     else if (getAllPieces(*qb) & to) {
-        const offset toOffset = trailingBit_Bitboard(to);
+        const byte capPiece = getType(*qb, toOffset) | getTeam(*qb, toOffset);
         undo->capturedSquare = to;
-        undo->capturedPiece  = getType(*qb, toOffset) | getTeam(*qb, toOffset);
+        undo->capturedPiece  = capPiece;
+        if (updateHash) b->hash ^= zobPiece[toOffset][capPiece];
     }
 
     // Apply the piece movement.
+    if (updateHash) {
+        b->hash ^= zobPiece[fromOffset][movingPiece];
+        b->hash ^= zobPiece[toOffset]  [movingPiece];
+    }
     moveSquare(qb, from, to);
 
     // Promotion: replace the just-moved pawn with the chosen piece.
     if (promoteTo > 0) {
+        if (updateHash) {
+            b->hash ^= zobPiece[toOffset][movingPiece];                // remove pawn
+            b->hash ^= zobPiece[toOffset][promoteTo | mover];          // add promoted
+        }
         resetSquares(qb, to);
         addPieces(qb, to, promoteTo | mover);
     }
@@ -312,10 +351,22 @@ void applyMove(board* const b, const analysisMove* const move, UndoInfo* const u
     if (movingIsKing) {
         const offset rankShift = getRank(from) * 8;
         if (fileDelta == 2) {
-            moveSquare(qb, 1ULL << rankShift, 1ULL << (rankShift + 2));
+            const offset rFrom = rankShift;
+            const offset rTo   = rankShift + 2;
+            if (updateHash) {
+                b->hash ^= zobPiece[rFrom][ROOK | mover];
+                b->hash ^= zobPiece[rTo]  [ROOK | mover];
+            }
+            moveSquare(qb, 1ULL << rFrom, 1ULL << rTo);
         }
         else if (fileDelta == -2) {
-            moveSquare(qb, 1ULL << (rankShift + 7), 1ULL << (rankShift + 4));
+            const offset rFrom = rankShift + 7;
+            const offset rTo   = rankShift + 4;
+            if (updateHash) {
+                b->hash ^= zobPiece[rFrom][ROOK | mover];
+                b->hash ^= zobPiece[rTo]  [ROOK | mover];
+            }
+            moveSquare(qb, 1ULL << rFrom, 1ULL << rTo);
         }
     }
 
@@ -346,6 +397,18 @@ void applyMove(board* const b, const analysisMove* const move, UndoInfo* const u
             const offset skippedRank = (fromRank + toRank) / 2;
             b->enPassantTarget = 1ULL << (skippedRank * 8 + getFile(to));
         }
+    }
+
+    // Hash: XOR in NEW castle + ep keys, and toggle side.
+    if (updateHash) {
+        b->hash ^= zobCastle[b->piecesMoved];
+        if (b->enPassantTarget) {
+            const offset epFile = trailingBit_Bitboard(b->enPassantTarget) % 8;
+            b->hash ^= zobEnPassant[epFile];
+        } else {
+            b->hash ^= zobEnPassant[8];
+        }
+        b->hash ^= zobSide;
     }
 
     b->whosTurn = mover ^ 1;
@@ -413,6 +476,7 @@ void revertMove(board* const b, const analysisMove* const move, const UndoInfo* 
     b->piecesMoved           = undo->prevPiecesMoved;
     b->currentCastlingRights = undo->prevCastlingRights;
     b->whosTurn              = mover;
+    b->hash                  = undo->prevHash;
 }
 
 
@@ -430,7 +494,10 @@ byte addMoveIfLegal(    analysisList* const list,
         // it leaves the mover's king in check. No board copy required.
         const analysisMove probe = { .from = from, .to = to, .score = 0, .promoteTo = promoteTo };
         UndoInfo undo;
-        applyMove(old, &probe, &undo);
+        // updateHash=0: legality only reads quad and isSquareAttacked,
+        // not b->hash. Skipping the XOR work is the dominant per-move
+        // saving from incremental hashing.
+        applyMove(old, &probe, &undo, 0);
         const byte legal = !isSquareAttacked(old->quad, getPieces(old->quad, KING | undo.movedTeam), undo.movedTeam);
         revertMove(old, &probe, &undo);
 
@@ -606,5 +673,9 @@ void initBoard(board* const b) {
     // Compute the castling-rights overlay for the first move so that
     // generateKingMoves doesn't offer castling through occupied squares.
     computeCurrentCastlingRights(b);
+
+    // Cold-path one-shot: hash starts in sync with the rest of the board.
+    // applyMove takes over from here with incremental XOR updates.
+    b->hash = computeZobristHash(b);
 }
 

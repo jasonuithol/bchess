@@ -87,8 +87,19 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
     const depthType depthRemaining = aiStrength - depth;
 
     // Probe TT. Even when the score isn't directly usable, the stored
-    // best move seeds move ordering.
-    const uint64_t hash = computeZobristHash(b);
+    // best move seeds move ordering. b->hash is incrementally maintained
+    // by applyMove/revertMove so this is a single field read, not a
+    // 64-square scan.
+    const uint64_t hash = b->hash;
+#ifdef HASH_PARANOIA
+    {
+        const uint64_t fresh = computeZobristHash(b);
+        if (fresh != hash) {
+            error("HASH MISMATCH at depth=%d: incr=%016lx fresh=%016lx\n",
+                  (int)depth, (unsigned long)hash, (unsigned long)fresh);
+        }
+    }
+#endif
     const ttResult tte = ttProbe(hash, depthRemaining, alpha, beta);
     if (tte.usable && depth > 0) {
         // Non-root cut: caller doesn't need bestMove populated.
@@ -135,10 +146,26 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
             // Apply null move. Save state to restore exactly. The ep
             // opportunity expires after a pass (it's a one-ply window).
             // Castling rights for the new mover need recomputing because
-            // the recursive call's move-gen reads them.
+            // the recursive call's move-gen reads them. Hash needs the
+            // ep-key swap and side-toggle XORed in so the recursive
+            // TT probe sees the correct key. piecesMoved is unchanged
+            // (no piece moved) so no zobCastle update.
             const bitboard prevEp             = b->enPassantTarget;
             const byte     prevWhosTurn       = b->whosTurn;
             const byte     prevCastlingRights = b->currentCastlingRights;
+            const uint64_t prevHash           = b->hash;
+
+            // Hash: XOR out OLD ep key, XOR in NEW ep key (no-ep slot 8),
+            // toggle side.
+            if (prevEp) {
+                const offset epFile = trailingBit_Bitboard(prevEp) % 8;
+                b->hash ^= zobEnPassant[epFile];
+            } else {
+                b->hash ^= zobEnPassant[8];
+            }
+            b->hash ^= zobEnPassant[8];
+            b->hash ^= zobSide;
+
             b->enPassantTarget = 0;
             b->whosTurn       ^= 1;
             computeCurrentCastlingRights(b);
@@ -151,10 +178,11 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
                 alpha, beta,
                 0);  // no nested null-move
 
-            // Revert.
+            // Revert. Hash snaps back to its saved value.
             b->enPassantTarget       = prevEp;
             b->whosTurn              = prevWhosTurn;
             b->currentCastlingRights = prevCastlingRights;
+            b->hash                  = prevHash;
 
             if (searchAborted) return 0;
 
@@ -219,7 +247,7 @@ scoreType getBestMove(analysisMove* const bestMove, const board* const loopDetec
         // Mutate b in place; revert before the next iteration. No board
         // copy at all; the same memory location is reused down the tree.
         UndoInfo undo;
-        applyMove(b, move, &undo);
+        applyMove(b, move, &undo, 1);
 
         if (areEqualQB(loopDetect->quad, b->quad)) {
 

@@ -28,14 +28,14 @@
 #include "umpire.h"
 
 
-static uint64_t zobPiece[64][14];
-static uint64_t zobSide;
-static uint64_t zobCastle[256];
+uint64_t zobPiece[64][14];
+uint64_t zobSide;
+uint64_t zobCastle[256];
 // One key per en-passant file (a..h) plus a "no e.p." key. We hash by
 // file rather than by full square because two same-position-different-
 // e.p.-rank entries can't collide: the rank is implied by the side to
 // move (rank 3 if white, rank 6 if black).
-static uint64_t zobEnPassant[9];
+uint64_t zobEnPassant[9];
 static int zobInitDone = 0;
 
 // 2^21 entries × 32 bytes = 64 MB. The 7800X3D's 96 MB L3 swallows it
@@ -86,7 +86,14 @@ static void zobInit(void) {
 }
 
 
+void zobristEnsureInit(void) {
+    if (!zobInitDone) {
+        zobInit();
+    }
+}
+
 uint64_t computeZobristHash(const board* const b) {
+    zobristEnsureInit();
     uint64_t h = 0;
     bitboard occ = getAllPieces(b->quad);
     while (occ) {

@@ -273,6 +273,8 @@ static int parseFen(const char* fen, board* b) {
 
     // Remaining fields (halfmove, fullmove) are consumed but ignored.
     computeCurrentCastlingRights(b);
+    // Hash gets initialised here; applyMove maintains it from this point.
+    b->hash = computeZobristHash(b);
     return 1;
 }
 
